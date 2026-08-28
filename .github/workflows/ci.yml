@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build:lib
+
+      - name: Test library
+        run: npx ng test ngx-json-render
+
+      - name: Test demo
+        run: npx ng test demo
+
+      - name: Build demo
+        run: npx ng build demo
+
+      - name: Upload library package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ngx-json-render
+          path: dist/ngx-json-render

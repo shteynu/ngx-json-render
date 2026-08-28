@@ -1,0 +1,33 @@
+{
+  "name": "ngx-json-render",
+  "version": "0.1.0",
+  "description": "Angular renderer for json-render \u2014 stream AI-generated JSON specs into real Angular components with signals.",
+  "keywords": [
+    "angular",
+    "json-render",
+    "generative-ui",
+    "genui",
+    "ai",
+    "renderer",
+    "signals",
+    "server-driven-ui"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shteynu/ngx-json-render.git"
+  },
+  "homepage": "https://github.com/shteynu/ngx-json-render",
+  "bugs": {
+    "url": "https://github.com/shteynu/ngx-json-render/issues"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=21.0.0",
+    "@angular/core": ">=21.0.0"
+  },
+  "dependencies": {
+    "@json-render/core": "^0.20.0",
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

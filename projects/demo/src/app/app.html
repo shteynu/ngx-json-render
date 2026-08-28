@@ -1,0 +1,89 @@
+<header class="topbar">
+  <div>
+    <h1>ngx-json-render <span class="version">demo</span></h1>
+    <p>Angular renderer for json-render — specs in, components out.</p>
+  </div>
+  <nav class="tabs">
+    <button
+      type="button"
+      [class.active]="tab() === 'interactive'"
+      (click)="tab.set('interactive')"
+    >
+      Interactive
+    </button>
+    <button
+      type="button"
+      [class.active]="tab() === 'streaming'"
+      (click)="tab.set('streaming')"
+    >
+      Streaming
+    </button>
+  </nav>
+</header>
+
+@if (tab() === 'interactive') {
+  <main class="layout">
+    <section class="pane">
+      <json-render
+        #interactive
+        [spec]="spec()"
+        [registry]="registry"
+        [handlers]="handlers"
+        [onAction]="onUnknownAction"
+        (stateChange)="onStateChange($event)"
+      />
+    </section>
+    <aside class="pane side">
+      <section class="panel">
+        <h2>Event log</h2>
+        @if (log().length === 0) {
+          <p class="hint">Interact with the UI on the left — state changes and
+            actions land here.</p>
+        }
+        <ul class="log">
+          @for (entry of log(); track $index) {
+            <li>{{ entry }}</li>
+          }
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>Spec</h2>
+        <p class="hint">The entire UI on the left is rendered from this JSON.</p>
+        <pre class="code">{{ specJson() }}</pre>
+      </section>
+    </aside>
+  </main>
+} @else {
+  <main class="layout">
+    <section class="pane">
+      <div class="stream-controls">
+        <button type="button" class="replay" (click)="replayStream()">
+          {{ playing() ? 'Streaming…' : '▶ Replay stream' }}
+        </button>
+        @if (!playing() && streamedLines().length > 0) {
+          <span class="hint">Done — {{ streamedLines().length }} patches applied.</span>
+        }
+      </div>
+      @if (streamedLines().length === 0) {
+        <p class="hint">
+          Press replay to feed a prerecorded LLM patch stream (RFC 6902 JSONL)
+          into the renderer, one line at a time.
+        </p>
+      }
+      <json-render
+        [spec]="streamSpec()"
+        [registry]="registry"
+        [loading]="playing()"
+      />
+    </section>
+    <aside class="pane side">
+      <section class="panel">
+        <h2>SpecStream</h2>
+        <p class="hint">Each line is a JSON Patch op; the spec (and the UI)
+          builds up as lines arrive.</p>
+        <pre class="code stream-log">@for (line of streamedLines(); track $index) {{{ line }}
+}</pre>
+      </section>
+    </aside>
+  </main>
+}
