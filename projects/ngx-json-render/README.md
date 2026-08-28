@@ -4,6 +4,8 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render) â
 
 Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, zoneless-friendly, `OnPush` everywhere.
 
+**[Live demo](https://shteynu.github.io/ngx-json-render/)** â€” interactive spec (bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering ([source](https://github.com/shteynu/ngx-json-render/tree/main/projects/demo)).
+
 ## Install
 
 ```bash

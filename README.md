@@ -4,6 +4,8 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render): 
 
 **→ Package documentation: [`projects/ngx-json-render/README.md`](projects/ngx-json-render/README.md)**
 
+**→ Live demo: <https://shteynu.github.io/ngx-json-render/>** — interactive spec (bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering.
+
 ## Workspace layout
 
 - [`projects/ngx-json-render`](projects/ngx-json-render) — the library (published as `ngx-json-render`).
@@ -21,13 +23,23 @@ npm run build        # build library + demo
 
 The demo consumes the *built* package via a `tsconfig` path mapping, so run `npm run build:lib` (or `npm run watch:lib`) before/while serving.
 
-## Publishing
+## Releasing
+
+Releases are automated in [`release.yml`](.github/workflows/release.yml) via [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC — no tokens, provenance included). To cut a release: bump `version` in [`projects/ngx-json-render/package.json`](projects/ngx-json-render/package.json), commit, then
 
 ```bash
-npm run build:lib
-cd dist/ngx-json-render
-npm publish
+git tag v0.x.y && git push origin main v0.x.y
 ```
+
+The workflow verifies the tag matches the package version, builds, runs the library tests, publishes to npm, and creates the GitHub release. One-time setup on npmjs.com: package **Settings → Trusted publisher → GitHub Actions**, repository `shteynu/ngx-json-render`, workflow `release.yml`.
+
+Manual fallback (requires 2FA OTP):
+
+```bash
+npm run build:lib && cp LICENSE dist/ngx-json-render/ && cd dist/ngx-json-render && npm publish
+```
+
+The demo is deployed to GitHub Pages by [`ci.yml`](.github/workflows/ci.yml) on every push to `main`.
 
 ## Status & upstream
 
