@@ -16,7 +16,7 @@ Built on `@json-render/core` (the same spec format, expressions, state store, ac
 npm install ngx-json-render @json-render/core zod
 ```
 
-Requires Angular ≥ 21.
+Requires Angular ≥ 20.
 
 ## Quick start
 

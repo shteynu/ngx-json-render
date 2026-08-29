@@ -37,6 +37,32 @@ jobs:
           name: ngx-json-render
           path: dist/ngx-json-render
 
+  angular-compat:
+    name: Angular ${{ matrix.angular }} compatibility
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: [20]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Retarget workspace to Angular ${{ matrix.angular }}
+        run: node scripts/angular-compat.mjs ${{ matrix.angular }}
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build library
+        run: npx ng build ngx-json-render
+
+      - name: Test library
+        run: npx ng test ngx-json-render
+
   deploy-demo:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-and-test
