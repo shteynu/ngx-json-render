@@ -42,6 +42,12 @@ jobs:
       - name: Build Material catalog
         run: npm run build:material
 
+      # The catalog's runner reports its results and then never exits (see
+      # projects/ngx-json-render-material/README.md), so this goes through a
+      # script that waits for the report rather than for the process.
+      - name: Test Material catalog
+        run: npm run test:material
+
       - name: Copy LICENSE into package
         run: cp LICENSE dist/ngx-json-render-material/
 
