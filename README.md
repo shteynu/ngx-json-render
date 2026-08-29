@@ -19,13 +19,12 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render): 
 
 ```bash
 npm ci
-npm run build:lib    # build the library into dist/ngx-json-render
-npm start            # serve the demo at http://localhost:4200 (uses dist)
+npm start            # build the library, then serve the demo at http://localhost:4200
 npm test             # vitest: library + demo
 npm run build        # build library + demo
 ```
 
-The demo consumes the *built* package via a `tsconfig` path mapping, so run `npm run build:lib` (or `npm run watch:lib`) before/while serving.
+The demo consumes the *built* package (`dist/ngx-json-render`) via a `tsconfig` path mapping — `npm start` builds it first; keep `npm run watch:lib` running alongside if you're editing the library itself. This also makes the repo boot unmodified on StackBlitz, which always runs `npm install && npm start`.
 
 ## Releasing
 
