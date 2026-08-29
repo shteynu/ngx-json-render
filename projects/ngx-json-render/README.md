@@ -6,6 +6,8 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render) �
 
 Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, zoneless-friendly, `OnPush` everywhere.
 
+This is an Angular **adapter over the official core**, not a second implementation of it — `@json-render/core` is a peer dependency, and the spec your model emits is the same one the React, Vue, Solid and Svelte renderers consume. A catalog and a spec written here move to another framework unchanged.
+
 **[Live demo](https://shteynu.github.io/ngx-json-render/)** — interactive spec (bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering ([source](https://github.com/shteynu/ngx-json-render/tree/main/projects/demo)) — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
 
 ![A SpecStream of RFC 6902 patches rendering progressively into an Angular dashboard](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/docs/streaming.gif)
@@ -218,6 +220,54 @@ Share one store across renderers (or drive it from your own state management) by
 ### A note on inputs
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.
+
+## Security
+
+Specs are attacker-shaped input: whatever produced one — a model, a prompt, a
+user's text inside that prompt — is not something you control. The renderer is
+built so that a hostile spec cannot execute code, but it can still act within
+the authority you hand it. What follows is what the renderer guarantees and
+what stays your responsibility.
+
+**A spec cannot execute code.** There is no `eval`, no `Function` constructor,
+and no `innerHTML`/`bypassSecurityTrust` anywhere in this package or in
+`@json-render/core`. Expressions (`$state`, `$item`, `$index`, `$bindState`)
+are interpreted against the state model, not evaluated as JavaScript, and all
+text reaches the DOM through Angular interpolation. Script injection through a
+spec is not a thing you have to defend against.
+
+**A spec can only name actions you registered.** Built-ins (`setState`,
+`pushState`, `removeState`, `push`, `pop`, `validateForm`) are handled inside
+the renderer; every other action name is looked up in the `handlers` you pass.
+An unrecognised name logs a warning and does nothing.
+
+The exception is `onAction`, which is a deliberate catch-all: when you pass it,
+**every** action name in the spec reaches it, including ones you never put in
+your catalog. If you use it, switch on the names you expect and ignore the
+rest.
+
+**A spec chooses its own state paths.** `setState`, `pushState`, `removeState`
+and `onSuccess.set` all take a `statePath` straight from the spec, so a
+generated UI can write anywhere in the state model it is rendered against —
+and `push`/`pop` write `/currentScreen` and `/navStack`. In controlled mode
+this is *your* store. Give the renderer a store scoped to the generated view
+rather than the one holding session, entitlement or billing state.
+
+**A spec chooses the navigation target.** `onSuccess: { navigate }` passes its
+string to the `navigate` callback you provide, verbatim. Treat it as untrusted:
+match it against known routes, and never hand it to `window.location` or
+`router.navigateByUrl` unchecked.
+
+**A spec sizes its own render tree.** `repeat` iterates a state array the spec
+may itself have supplied, so specs are a denial-of-service surface against the
+browser tab. Cap spec size and array lengths at the boundary where you accept
+one.
+
+**`confirm` is a UX affordance, not a security control.** It routes an action
+through the confirmation dialog before the handler runs, but it is set on the
+action binding *inside the spec* (`on.press.confirm`) — so the same party that
+chose the action also chose whether to ask. Real authorization belongs in the
+handler, on the server.
 
 ## API surface
 
