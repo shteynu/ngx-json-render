@@ -72,6 +72,25 @@ export interface PendingConfirmation {
 }
 
 /**
+ * Rejection produced when the user dismisses an action's confirmation dialog.
+ * Carries a stable `name` so callers can tell a cancellation apart from a
+ * handler failure without matching on the message.
+ *
+ * @internal Not part of the public API; check `error.name` instead.
+ */
+export class ActionCancelledError extends Error {
+  constructor() {
+    super('Action cancelled');
+    this.name = 'ActionCancelledError';
+  }
+}
+
+/** True for the rejection produced by cancelling a confirmation dialog. */
+export function isActionCancelled(error: unknown): boolean {
+  return error instanceof Error && error.name === 'ActionCancelledError';
+}
+
+/**
  * Action dispatcher of a `<json-render>` subtree.
  *
  * Executes {@link ActionBinding}s: built-in actions (`setState`, `pushState`,
@@ -234,7 +253,9 @@ export class JsonRenderActionsService {
       }
 
       if (resolved.confirm) {
-        return new Promise<void>((resolve, reject) => {
+        // Awaited, not returned: a returned promise would let the `finally`
+        // below settle the observers before the user has even answered.
+        await new Promise<void>((resolve, reject) => {
           this._pendingConfirmation.set({
             action: resolved,
             handler,
@@ -244,10 +265,10 @@ export class JsonRenderActionsService {
             },
             reject: () => {
               this._pendingConfirmation.set(null);
-              reject(new Error('Action cancelled'));
+              reject(new ActionCancelledError());
             },
           });
-        }).then(() => this.runHandler(resolved, handler));
+        });
       }
 
       await this.runHandler(resolved, handler);

@@ -4,7 +4,8 @@ import {
   TestBed,
 } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import type { ActionHandler, Spec } from '@json-render/core';
+import type { ActionHandler, ActionSettleInfo, Spec } from '@json-render/core';
+import { registerActionObserver } from '@json-render/core';
 import { JrChildren } from './children.component';
 import { JsonRenderer } from './renderer.component';
 import { injectRenderContext } from './tokens';
@@ -134,6 +135,58 @@ function text(fixture: ComponentFixture<unknown>, selector: string): string[] {
   ).map((el) => (el.textContent ?? '').trim());
 }
 
+/**
+ * Collect unhandled promise rejections raised while `run` executes. Action
+ * dispatch is fire-and-forget from a template listener, so a rejection that
+ * escapes it lands here instead of failing any assertion.
+ */
+async function unhandledRejections(run: () => Promise<void>): Promise<unknown[]> {
+  // Typed locally: the workspace has no @types/node, and jsdom never
+  // dispatches the DOM `unhandledrejection` event for these.
+  const proc = (
+    globalThis as unknown as {
+      process?: {
+        on(event: 'unhandledRejection', listener: (reason: unknown) => void): void;
+        off(event: 'unhandledRejection', listener: (reason: unknown) => void): void;
+      };
+    }
+  ).process;
+  if (!proc) {
+    throw new Error(
+      'unhandledRejections() needs a Node process to observe; the assertion would pass vacuously without one.',
+    );
+  }
+
+  const captured: unknown[] = [];
+  const onRejection = (reason: unknown) => captured.push(reason);
+  proc.on('unhandledRejection', onRejection);
+  try {
+    await run();
+    // Give Node a turn to report a rejection that is still unhandled.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  } finally {
+    proc.off('unhandledRejection', onRejection);
+  }
+  return captured;
+}
+
+/** A single button whose action is gated behind a confirmation dialog. */
+const CONFIRM_SPEC: Spec = {
+  root: 'root',
+  elements: {
+    root: {
+      type: 'Btn',
+      props: { label: 'Delete' },
+      on: {
+        press: {
+          action: 'destroy',
+          confirm: { title: 'Sure?', message: 'Really delete?' },
+        },
+      },
+    },
+  },
+};
+
 function stateService(fixture: ComponentFixture<Host>) {
   return fixture.debugElement.children[0].componentInstance.stateStore as {
     get(path: string): unknown;
@@ -147,6 +200,14 @@ function stateService(fixture: ComponentFixture<Host>) {
 // ---------------------------------------------------------------------------
 
 describe('JsonRenderer', () => {
+  // registerActionObserver is process-global: tear it down even when an
+  // assertion throws, so one failure cannot leak into the next test.
+  let unobserve: (() => void) | undefined;
+  afterEach(() => {
+    unobserve?.();
+    unobserve = undefined;
+  });
+
   it('renders the root element tree with literal props', async () => {
     const fixture = await setup({
       root: 'root',
@@ -450,30 +511,13 @@ describe('JsonRenderer', () => {
 
   it('gates handler execution behind the confirm dialog', async () => {
     let executed = 0;
-    const fixture = await setup(
-      {
-        root: 'root',
-        elements: {
-          root: {
-            type: 'Btn',
-            props: { label: 'Delete' },
-            on: {
-              press: {
-                action: 'destroy',
-                confirm: { title: 'Sure?', message: 'Really delete?' },
-              },
-            },
-          },
+    const fixture = await setup(CONFIRM_SPEC, (host) => {
+      host.handlers = {
+        destroy: () => {
+          executed += 1;
         },
-      },
-      (host) => {
-        host.handlers = {
-          destroy: () => {
-            executed += 1;
-          },
-        };
-      },
-    );
+      };
+    });
 
     const host = fixture.nativeElement as HTMLElement;
     host.querySelector<HTMLButtonElement>('.t-btn')!.click();
@@ -490,6 +534,109 @@ describe('JsonRenderer', () => {
 
     expect(executed).toBe(1);
     expect(host.querySelector('jr-confirm-dialog')).toBeNull();
+  });
+
+  it('cancelling the confirm dialog runs nothing and reports no error', async () => {
+    let executed = 0;
+    const settles: ActionSettleInfo[] = [];
+    unobserve = registerActionObserver({ onSettle: (evt) => settles.push(evt) });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const fixture = await setup(CONFIRM_SPEC, (host) => {
+      host.handlers = {
+        destroy: () => {
+          executed += 1;
+        },
+      };
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    const leaked = await unhandledRejections(async () => {
+      host.querySelector<HTMLButtonElement>('.t-btn')!.click();
+      await settle(fixture);
+      host
+        .querySelectorAll<HTMLButtonElement>('jr-confirm-dialog button')[0]
+        .click(); // Cancel
+      await settle(fixture);
+    });
+
+    expect(executed).toBe(0);
+    expect(host.querySelector('jr-confirm-dialog')).toBeNull();
+    expect(leaked).toEqual([]);
+    expect(error).not.toHaveBeenCalled();
+
+    // A cancelled action did not complete, so observers see a failed settle.
+    expect(settles.length).toBe(1);
+    expect(settles[0].ok).toBe(false);
+    expect((settles[0].error as Error).name).toBe('ActionCancelledError');
+
+    error.mockRestore();
+  });
+
+  it('settles a confirmed action only once the handler has finished', async () => {
+    const settles: ActionSettleInfo[] = [];
+    unobserve = registerActionObserver({ onSettle: (evt) => settles.push(evt) });
+    let release!: () => void;
+    const handlerDone = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const fixture = await setup(CONFIRM_SPEC, (host) => {
+      host.handlers = { destroy: () => handlerDone };
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    host.querySelector<HTMLButtonElement>('.t-btn')!.click();
+    await settle(fixture);
+    expect(settles).toEqual([]); // dialog is open, nothing has run yet
+
+    host
+      .querySelectorAll<HTMLButtonElement>('jr-confirm-dialog button')[1]
+      .click(); // Confirm
+    await settle(fixture);
+    expect(settles).toEqual([]); // handler is still running
+
+    release();
+    await settle(fixture);
+
+    expect(settles.length).toBe(1);
+    expect(settles[0].ok).toBe(true);
+  });
+
+  it('logs a rejecting handler instead of leaking an unhandled rejection', async () => {
+    const failure = new Error('handler blew up');
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const fixture = await setup(
+      {
+        root: 'root',
+        elements: {
+          root: {
+            type: 'Btn',
+            props: { label: 'Go' },
+            on: { press: { action: 'boom' } },
+          },
+        },
+      },
+      (host) => {
+        host.handlers = {
+          boom: async () => {
+            throw failure;
+          },
+        };
+      },
+    );
+
+    const leaked = await unhandledRejections(async () => {
+      (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLButtonElement>('.t-btn')!
+        .click();
+      await settle(fixture);
+    });
+
+    expect(leaked).toEqual([]);
+    expect(error).toHaveBeenCalledWith(failure);
+    error.mockRestore();
   });
 
   it('fires watch actions when watched state paths change', async () => {

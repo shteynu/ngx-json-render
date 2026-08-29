@@ -21,7 +21,7 @@ import {
   resolveBindings,
   resolveElementProps,
 } from '@json-render/core';
-import { JsonRenderActionsService } from './actions.service';
+import { JsonRenderActionsService, isActionCancelled } from './actions.service';
 import { injectDevtoolsActive } from './devtools';
 import { JsonRenderRootContext } from './root-context';
 import { JsonRenderStateService } from './state.service';
@@ -29,6 +29,15 @@ import { REPEAT_SCOPE, RENDER_CONTEXT } from './tokens';
 import type { EventHandle, RenderContext } from './types';
 
 const warnedSlots = new Set<string>();
+
+/**
+ * Report a failure from a fire-and-forget action dispatch. Cancelling a
+ * confirmation dialog is a normal outcome, not an error, so it stays silent.
+ */
+function reportActionError(error: unknown): void {
+  if (isActionCancelled(error)) return;
+  console.error(error);
+}
 
 /**
  * Renders a single spec element: evaluates visibility, resolves prop
@@ -118,7 +127,7 @@ export class JrElement {
   private readonly renderCtx: RenderContext = {
     element: this.resolvedElement as Signal<UIElement>,
     props: computed(() => this.resolvedElement()?.props ?? {}),
-    emit: (event) => void this.emitEvent(event),
+    emit: (event) => this.fireEvent(event),
     on: (event) => this.eventHandle(event),
     bindings: this.bindings,
     loading: computed(() => this.root.loading()),
@@ -203,7 +212,7 @@ export class JrElement {
               await this.actions.execute({ ...b, params: resolved });
             }
           }
-        })().catch(console.error);
+        })().catch(reportActionError);
       });
 
       onCleanup(unsubscribe);
@@ -219,6 +228,15 @@ export class JrElement {
       ...untracked(this.resolutionCtx),
       stateModel: this.state.getSnapshot(),
     };
+  }
+
+  /**
+   * Fire-and-forget entry point for event emission: dispatching is async, but
+   * a template listener has nowhere to await it, so the failure must be
+   * handled here rather than escaping as an unhandled rejection.
+   */
+  private fireEvent(eventName: string): void {
+    this.emitEvent(eventName).catch(reportActionError);
   }
 
   private async emitEvent(eventName: string): Promise<void> {
@@ -248,7 +266,7 @@ export class JrElement {
     }
     const actionBindings = Array.isArray(binding) ? binding : [binding];
     return {
-      emit: () => void this.emitEvent(eventName),
+      emit: () => this.fireEvent(eventName),
       shouldPreventDefault: actionBindings.some((b) => b.preventDefault),
       bound: true,
     };
