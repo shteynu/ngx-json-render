@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 /**
  * The demo catalog: the vocabulary of components and actions the spec (or an
- * LLM generating one) is allowed to use. `schema.toPrompt(catalog)` can turn
- * this into a system prompt for UI generation.
+ * LLM generating one) is allowed to use. `catalog.prompt()` turns this into a
+ * system prompt for UI generation.
  */
 export const catalog = schema.createCatalog({
   components: {

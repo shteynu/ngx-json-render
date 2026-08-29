@@ -1,10 +1,14 @@
 # ngx-json-render
 
+[![npm](https://img.shields.io/npm/v/ngx-json-render)](https://www.npmjs.com/package/ngx-json-render) [![CI](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml/badge.svg)](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/ngx-json-render)](https://github.com/shteynu/ngx-json-render/blob/main/LICENSE)
+
 Angular renderer for [json-render](https://github.com/vercel-labs/json-render) — give an LLM a catalog of your components, stream back a JSON spec, and render it as real Angular components. No `innerHTML`, no `eval`, no framework lock-in on the wire format.
 
 Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, zoneless-friendly, `OnPush` everywhere.
 
-**[Live demo](https://shteynu.github.io/ngx-json-render/)** — interactive spec (bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering ([source](https://github.com/shteynu/ngx-json-render/tree/main/projects/demo)).
+**[Live demo](https://shteynu.github.io/ngx-json-render/)** — interactive spec (bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering ([source](https://github.com/shteynu/ngx-json-render/tree/main/projects/demo)) — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
+
+![A SpecStream of RFC 6902 patches rendering progressively into an Angular dashboard](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/docs/streaming.gif)
 
 ## Install
 
@@ -138,9 +142,40 @@ export class GeneratePage {
 }
 ```
 
+### The server side
+
+`injectUIStream` POSTs `{ prompt, context, currentSpec }` to your endpoint and expects the response body to be SpecStream JSONL — one RFC 6902 patch per line. Any server that can stream text works; with the [AI SDK](https://ai-sdk.dev) it's a few lines — `catalog.prompt()` teaches the model your component vocabulary and the patch protocol:
+
+```ts
+// server.ts — Express shown; any Node server works the same way
+import express from 'express';
+import { streamText } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { catalog } from './catalog';
+
+const app = express();
+app.use(express.json());
+
+app.post('/api/generate', async (req, res) => {
+  const { prompt } = req.body; // injectUIStream sends { prompt, context, currentSpec }
+
+  const result = streamText({
+    model: anthropic('claude-sonnet-5'),
+    system: catalog.prompt(),
+    prompt,
+  });
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  for await (const chunk of result.textStream) res.write(chunk);
+  res.end();
+});
+```
+
+The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `catalog.validate(spec)` checks a finished spec against the catalog.
+
 Also available:
 
-- `injectChatUI({ api })` — chat + GenUI: assistant messages carrying both prose and specs (` ```spec ` fenced JSONL).
+- `injectChatUI({ api })` — chat + GenUI: the endpoint takes `{ messages }` and streams prose mixed with ` ```spec ` fenced JSONL; each assistant message carries `text` and/or a `spec`.
 - `applyPatch(spec, patch)` — immutably apply one RFC 6902 patch to a spec.
 - `buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` — derive specs from AI SDK `message.parts`.
 - `catalog.prompt()` / `buildUserPrompt` (from `@json-render/core`) — generate the system/user prompts for your catalog.
