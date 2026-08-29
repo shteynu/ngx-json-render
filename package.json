@@ -4,10 +4,12 @@
   "scripts": {
     "ng": "ng",
     "start": "npm run build:lib && ng serve demo",
-    "build": "ng build ngx-json-render && ng build demo",
+    "build": "ng build ngx-json-render && ng build ngx-json-render-material && ng build demo",
     "build:lib": "ng build ngx-json-render",
     "watch:lib": "ng build ngx-json-render --watch --configuration development",
-    "test": "ng test ngx-json-render && ng test demo"
+    "test": "ng test ngx-json-render && ng test demo",
+    "build:material": "ng build ngx-json-render-material",
+    "test:material": "ng test ngx-json-render-material"
   },
   "private": true,
   "packageManager": "npm@10.9.8",
@@ -16,6 +18,7 @@
     "@angular/compiler": "^21.2.0",
     "@angular/core": "^21.2.0",
     "@angular/forms": "^21.2.0",
+    "@angular/material": "^21.2.14",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@json-render/core": "^0.20.0",

@@ -1,0 +1,39 @@
+{
+  "name": "ngx-json-render-material",
+  "version": "0.1.0",
+  "description": "Angular Material catalog for ngx-json-render — a ready-made component vocabulary an LLM can generate UI against.",
+  "keywords": [
+    "angular",
+    "angular-material",
+    "json-render",
+    "generative-ui",
+    "genui",
+    "ai",
+    "catalog",
+    "server-driven-ui"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shteynu/ngx-json-render.git",
+    "directory": "projects/ngx-json-render-material"
+  },
+  "homepage": "https://github.com/shteynu/ngx-json-render",
+  "bugs": {
+    "url": "https://github.com/shteynu/ngx-json-render/issues"
+  },
+  "peerDependencies": {
+    "@angular/cdk": ">=20.0.0",
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0",
+    "@angular/forms": ">=20.0.0",
+    "@angular/material": ">=20.0.0",
+    "@json-render/core": "^0.20.0",
+    "ngx-json-render": "^0.1.0",
+    "zod": "^4.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

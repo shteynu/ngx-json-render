@@ -8,7 +8,8 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "paths": {
-      "ngx-json-render": ["./dist/ngx-json-render"]
+      "ngx-json-render": ["./dist/ngx-json-render"],
+      "ngx-json-render-material": ["./dist/ngx-json-render-material"]
     },
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,

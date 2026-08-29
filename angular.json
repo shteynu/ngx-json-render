@@ -94,6 +94,32 @@
           "builder": "@angular/build:unit-test"
         }
       }
+    },
+    "ngx-json-render-material": {
+      "projectType": "library",
+      "root": "projects/ngx-json-render-material",
+      "sourceRoot": "projects/ngx-json-render-material/src",
+      "prefix": "jrm",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ngx-json-render-material/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ngx-json-render-material/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "projects/ngx-json-render-material/tsconfig.spec.json"
+          }
+        }
+      }
     }
   }
 }

@@ -25,6 +25,13 @@ jobs:
       - name: Test library
         run: npx ng test ngx-json-render
 
+      # Building the catalog type-checks every component template against the
+      # catalog. Its unit tests pass but the runner process does not exit
+      # (see projects/ngx-json-render-material/README.md), so they would hang
+      # this job; run them locally with `npm run test:material`.
+      - name: Build Material catalog
+        run: npm run build:material
+
       - name: Test demo
         run: npx ng test demo
 
@@ -36,6 +43,12 @@ jobs:
         with:
           name: ngx-json-render
           path: dist/ngx-json-render
+
+      - name: Upload Material catalog package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ngx-json-render-material
+          path: dist/ngx-json-render-material
 
   angular-compat:
     name: Angular ${{ matrix.angular }} compatibility
@@ -62,6 +75,9 @@ jobs:
 
       - name: Test library
         run: npx ng test ngx-json-render
+
+      - name: Build Material catalog
+        run: npx ng build ngx-json-render-material
 
   deploy-demo:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
