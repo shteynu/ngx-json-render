@@ -1,5 +1,7 @@
 # ngx-json-render-material
 
+[![npm](https://img.shields.io/npm/v/ngx-json-render-material)](https://www.npmjs.com/package/ngx-json-render-material) [![CI](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml/badge.svg)](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/ngx-json-render-material)](https://github.com/shteynu/ngx-json-render/blob/main/LICENSE)
+
 Angular Material catalog for [`ngx-json-render`](https://www.npmjs.com/package/ngx-json-render) — a ready-made component vocabulary an LLM can generate UI against, so you don't have to write one before your first generated screen.
 
 `ngx-json-render` gives you the renderer. This gives you the 28 components it renders.

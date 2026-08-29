@@ -43,12 +43,28 @@ The Material catalog, in [`release-material.yml`](.github/workflows/release-mate
 git tag material-v0.x.y && git push origin main material-v0.x.y
 ```
 
-The workflow verifies the tag matches the package version, builds, runs the library tests, publishes to npm, and creates the GitHub release. One-time setup on npmjs.com: package **Settings → Trusted publisher → GitHub Actions**, repository `shteynu/ngx-json-render`, workflow `release.yml`.
+Each workflow verifies the tag matches the package version, builds, runs that
+project's tests, publishes to npm, and creates the GitHub release.
 
-Manual fallback (requires 2FA OTP). Pass `--registry` explicitly: npm reads
-project config from the current directory only, so the `registry` line in this
-repo's `.npmrc` does **not** apply once you `cd` into `dist/`, and the publish
-silently targets whatever your global `~/.npmrc` points at.
+One-time setup on npmjs.com, **per package** — configuring one does not cover the
+other, and a package with no connection gets no credentials at all in Actions and
+fails with `ENEEDAUTH`. Under package **Settings → Trusted Publisher → GitHub
+Actions**:
+
+| Field | Value |
+| --- | --- |
+| Organization or user | `shteynu` |
+| Repository | `ngx-json-render` |
+| Workflow filename | `release.yml` for the renderer, `release-material.yml` for the catalog — filename only, no path |
+| Environment name | leave empty — neither workflow declares an `environment:`, and a name here would have to match one |
+| Allowed actions | tick `Allow npm publish`; the form will not save without at least one, and `npm stage publish` is not what these workflows run |
+
+Manual fallback (requires 2FA OTP). It publishes without the provenance
+attestation the workflows attach, so reach for it only when Actions is
+unavailable. Pass `--registry` explicitly: npm reads project config from the
+current directory only, so the `registry` line in this repo's `.npmrc` does
+**not** apply once you `cd` into `dist/`, and the publish silently targets
+whatever your global `~/.npmrc` points at.
 
 ```bash
 npm run build:lib && cp LICENSE dist/ngx-json-render/ && cd dist/ngx-json-render && npm publish --registry https://registry.npmjs.org/
