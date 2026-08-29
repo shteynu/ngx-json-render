@@ -1,17 +1,22 @@
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Spec } from '@json-render/core';
-import { JsonRenderer } from 'ngx-json-render';
+import { JsonRenderer, type StateChange } from 'ngx-json-render';
 import { materialCatalog } from './catalog';
 import { materialComponents, materialRegistry } from './registry';
 
 @Component({
   imports: [JsonRenderer],
-  template: `<json-render [spec]="spec()" [registry]="registry" />`,
+  template: `<json-render
+    [spec]="spec()"
+    [registry]="registry"
+    (stateChange)="changes.push($event)"
+  />`,
 })
 class Host {
   readonly spec = signal<Spec | null>(null);
   readonly registry = materialRegistry;
+  readonly changes: StateChange[][] = [];
 }
 
 // Material and CDK components hold live handles (ViewportRuler listeners,
@@ -35,6 +40,21 @@ async function render(spec: Spec) {
   fixture.componentInstance.spec.set(spec);
   await settle(fixture);
   return fixture;
+}
+
+/** Text of every error message currently displayed, in document order. */
+function errorTexts(fixture: ComponentFixture<unknown>): string[] {
+  return Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'mat-error, .jrm-error',
+    ),
+  ).map((el) => (el.textContent ?? '').trim());
+}
+
+/** The most recent value written to a state path, or undefined. */
+function lastValueAt(fixture: ComponentFixture<Host>, path: string): unknown {
+  const flat = fixture.componentInstance.changes.flat();
+  return flat.filter((change) => change.path === path).at(-1)?.value;
 }
 
 /** Catalog component names, read off the built catalog. */
@@ -192,5 +212,179 @@ describe('material components', () => {
     expect(rows.length).toBe(2);
     expect(rows[0].getAttribute('role')).toBeNull();
     expect(rows[1].getAttribute('role')).toBe('button');
+  });
+});
+
+describe('material form validation', () => {
+  it('shows errors on blur and clears them once the value is valid', async () => {
+    const fixture = await render({
+      root: 'email',
+      state: { email: '' },
+      elements: {
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: {
+              checks: [
+                { type: 'required', message: 'Email is required' },
+                { type: 'email', message: 'That is not an email' },
+              ],
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const host: HTMLElement = fixture.nativeElement;
+    const input = host.querySelector('input') as HTMLInputElement;
+
+    // Nothing is shown before the field has been interacted with.
+    expect(errorTexts(fixture)).toEqual([]);
+
+    input.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+
+    expect(errorTexts(fixture)).toEqual([
+      'Email is required',
+      'That is not an email',
+    ]);
+    expect(host.querySelector('.mat-form-field-invalid')).toBeTruthy();
+
+    input.value = 'ada@example.com';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+
+    expect(errorTexts(fixture)).toEqual([]);
+    expect(host.querySelector('.mat-form-field-invalid')).toBeNull();
+  });
+
+  it('validateForm collects every bound field and writes the result to state', async () => {
+    const fixture = await render({
+      root: 'form',
+      state: { email: '', terms: false },
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['email', 'terms', 'save'] },
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: {
+              checks: [{ type: 'required', message: 'Email is required' }],
+              validateOn: 'submit',
+            },
+          },
+          children: [],
+        },
+        terms: {
+          type: 'Checkbox',
+          props: {
+            label: 'Accept the terms',
+            checked: { $bindState: '/terms' },
+            validation: {
+              // `required` passes for boolean false — it only rejects null,
+              // undefined, empty strings and empty arrays — so a box that must
+              // be ticked is expressed as equalTo true.
+              checks: [
+                {
+                  type: 'equalTo',
+                  args: { other: true },
+                  message: 'You must accept the terms',
+                },
+              ],
+            },
+          },
+          children: [],
+        },
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'validateForm' } },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const host: HTMLElement = fixture.nativeElement;
+    expect(errorTexts(fixture)).toEqual([]);
+
+    host.querySelector('button')!.click();
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/formValidation')).toEqual({
+      valid: false,
+      errors: {
+        '/email': ['Email is required'],
+        '/terms': ['You must accept the terms'],
+      },
+    });
+    // Both kinds of field surface their message: the input through the form
+    // field's subscript, the checkbox through its own error line.
+    expect(errorTexts(fixture)).toEqual([
+      'Email is required',
+      'You must accept the terms',
+    ]);
+  });
+
+  it('leaves a validation config without a bound value inert', async () => {
+    const fixture = await render({
+      root: 'form',
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['email', 'save'] },
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: 'literal, not bound',
+            validation: {
+              checks: [{ type: 'email', message: 'That is not an email' }],
+            },
+          },
+          children: [],
+        },
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'validateForm' } },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/formValidation')).toEqual({
+      valid: true,
+      errors: {},
+    });
+    expect(errorTexts(fixture)).toEqual([]);
+  });
+
+  it('marks a field required from its validation checks', async () => {
+    const fixture = await render({
+      root: 'email',
+      state: { email: '' },
+      elements: {
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: {
+              checks: [{ type: 'required', message: 'Email is required' }],
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input');
+    expect(input?.getAttribute('required')).not.toBeNull();
   });
 });

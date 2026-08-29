@@ -10,17 +10,40 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
+import { MatInput, MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSliderModule } from '@angular/material/slider';
+import type { ValidationConfig } from '@json-render/core';
 import { injectRenderContext } from 'ngx-json-render';
+import { type JrmField, injectJrmField } from './field';
 import type { ThemeColor } from './theme';
 
 interface SelectOption {
   value: string;
   label: string;
+}
+
+/**
+ * Push a field's error state into a Material form-field control.
+ *
+ * `MatInput` / `MatSelect` normally derive `errorState` from an `NgControl`.
+ * These catalog components bind to the spec's state model instead of a
+ * reactive form, so there is no control to derive it from — but both expose a
+ * settable `errorState`, and `ngDoCheck` only recomputes it when an
+ * `NgControl` is present, so a written value sticks. `stateChanges` is what
+ * tells the (OnPush) form field to re-render its subscript.
+ */
+function syncErrorState(
+  control: () => MatInput | MatSelect,
+  invalid: () => boolean,
+): void {
+  effect(() => {
+    const target = control();
+    target.errorState = invalid();
+    target.stateChanges.next();
+  });
 }
 
 /** Material button; emits `press`. */
@@ -95,13 +118,17 @@ export class JrmIconButton {
         matInput
         [type]="props().type ?? 'text'"
         [placeholder]="props().placeholder ?? ''"
-        [required]="props().required ?? false"
+        [required]="props().required || field.required()"
         [disabled]="props().disabled ?? false"
         (input)="onInput($event)"
+        (blur)="field.blur()"
         (keydown.enter)="ctx.emit('submit')"
       />
       @if (props().hint) {
         <mat-hint>{{ props().hint }}</mat-hint>
+      }
+      @for (error of field.errors(); track error) {
+        <mat-error>{{ error }}</mat-error>
       }
     </mat-form-field>
   `,
@@ -118,9 +145,12 @@ export class JrmInput {
     type?: 'text' | 'number' | 'email' | 'password';
     required?: boolean;
     disabled?: boolean;
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'blur');
   private readonly el = viewChild.required<ElementRef<HTMLInputElement>>('el');
+  private readonly control = viewChild.required(MatInput);
 
   constructor() {
     // Sync against the live DOM value rather than a [value] binding: state can
@@ -131,10 +161,11 @@ export class JrmInput {
       const input = this.el().nativeElement;
       if (input.value !== value) input.value = value;
     });
+    syncErrorState(this.control, this.field.invalid);
   }
 
   onInput(event: Event): void {
-    this.ctx.setBound('value', (event.target as HTMLInputElement).value);
+    this.field.set((event.target as HTMLInputElement).value);
   }
 }
 
@@ -153,9 +184,14 @@ export class JrmInput {
         matInput
         [rows]="props().rows ?? 3"
         [placeholder]="props().placeholder ?? ''"
+        [required]="field.required()"
         [disabled]="props().disabled ?? false"
         (input)="onInput($event)"
+        (blur)="field.blur()"
       ></textarea>
+      @for (error of field.errors(); track error) {
+        <mat-error>{{ error }}</mat-error>
+      }
     </mat-form-field>
   `,
   styles: `
@@ -169,9 +205,12 @@ export class JrmTextarea {
     placeholder?: string;
     rows?: number;
     disabled?: boolean;
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'blur');
   private readonly el = viewChild.required<ElementRef<HTMLTextAreaElement>>('el');
+  private readonly control = viewChild.required(MatInput);
 
   constructor() {
     effect(() => {
@@ -179,10 +218,11 @@ export class JrmTextarea {
       const el = this.el().nativeElement;
       if (el.value !== value) el.value = value;
     });
+    syncErrorState(this.control, this.field.invalid);
   }
 
   onInput(event: Event): void {
-    this.ctx.setBound('value', (event.target as HTMLTextAreaElement).value);
+    this.field.set((event.target as HTMLTextAreaElement).value);
   }
 }
 
@@ -198,13 +238,18 @@ export class JrmTextarea {
       }
       <mat-select
         [value]="props().value ?? null"
+        [required]="field.required()"
         [disabled]="props().disabled ?? false"
-        (selectionChange)="ctx.setBound('value', $event.value)"
+        (selectionChange)="field.set($event.value)"
+        (closed)="field.blur()"
       >
         @for (option of options(); track option.value) {
           <mat-option [value]="option.value">{{ option.label }}</mat-option>
         }
       </mat-select>
+      @for (error of field.errors(); track error) {
+        <mat-error>{{ error }}</mat-error>
+      }
     </mat-form-field>
   `,
   styles: `
@@ -217,12 +262,19 @@ export class JrmSelect {
     value?: string;
     options?: SelectOption[];
     disabled?: boolean;
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
+  private readonly control = viewChild.required(MatSelect);
   readonly options = computed<SelectOption[]>(() => {
     const options = this.props().options;
     return Array.isArray(options) ? options : [];
   });
+
+  constructor() {
+    syncErrorState(this.control, this.field.invalid);
+  }
 }
 
 /** Material checkbox; two-way bindable via `$bindState` / `$bindItem`. */
@@ -233,11 +285,24 @@ export class JrmSelect {
   template: `
     <mat-checkbox
       [checked]="!!props().checked"
+      [required]="field.required()"
       [disabled]="props().disabled ?? false"
-      (change)="ctx.setBound('checked', $event.checked)"
+      (change)="field.set($event.checked)"
     >
       {{ props().label }}
     </mat-checkbox>
+    @for (error of field.errors(); track error) {
+      <div class="jrm-error">{{ error }}</div>
+    }
+  `,
+  // No mat-form-field to host <mat-error>, so the message is rendered here
+  // with the same role and colour token Material uses for its subscript.
+  styles: `
+    .jrm-error {
+      color: var(--mat-sys-error, #c62828);
+      font-size: 12px;
+      margin: 4px 0 0 16px;
+    }
   `,
 })
 export class JrmCheckbox {
@@ -245,8 +310,10 @@ export class JrmCheckbox {
     label?: unknown;
     checked?: boolean;
     disabled?: boolean;
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'checked', 'change');
 }
 
 /** Material radio group; two-way bindable via `$bindState`. */
@@ -262,17 +329,26 @@ export class JrmCheckbox {
       class="jrm-radio-group"
       [class.horizontal]="props().direction === 'horizontal'"
       [value]="props().value ?? null"
-      (change)="ctx.setBound('value', $event.value)"
+      [required]="field.required()"
+      (change)="field.set($event.value)"
     >
       @for (option of options(); track option.value) {
         <mat-radio-button [value]="option.value">{{ option.label }}</mat-radio-button>
       }
     </mat-radio-group>
+    @for (error of field.errors(); track error) {
+      <div class="jrm-error">{{ error }}</div>
+    }
   `,
   styles: `
     .jrm-radio-label { display: block; margin-bottom: 4px; }
     .jrm-radio-group { display: flex; flex-direction: column; }
     .jrm-radio-group.horizontal { flex-direction: row; gap: 12px; }
+    .jrm-error {
+      color: var(--mat-sys-error, #c62828);
+      font-size: 12px;
+      margin-top: 4px;
+    }
   `,
 })
 export class JrmRadioGroup {
@@ -281,8 +357,10 @@ export class JrmRadioGroup {
     value?: string;
     options?: SelectOption[];
     direction?: 'vertical' | 'horizontal';
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
   readonly options = computed<SelectOption[]>(() => {
     const options = this.props().options;
     return Array.isArray(options) ? options : [];

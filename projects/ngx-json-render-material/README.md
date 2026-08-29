@@ -63,6 +63,73 @@ Two-way binding works as it does everywhere else in `ngx-json-render`: bind `val
 
 The catalog declares no custom actions — the built-in `setState`, `pushState`, `removeState` and `validateForm` cover it — so `materialRegistry` renders a spec with nothing else wired up.
 
+## Validation
+
+`Input`, `Textarea`, `Select`, `Checkbox` and `RadioGroup` take a `validation`
+prop. The checks run against the state path the field's value is bound to, so
+**validation applies only to a bound field** — a literal `value` has no path to
+validate and the config is ignored.
+
+```json
+{
+  "type": "Input",
+  "props": {
+    "label": "Email",
+    "value": { "$bindState": "/email" },
+    "validation": {
+      "checks": [
+        { "type": "required", "message": "Email is required" },
+        { "type": "email", "message": "That is not an email address" }
+      ],
+      "validateOn": "blur"
+    }
+  },
+  "children": []
+}
+```
+
+Check types: `required`, `requiredIf`, `email`, `url`, `numeric`, `minLength`,
+`maxLength`, `pattern`, `min`, `max`, `matches`, `equalTo`, `lessThan`,
+`greaterThan`. Arguments go in `args`, and may reference state:
+
+```json
+{ "type": "minLength", "args": { "min": 8 }, "message": "At least 8 characters" }
+{ "type": "equalTo", "args": { "other": { "$state": "/password" } }, "message": "Passwords must match" }
+```
+
+`validateOn` is `"change"`, `"blur"` or `"submit"`. It defaults to `"blur"` for
+`Input` and `Textarea` — validating on every keystroke is noisy — and to
+`"change"` for `Select`, `Checkbox` and `RadioGroup`, where a change is a
+deliberate choice. `enabled` takes a visibility condition and switches the
+whole config off when it is false.
+
+The built-in `validateForm` action validates every bound field at once,
+regardless of `validateOn`, and writes the outcome to `/formValidation` (or the
+`statePath` you pass):
+
+```json
+{ "type": "Button", "props": { "label": "Save" },
+  "on": { "press": { "action": "validateForm" } }, "children": [] }
+```
+
+```jsonc
+// /formValidation after a failed submit
+{ "valid": false, "errors": { "/email": ["Email is required"] } }
+```
+
+Errors appear in the Material form field's subscript (`<mat-error>`) for
+`Input`, `Textarea` and `Select`, and on their own line under `Checkbox` and
+`RadioGroup`, which have no form field to host one.
+
+Two things worth knowing:
+
+- On `Input`, the `required` prop only draws the asterisk. Enforcement comes
+  from a `required` check in `validation` — which also draws the asterisk, so
+  in practice you only need `validation`.
+- `required` rejects `null`, `undefined`, empty strings and empty arrays, but
+  **not** `false`. For a checkbox that must be ticked, use
+  `{ "type": "equalTo", "args": { "other": true }, "message": "…" }`.
+
 ## Overriding a component
 
 `materialComponents` is the plain catalog-name → component map, so swapping one entry keeps the rest:
@@ -86,7 +153,7 @@ export const { registry } = defineRegistry(materialCatalog, {
 
 ## Known issue: the test runner does not exit
 
-`ng test ngx-json-render-material` runs the suite correctly — 8/8 pass in well
+`ng test ngx-json-render-material` runs the suite correctly — 12/12 pass in well
 under a second — but the process then stays alive instead of exiting. This is a
 defect in the `@angular/build:unit-test` + Vitest combination, not in the
 catalog: the test worker is clean when the suite ends (no pending timers, no

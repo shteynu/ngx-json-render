@@ -1,8 +1,26 @@
+import { ValidationConfigSchema } from '@json-render/core';
 import { schema } from 'ngx-json-render';
 import { z } from 'zod';
 
 /** Palette shared by every Material component that takes a colour. */
 const themeColor = z.enum(['primary', 'accent', 'warn']);
+
+/**
+ * Field validation, shared by every input in this catalog.
+ *
+ * The checks run against the state path the field's value prop is bound to,
+ * so validation only applies to a field bound with `$bindState` / `$bindItem`.
+ * The `validateForm` action validates every such field at once and writes
+ * `{ valid, errors }` to state.
+ */
+const validation = ValidationConfigSchema.optional();
+
+/** Appended to the description of every component that accepts `validation`. */
+const VALIDATION_HINT =
+  'Validate it with `validation`: {"checks":[{"type":"required","message":"..."}],"validateOn":"blur"}. ' +
+  'Check types: required, requiredIf, email, url, numeric, minLength, maxLength, pattern, min, max, matches, equalTo, lessThan, greaterThan. ' +
+  'Args go in `args` (e.g. {"type":"minLength","args":{"min":8},"message":"..."}). ' +
+  'Validation needs a bound value, and the built-in validateForm action checks every bound field at once.';
 
 /**
  * The Angular Material catalog: the vocabulary of components a spec — or an
@@ -204,10 +222,13 @@ export const materialCatalog = schema.createCatalog({
         type: z.enum(['text', 'number', 'email', 'password']).optional(),
         required: z.boolean().optional(),
         disabled: z.boolean().optional(),
+        validation,
       }),
       slots: [],
       description:
-        "Material text field. Bind `value` with {\"$bindState\":\"/path\"} for two-way binding; emits 'submit' on Enter.",
+        "Material text field. Bind `value` with {\"$bindState\":\"/path\"} for two-way binding; emits 'submit' on Enter. " +
+        '`required` only draws the asterisk — enforcement comes from `validation`. ' +
+        VALIDATION_HINT,
     },
     Textarea: {
       props: z.object({
@@ -216,10 +237,12 @@ export const materialCatalog = schema.createCatalog({
         placeholder: z.string().optional(),
         rows: z.number().optional(),
         disabled: z.boolean().optional(),
+        validation,
       }),
       slots: [],
       description:
-        'Multi-line Material text field. Bind `value` with {"$bindState":"/path"}.',
+        'Multi-line Material text field. Bind `value` with {"$bindState":"/path"}. ' +
+        VALIDATION_HINT,
     },
     Select: {
       props: z.object({
@@ -227,20 +250,24 @@ export const materialCatalog = schema.createCatalog({
         value: z.string().optional(),
         options: z.array(z.object({ value: z.string(), label: z.string() })),
         disabled: z.boolean().optional(),
+        validation,
       }),
       slots: [],
       description:
-        'Material select. Bind `value` with {"$bindState":"/path"}; `options` is an explicit list.',
+        'Material select. Bind `value` with {"$bindState":"/path"}; `options` is an explicit list. ' +
+        VALIDATION_HINT,
     },
     Checkbox: {
       props: z.object({
         label: z.string(),
         checked: z.boolean().optional(),
         disabled: z.boolean().optional(),
+        validation,
       }),
       slots: [],
       description:
-        'Material checkbox. Bind `checked` with {"$bindState":"/path"} or {"$bindItem":"field"} inside a repeat.',
+        'Material checkbox. Bind `checked` with {"$bindState":"/path"} or {"$bindItem":"field"} inside a repeat. ' +
+        VALIDATION_HINT,
     },
     RadioGroup: {
       props: z.object({
@@ -248,10 +275,12 @@ export const materialCatalog = schema.createCatalog({
         value: z.string().optional(),
         options: z.array(z.object({ value: z.string(), label: z.string() })),
         direction: z.enum(['vertical', 'horizontal']).optional(),
+        validation,
       }),
       slots: [],
       description:
-        'Material radio group. Bind `value` with {"$bindState":"/path"}.',
+        'Material radio group. Bind `value` with {"$bindState":"/path"}. ' +
+        VALIDATION_HINT,
     },
     SlideToggle: {
       props: z.object({
