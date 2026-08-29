@@ -54,11 +54,11 @@ are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 | Docs only (`README.md`, `docs/**`)                   | `git diff --check` and a link check; no build needed                                                                                                                                                                                                                  |
 
 Formatting: `npm run format:check` (config in `.prettierrc`, exclusions in
-`.prettierignore`). The whole repository passes it, so a failure is
-something you introduced; `npm run format` fixes it. It is not enforced in
-CI. Note `embeddedLanguageFormatting` is off on purpose: Prettier otherwise
-reformats inline `template:` and `styles:` blocks, and splitting a `mat-icon`
-interpolation across lines changes the ligature text the icon renders.
+`.prettierignore`). CI runs it, so a failure is something you introduced;
+`npm run format` fixes it. Note `embeddedLanguageFormatting` is off on
+purpose: Prettier otherwise reformats inline `template:` and `styles:`
+blocks, and splitting a `mat-icon` interpolation across lines changes the
+ligature text the icon renders.
 
 Known caveat, handled by the runner script: `ng test ngx-json-render-material`
 passes but the runner process does not exit (see
