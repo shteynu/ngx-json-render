@@ -5,7 +5,7 @@
 - Branch: `test/renderer-service-coverage`
 - Base branch: `main`
 - Base commit: `15b4d02`
-- Current HEAD: one commit on top of the base (`git log --oneline main..`)
+- Current HEAD: `779a6d9` on `main` — the branch was merged and deleted
 - Status: complete
 - Last updated: 2026-08-29
 - Last agent/tool: Claude Opus 5 / Claude Code

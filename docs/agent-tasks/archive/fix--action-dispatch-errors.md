@@ -5,7 +5,7 @@
 - Branch: `fix/action-dispatch-errors`
 - Base branch: `main`
 - Base commit: 15b4d02
-- Current HEAD: one commit on top of the base (`git log --oneline main..`); worktree clean
+- Current HEAD: `5347fe3` on `main` — the branch was merged and deleted
 - Status: implemented, verified, committed on this branch (not pushed)
 - Last updated: 2026-08-29
 - Last agent/tool: Claude Code (Opus 5)
