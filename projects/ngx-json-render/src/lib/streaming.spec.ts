@@ -323,7 +323,10 @@ describe('spec part helpers', () => {
       { type: 'text', text: 'hello' },
       {
         type: 'data-spec',
-        data: { type: 'patch', patch: { op: 'add', path: '/root', value: 'a' } },
+        data: {
+          type: 'patch',
+          patch: { op: 'add', path: '/root', value: 'a' },
+        },
       },
       {
         type: 'data-spec',

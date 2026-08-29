@@ -44,7 +44,9 @@ function setup(options: SetupOptions = {}) {
 
 describe('built-in actions', () => {
   it('pushState appends, resolving $state refs and $id', async () => {
-    const { state, actions } = setup({ state: { todos: [], draft: 'Buy milk' } });
+    const { state, actions } = setup({
+      state: { todos: [], draft: 'Buy milk' },
+    });
 
     await actions.execute({
       action: 'pushState',
@@ -151,7 +153,9 @@ describe('built-in actions', () => {
   });
 
   it('validateForm honours a custom statePath', async () => {
-    const { state, validation, actions } = setup({ state: { email: 'a@b.co' } });
+    const { state, validation, actions } = setup({
+      state: { email: 'a@b.co' },
+    });
     validation.registerField('/email', {
       checks: [{ type: 'email', message: 'Not an email' }],
     });

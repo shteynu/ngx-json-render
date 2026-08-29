@@ -1,6 +1,10 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { type StateModel, type StateStore, createStateStore } from '@json-render/core';
+import {
+  type StateModel,
+  type StateStore,
+  createStateStore,
+} from '@json-render/core';
 import { JsonRenderRootContext } from './root-context';
 import {
   JsonRenderStateService,
@@ -160,7 +164,10 @@ describe('JsonRenderStateService — controlled mode', () => {
 
   it('ignores the initial state input', () => {
     const external = createStateStore({ count: 1 });
-    const { state } = setup({ state: { count: 99, extra: true }, store: external });
+    const { state } = setup({
+      state: { count: 99, extra: true },
+      store: external,
+    });
 
     expect(state.get('/count')).toBe(1);
     expect(state.get('/extra')).toBeUndefined();

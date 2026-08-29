@@ -1,4 +1,10 @@
-import { DestroyRef, type Signal, computed, inject, signal } from '@angular/core';
+import {
+  DestroyRef,
+  type Signal,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import type {
   FlatElement,
   JsonPatch,
@@ -134,7 +140,10 @@ function removeSpecValue(newSpec: Spec, path: string): void {
       if (element) {
         const propPath = '/' + pathParts.slice(1).join('/');
         const newElement = { ...element };
-        removeByPath(newElement as unknown as Record<string, unknown>, propPath);
+        removeByPath(
+          newElement as unknown as Record<string, unknown>,
+          propPath,
+        );
         newSpec.elements[elementKey] = newElement;
       }
     }
@@ -509,7 +518,9 @@ export function getTextFromParts(parts: DataPart[]): string {
  * // template: @if (msg.hasSpec()) { <json-render [spec]="msg.spec()" ... /> }
  * ```
  */
-export function jsonRenderMessage(parts: Signal<DataPart[]> | (() => DataPart[])): {
+export function jsonRenderMessage(
+  parts: Signal<DataPart[]> | (() => DataPart[]),
+): {
   spec: Signal<Spec | null>;
   text: Signal<string>;
   hasSpec: Signal<boolean>;
@@ -581,7 +592,10 @@ export interface ChatUIReturn {
 
 let chatMessageIdCounter = 0;
 function generateChatId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
     return crypto.randomUUID();
   }
   chatMessageIdCounter += 1;

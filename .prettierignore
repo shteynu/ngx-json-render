@@ -1,0 +1,13 @@
+dist
+node_modules
+
+# Verbatim copies from another repository (see .claude/skills/SOURCE.md).
+# Reformatting them would break the byte-identical property a re-copy relies on.
+.claude/skills
+
+# Snapshots of finished work, kept as they were verified.
+docs/agent-tasks/archive
+
+# Written by the Angular CLI, which rewrites them on its own terms.
+angular.json
+package-lock.json

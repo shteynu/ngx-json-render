@@ -172,8 +172,7 @@ export class JsonRenderActionsService {
           const arr = (get(statePath) as unknown[] | undefined) ?? [];
           set(statePath, [...arr, resolvedValue]);
           const clearStatePath = resolved.params['clearStatePath'] as
-            | string
-            | undefined;
+            string | undefined;
           if (clearStatePath) {
             set(clearStatePath, '');
           }

@@ -1,4 +1,8 @@
-import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
+import {
+  Component,
+  provideZonelessChangeDetection,
+  signal,
+} from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Spec } from '@json-render/core';
 import { JsonRenderer, type StateChange } from 'ngx-json-render';
@@ -77,7 +81,10 @@ describe('material catalog', () => {
 
   it('carries slot metadata from the catalog into the registry', () => {
     const card = materialRegistry['Card'];
-    expect(typeof card === 'object' && card.slots).toEqual(['default', 'actions']);
+    expect(typeof card === 'object' && card.slots).toEqual([
+      'default',
+      'actions',
+    ]);
   });
 
   it('produces a system prompt naming its components', () => {
@@ -167,8 +174,11 @@ describe('material components', () => {
     await settle(fixture);
 
     expect(
-      (fixture.nativeElement.querySelector('mat-checkbox input') as HTMLInputElement)
-        .checked,
+      (
+        fixture.nativeElement.querySelector(
+          'mat-checkbox input',
+        ) as HTMLInputElement
+      ).checked,
     ).toBe(true);
   });
 
@@ -177,15 +187,23 @@ describe('material components', () => {
       root: 'tabs',
       elements: {
         tabs: { type: 'Tabs', props: {}, children: ['tab-a', 'tab-b'] },
-        'tab-a': { type: 'Tab', props: { label: 'Overview' }, children: ['text-a'] },
+        'tab-a': {
+          type: 'Tab',
+          props: { label: 'Overview' },
+          children: ['text-a'],
+        },
         'tab-b': { type: 'Tab', props: { label: 'Details' }, children: [] },
-        'text-a': { type: 'Text', props: { content: 'inside tab a' }, children: [] },
+        'text-a': {
+          type: 'Text',
+          props: { content: 'inside tab a' },
+          children: [],
+        },
       },
     } as unknown as Spec);
 
     const host: HTMLElement = fixture.nativeElement;
-    const labels = Array.from(host.querySelectorAll('.mat-mdc-tab')).map((tab) =>
-      tab.textContent?.trim(),
+    const labels = Array.from(host.querySelectorAll('.mat-mdc-tab')).map(
+      (tab) => tab.textContent?.trim(),
     );
     expect(labels).toEqual(['Overview', 'Details']);
     expect(host.textContent).toContain('inside tab a');
@@ -200,7 +218,12 @@ describe('material components', () => {
         pressable: {
           type: 'ListItem',
           props: { title: 'Pressable' },
-          on: { press: { action: 'setState', params: { statePath: '/x', value: 1 } } },
+          on: {
+            press: {
+              action: 'setState',
+              params: { statePath: '/x', value: 1 },
+            },
+          },
           children: [],
         },
       },
@@ -267,7 +290,11 @@ describe('material form validation', () => {
       root: 'form',
       state: { email: '', terms: false },
       elements: {
-        form: { type: 'Stack', props: {}, children: ['email', 'terms', 'save'] },
+        form: {
+          type: 'Stack',
+          props: {},
+          children: ['email', 'terms', 'save'],
+        },
         email: {
           type: 'Input',
           props: {

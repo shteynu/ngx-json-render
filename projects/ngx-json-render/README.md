@@ -186,22 +186,22 @@ Also available:
 
 Full parity with the baseline json-render contract:
 
-| Feature | Example |
-| --- | --- |
-| Dynamic props | `{ "$state": "/user/name" }` |
-| Two-way binding | `{ "$bindState": "/form/email" }`, `{ "$bindItem": "done" }` |
-| Conditionals | `{ "$cond": {...}, "$then": ..., "$else": ... }` |
-| Templates | `{ "$template": "Hello, ${/user/name}" }` |
-| Computed / directives | `{ "$computed": "fmtDate", "args": {...} }`, custom `$`-directives |
-| Visibility | `"visible": { "$state": "/count", "gte": 5 }` (incl. `$and`/`$or`, `$item`, `$index`) |
-| Events → actions | `"on": { "press": { "action": "...", "params": {...}, "confirm": {...}, "onSuccess": ..., "onError": ... } }` |
-| Built-in actions | `setState`, `pushState` (with `$id`), `removeState`, `push`/`pop`, `validateForm` |
-| Repeat | `"repeat": { "statePath": "/todos", "key": "id" }`, nested via `{ "$item": "..." }` |
-| Watch | `"watch": { "/country": { "action": "loadCities" } }` |
-| Slots | `"slots": { "header": ["title-el"] }` + `<jr-children slot="header" />` |
-| Validation | field checks via `ValidationConfig`, `validateForm`, `injectFieldValidation` |
-| Confirm dialogs | built-in `<jr-confirm-dialog>` (auto-rendered) |
-| Devtools hooks | action observer + `data-jr-key` picker attributes |
+| Feature               | Example                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Dynamic props         | `{ "$state": "/user/name" }`                                                                                  |
+| Two-way binding       | `{ "$bindState": "/form/email" }`, `{ "$bindItem": "done" }`                                                  |
+| Conditionals          | `{ "$cond": {...}, "$then": ..., "$else": ... }`                                                              |
+| Templates             | `{ "$template": "Hello, ${/user/name}" }`                                                                     |
+| Computed / directives | `{ "$computed": "fmtDate", "args": {...} }`, custom `$`-directives                                            |
+| Visibility            | `"visible": { "$state": "/count", "gte": 5 }` (incl. `$and`/`$or`, `$item`, `$index`)                         |
+| Events → actions      | `"on": { "press": { "action": "...", "params": {...}, "confirm": {...}, "onSuccess": ..., "onError": ... } }` |
+| Built-in actions      | `setState`, `pushState` (with `$id`), `removeState`, `push`/`pop`, `validateForm`                             |
+| Repeat                | `"repeat": { "statePath": "/todos", "key": "id" }`, nested via `{ "$item": "..." }`                           |
+| Watch                 | `"watch": { "/country": { "action": "loadCities" } }`                                                         |
+| Slots                 | `"slots": { "header": ["title-el"] }` + `<jr-children slot="header" />`                                       |
+| Validation            | field checks via `ValidationConfig`, `validateForm`, `injectFieldValidation`                                  |
+| Confirm dialogs       | built-in `<jr-confirm-dialog>` (auto-rendered)                                                                |
+| Devtools hooks        | action observer + `data-jr-key` picker attributes                                                             |
 
 ## State
 
@@ -250,7 +250,7 @@ rest.
 and `onSuccess.set` all take a `statePath` straight from the spec, so a
 generated UI can write anywhere in the state model it is rendered against —
 and `push`/`pop` write `/currentScreen` and `/navStack`. In controlled mode
-this is *your* store. Give the renderer a store scoped to the generated view
+this is _your_ store. Give the renderer a store scoped to the generated view
 rather than the one holding session, entitlement or billing state.
 
 **A spec chooses the navigation target.** `onSuccess: { navigate }` passes its
@@ -265,7 +265,7 @@ one.
 
 **`confirm` is a UX affordance, not a security control.** It routes an action
 through the confirmation dialog before the handler runs, but it is set on the
-action binding *inside the spec* (`on.press.confirm`) — so the same party that
+action binding _inside the spec_ (`on.press.confirm`) — so the same party that
 chose the action also chose whether to ask. Real authorization belongs in the
 handler, on the server.
 
@@ -281,20 +281,20 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 
 ## Renderer inputs
 
-| Input | Type | Purpose |
-| --- | --- | --- |
-| `spec` | `Spec \| null` | The UI spec (may be partial while streaming) |
-| `registry` | `ComponentRegistry` | Catalog type → Angular component |
-| `loading` | `boolean` | Suppress missing-element warnings while streaming |
-| `fallback` | `Type<unknown>` | Component for unknown types |
-| `state` | `StateModel` | Initial state (uncontrolled; defaults to `spec.state`) |
-| `store` | `StateStore` | External store (controlled mode) |
-| `handlers` | `Record<string, ActionHandler>` | Action handlers |
-| `onAction` | `(name, params) => unknown` | Catch-all action handler |
-| `navigate` | `(path) => void` | Used by `onSuccess: { navigate }` |
-| `validationFunctions` | `Record<string, ValidationFunction>` | Custom validation |
-| `functions` | `Record<string, ComputedFunction>` | `$computed` functions |
-| `directives` | `DirectiveDefinition[]` | Custom `$`-prefixed expressions |
+| Input                 | Type                                 | Purpose                                                |
+| --------------------- | ------------------------------------ | ------------------------------------------------------ |
+| `spec`                | `Spec \| null`                       | The UI spec (may be partial while streaming)           |
+| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                       |
+| `loading`             | `boolean`                            | Suppress missing-element warnings while streaming      |
+| `fallback`            | `Type<unknown>`                      | Component for unknown types                            |
+| `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`) |
+| `store`               | `StateStore`                         | External store (controlled mode)                       |
+| `handlers`            | `Record<string, ActionHandler>`      | Action handlers                                        |
+| `onAction`            | `(name, params) => unknown`          | Catch-all action handler                               |
+| `navigate`            | `(path) => void`                     | Used by `onSuccess: { navigate }`                      |
+| `validationFunctions` | `Record<string, ValidationFunction>` | Custom validation                                      |
+| `functions`           | `Record<string, ComputedFunction>`   | `$computed` functions                                  |
+| `directives`          | `DirectiveDefinition[]`              | Custom `$`-prefixed expressions                        |
 
 Output: `(stateChange)` — batched `{ path, value }[]` in uncontrolled mode.
 

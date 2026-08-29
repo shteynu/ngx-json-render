@@ -209,7 +209,8 @@ export class JrmTextarea {
   }>();
   readonly props = this.ctx.props;
   readonly field: JrmField = injectJrmField(this.ctx, 'value', 'blur');
-  private readonly el = viewChild.required<ElementRef<HTMLTextAreaElement>>('el');
+  private readonly el =
+    viewChild.required<ElementRef<HTMLTextAreaElement>>('el');
   private readonly control = viewChild.required(MatInput);
 
   constructor() {

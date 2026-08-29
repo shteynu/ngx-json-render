@@ -11,10 +11,7 @@ import {
   isDevMode,
   untracked,
 } from '@angular/core';
-import type {
-  PropResolutionContext,
-  UIElement,
-} from '@json-render/core';
+import type { PropResolutionContext, UIElement } from '@json-render/core';
 import {
   evaluateVisibility,
   resolveActionParam,
@@ -104,13 +101,18 @@ export class JrElement {
   readonly resolvedElement = computed<UIElement | undefined>(() => {
     const el = this.rawElement();
     if (!el) return undefined;
-    return { ...el, props: resolveElementProps(el.props ?? {}, this.resolutionCtx()) };
+    return {
+      ...el,
+      props: resolveElementProps(el.props ?? {}, this.resolutionCtx()),
+    };
   });
 
   /** Two-way binding paths ($bindState / $bindItem) by prop name. */
   readonly bindings = computed<Record<string, string> | undefined>(() => {
     const el = this.rawElement();
-    return el ? resolveBindings(el.props ?? {}, this.resolutionCtx()) : undefined;
+    return el
+      ? resolveBindings(el.props ?? {}, this.resolutionCtx())
+      : undefined;
   });
 
   private readonly entry = computed(() => {
@@ -118,7 +120,9 @@ export class JrElement {
     return el ? this.root.resolveEntry(el.type) : undefined;
   });
 
-  protected readonly component = computed(() => this.entry()?.component ?? null);
+  protected readonly component = computed(
+    () => this.entry()?.component ?? null,
+  );
 
   protected readonly devtoolsKey = computed(() =>
     this.devtoolsActive() ? this.elementKey() : null,

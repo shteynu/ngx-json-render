@@ -1,8 +1,5 @@
 import { Component, signal } from '@angular/core';
-import {
-  type ComponentFixture,
-  TestBed,
-} from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import type { ActionHandler, ActionSettleInfo, Spec } from '@json-render/core';
 import { registerActionObserver } from '@json-render/core';
@@ -140,14 +137,22 @@ function text(fixture: ComponentFixture<unknown>, selector: string): string[] {
  * dispatch is fire-and-forget from a template listener, so a rejection that
  * escapes it lands here instead of failing any assertion.
  */
-async function unhandledRejections(run: () => Promise<void>): Promise<unknown[]> {
+async function unhandledRejections(
+  run: () => Promise<void>,
+): Promise<unknown[]> {
   // Typed locally: the workspace has no @types/node, and jsdom never
   // dispatches the DOM `unhandledrejection` event for these.
   const proc = (
     globalThis as unknown as {
       process?: {
-        on(event: 'unhandledRejection', listener: (reason: unknown) => void): void;
-        off(event: 'unhandledRejection', listener: (reason: unknown) => void): void;
+        on(
+          event: 'unhandledRejection',
+          listener: (reason: unknown) => void,
+        ): void;
+        off(
+          event: 'unhandledRejection',
+          listener: (reason: unknown) => void,
+        ): void;
       };
     }
   ).process;
@@ -391,9 +396,9 @@ describe('JsonRenderer', () => {
       },
     });
 
-    const inputs = (fixture.nativeElement as HTMLElement).querySelectorAll<
-      HTMLInputElement
-    >('.t-input');
+    const inputs = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLInputElement>('.t-input');
     expect(Array.from(inputs).map((i) => i.value)).toEqual(['One', 'Two']);
 
     inputs[1].value = 'Two!';
@@ -422,9 +427,9 @@ describe('JsonRenderer', () => {
     expect(
       host.querySelector('.t-card-header .t-text')?.textContent?.trim(),
     ).toBe('Header');
-    expect(host.querySelector('.t-card-body .t-text')?.textContent?.trim()).toBe(
-      'Body',
-    );
+    expect(
+      host.querySelector('.t-card-body .t-text')?.textContent?.trim(),
+    ).toBe('Body');
   });
 
   it('warns and renders nothing for unknown component types', async () => {
@@ -437,8 +442,9 @@ describe('JsonRenderer', () => {
       },
     });
 
-    expect((fixture.nativeElement as HTMLElement).querySelector('.t-box'))
-      .toBeTruthy();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.t-box'),
+    ).toBeTruthy();
     expect(warn).toHaveBeenCalledWith(
       'No renderer for component type: Mystery',
     );
@@ -539,7 +545,9 @@ describe('JsonRenderer', () => {
   it('cancelling the confirm dialog runs nothing and reports no error', async () => {
     let executed = 0;
     const settles: ActionSettleInfo[] = [];
-    unobserve = registerActionObserver({ onSettle: (evt) => settles.push(evt) });
+    unobserve = registerActionObserver({
+      onSettle: (evt) => settles.push(evt),
+    });
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const fixture = await setup(CONFIRM_SPEC, (host) => {
@@ -575,7 +583,9 @@ describe('JsonRenderer', () => {
 
   it('settles a confirmed action only once the handler has finished', async () => {
     const settles: ActionSettleInfo[] = [];
-    unobserve = registerActionObserver({ onSettle: (evt) => settles.push(evt) });
+    unobserve = registerActionObserver({
+      onSettle: (evt) => settles.push(evt),
+    });
     let release!: () => void;
     const handlerDone = new Promise<void>((resolve) => {
       release = resolve;

@@ -249,10 +249,12 @@ export class BadgeComponent {
   `,
 })
 export class InputComponent {
-  readonly ctx = injectRenderContext<{ value?: string; placeholder?: string }>();
+  readonly ctx = injectRenderContext<{
+    value?: string;
+    placeholder?: string;
+  }>();
   readonly props = this.ctx.props;
-  private readonly el =
-    viewChild.required<ElementRef<HTMLInputElement>>('el');
+  private readonly el = viewChild.required<ElementRef<HTMLInputElement>>('el');
 
   constructor() {
     // Sync the DOM against the *actual* input value rather than using a
@@ -340,7 +342,9 @@ export class MetricComponent {
     delta?: string | null;
   }>();
   readonly props = this.ctx.props;
-  readonly isDown = computed(() => String(this.props().delta ?? '').startsWith('-'));
+  readonly isDown = computed(() =>
+    String(this.props().delta ?? '').startsWith('-'),
+  );
 }
 
 /** Horizontal divider. */
@@ -392,7 +396,10 @@ export class DividerComponent {}
   `,
 })
 export class ProgressComponent {
-  private readonly ctx = injectRenderContext<{ label?: unknown; value?: number }>();
+  private readonly ctx = injectRenderContext<{
+    label?: unknown;
+    value?: number;
+  }>();
   readonly props = this.ctx.props;
   readonly clamped = computed(() =>
     Math.max(0, Math.min(100, Math.round(Number(this.props().value ?? 0)))),

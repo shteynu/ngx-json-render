@@ -25,7 +25,7 @@ npm test             # vitest: renderer + Material catalog + demo
 npm run build        # build renderer + Material catalog + demo
 ```
 
-The demo consumes the *built* package (`dist/ngx-json-render`) via a `tsconfig` path mapping — `npm start` builds it first; keep `npm run watch:lib` running alongside if you're editing the library itself. This also makes the repo boot unmodified on StackBlitz, which always runs `npm install && npm start`.
+The demo consumes the _built_ package (`dist/ngx-json-render`) via a `tsconfig` path mapping — `npm start` builds it first; keep `npm run watch:lib` running alongside if you're editing the library itself. This also makes the repo boot unmodified on StackBlitz, which always runs `npm install && npm start`.
 
 ## Releasing
 
@@ -51,13 +51,13 @@ other, and a package with no connection gets no credentials at all in Actions an
 fails with `ENEEDAUTH`. Under package **Settings → Trusted Publisher → GitHub
 Actions**:
 
-| Field | Value |
-| --- | --- |
-| Organization or user | `shteynu` |
-| Repository | `ngx-json-render` |
-| Workflow filename | `release.yml` for the renderer, `release-material.yml` for the catalog — filename only, no path |
-| Environment name | leave empty — neither workflow declares an `environment:`, and a name here would have to match one |
-| Allowed actions | tick `Allow npm publish`; the form will not save without at least one, and `npm stage publish` is not what these workflows run |
+| Field                | Value                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Organization or user | `shteynu`                                                                                                                      |
+| Repository           | `ngx-json-render`                                                                                                              |
+| Workflow filename    | `release.yml` for the renderer, `release-material.yml` for the catalog — filename only, no path                                |
+| Environment name     | leave empty — neither workflow declares an `environment:`, and a name here would have to match one                             |
+| Allowed actions      | tick `Allow npm publish`; the form will not save without at least one, and `npm stage publish` is not what these workflows run |
 
 Manual fallback (requires 2FA OTP). It publishes without the provenance
 attestation the workflows attach, so reach for it only when Actions is

@@ -135,7 +135,10 @@ export const dashboardSpec: Spec = {
     },
     'todos-empty': {
       type: 'Text',
-      props: { content: 'All clear — add your first todo below.', tone: 'muted' },
+      props: {
+        content: 'All clear — add your first todo below.',
+        tone: 'muted',
+      },
       visible: { $state: '/todoCount', eq: 0 },
     },
     'todos-divider': { type: 'Divider', props: {} },

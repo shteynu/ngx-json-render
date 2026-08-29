@@ -157,7 +157,9 @@ describe('JsonRenderValidationService', () => {
   });
 
   it('resolves a check argument from state', () => {
-    const { validation } = setup({ state: { password: 'hunter2', repeat: 'x' } });
+    const { validation } = setup({
+      state: { password: 'hunter2', repeat: 'x' },
+    });
 
     const result = validation.validate('/repeat', {
       checks: [

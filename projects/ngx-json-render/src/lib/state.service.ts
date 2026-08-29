@@ -33,7 +33,9 @@ export class JsonRenderStateService {
   private readonly root = inject(JsonRenderRootContext);
   private readonly internalStore = createStateStore({});
 
-  private readonly changeListeners = new Set<(changes: StateChange[]) => void>();
+  private readonly changeListeners = new Set<
+    (changes: StateChange[]) => void
+  >();
 
   private readonly _state = signal<StateModel>(
     {},
@@ -49,9 +51,10 @@ export class JsonRenderStateService {
   );
 
   constructor() {
-    const initialMode = untracked(this.currentStore) === this.internalStore
-      ? 'uncontrolled'
-      : 'controlled';
+    const initialMode =
+      untracked(this.currentStore) === this.internalStore
+        ? 'uncontrolled'
+        : 'controlled';
     let modeWarned = false;
 
     // Keep the state signal in sync with whichever store is active.
@@ -59,7 +62,8 @@ export class JsonRenderStateService {
       const store = this.currentStore();
 
       if (isDevMode() && !modeWarned) {
-        const mode = store === this.internalStore ? 'uncontrolled' : 'controlled';
+        const mode =
+          store === this.internalStore ? 'uncontrolled' : 'controlled';
         if (mode !== initialMode) {
           modeWarned = true;
           console.warn(

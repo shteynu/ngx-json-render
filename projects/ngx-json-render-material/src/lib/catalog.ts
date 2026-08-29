@@ -200,7 +200,7 @@ export const materialCatalog = schema.createCatalog({
       }),
       slots: [],
       description:
-        "Material button that emits a 'press' event. `variant` follows the Material 3 button appearances; use \"filled\" for the primary action on a screen and \"text\" for secondary ones. Put the action in the element's `on.press`, never in props.",
+        'Material button that emits a \'press\' event. `variant` follows the Material 3 button appearances; use "filled" for the primary action on a screen and "text" for secondary ones. Put the action in the element\'s `on.press`, never in props.',
     },
     IconButton: {
       props: z.object({
@@ -226,7 +226,7 @@ export const materialCatalog = schema.createCatalog({
       }),
       slots: [],
       description:
-        "Material text field. Bind `value` with {\"$bindState\":\"/path\"} for two-way binding; emits 'submit' on Enter. " +
+        'Material text field. Bind `value` with {"$bindState":"/path"} for two-way binding; emits \'submit\' on Enter. ' +
         '`required` only draws the asterisk — enforcement comes from `validation`. ' +
         VALIDATION_HINT,
     },
@@ -322,7 +322,8 @@ export const materialCatalog = schema.createCatalog({
         color: themeColor.optional(),
       }),
       slots: [],
-      description: 'Material indeterminate progress spinner, for loading states.',
+      description:
+        'Material indeterminate progress spinner, for loading states.',
     },
     Callout: {
       props: z.object({

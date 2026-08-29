@@ -77,7 +77,8 @@ export const catalog = schema.createCatalog({
         checked: z.boolean().optional(),
       }),
       slots: [],
-      description: 'Checkbox with a label; bind checked with $bindItem/$bindState',
+      description:
+        'Checkbox with a label; bind checked with $bindItem/$bindState',
     },
     Metric: {
       props: z.object({

@@ -9,7 +9,9 @@
     "watch:lib": "ng build ngx-json-render --watch --configuration development",
     "test": "ng test ngx-json-render && ng test demo && npm run test:material",
     "build:material": "ng build ngx-json-render-material",
-    "test:material": "node scripts/run-material-tests.mjs"
+    "test:material": "node scripts/run-material-tests.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "private": true,
   "packageManager": "npm@10.9.8",

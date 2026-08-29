@@ -47,13 +47,13 @@ const systemPrompt = materialCatalog.prompt();
 
 ## Components
 
-| Group | Components |
-| --- | --- |
-| Layout | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider` |
-| Typography | `Heading`, `Text`, `Icon` |
-| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table` |
-| Forms | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
-| Feedback | `ProgressBar`, `Spinner`, `Callout` |
+| Group        | Components                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider`                           |
+| Typography   | `Heading`, `Text`, `Icon`                                                                                |
+| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                            |
+| Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
+| Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                      |
 
 Props are named for what they mean, not for Material's API (`variant`, not `mat-raised-button`), so a spec written against this catalog stays portable to the other json-render renderers — and a model that has never seen Angular Material can still target it.
 
@@ -164,7 +164,7 @@ stray handles), and it is the runner process that lingers.
 What the bisect actually shows, against Angular 21.2 and Vitest 4.1:
 
 - a spec containing nothing but `expect(1).toBe(1)` hangs too, as long as the
-  rest of the project's sources are on disk — so it is not what the tests *do*;
+  rest of the project's sources are on disk — so it is not what the tests _do_;
 - importing `./form.components` reproduces it; `./layout.components`,
   `./content.components`, `./catalog` and `./registry`'s other dependencies do
   not;

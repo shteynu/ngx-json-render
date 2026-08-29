@@ -246,7 +246,9 @@ export class JrmTable {
     const columns = this.props().columns;
     return Array.isArray(columns) ? columns : [];
   });
-  readonly fields = computed(() => this.columns().map((column) => column.field));
+  readonly fields = computed(() =>
+    this.columns().map((column) => column.field),
+  );
   readonly rows = computed<Array<Record<string, unknown>>>(() => {
     const rows = this.props().rows;
     return Array.isArray(rows) ? rows : [];

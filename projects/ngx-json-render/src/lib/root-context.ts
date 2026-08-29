@@ -33,7 +33,9 @@ export class JsonRenderRootContext {
 
   handlers: Signal<Record<string, ActionHandler> | undefined> = EMPTY;
   onAction: Signal<
-    ((name: string, params?: Record<string, unknown>) => unknown) | null | undefined
+    | ((name: string, params?: Record<string, unknown>) => unknown)
+    | null
+    | undefined
   > = EMPTY;
   navigate: Signal<((path: string) => void) | null | undefined> = EMPTY;
 

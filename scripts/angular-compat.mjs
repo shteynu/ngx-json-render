@@ -38,7 +38,11 @@ if (major === '20') {
   for (const project of Object.values(ng.projects)) {
     const test = project.architect?.test;
     if (!test) continue;
-    test.options = { ...test.options, buildTarget: 'demo:build', runner: 'vitest' };
+    test.options = {
+      ...test.options,
+      buildTarget: 'demo:build',
+      runner: 'vitest',
+    };
   }
   write('angular.json', ng);
 }
