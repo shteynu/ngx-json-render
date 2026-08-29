@@ -267,7 +267,13 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
   const send = async (prompt: string, context?: Record<string, unknown>) => {
     // Abort any existing request
     abortController?.abort();
-    abortController = new AbortController();
+    const controller = new AbortController();
+    abortController = controller;
+
+    // A superseded request must not write to the shared signals on its way
+    // out: its `finally` would otherwise clear `isStreaming` while the request
+    // that replaced it is still streaming.
+    const isCurrent = () => abortController === controller;
 
     isStreaming.set(true);
     error.set(null);
@@ -303,7 +309,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
           context,
           currentSpec,
         }),
-        signal: abortController.signal,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -354,14 +360,16 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
 
       options.onComplete?.(currentSpec);
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
+      if ((err as Error).name === 'AbortError' || !isCurrent()) {
         return;
       }
       const resolvedError = err instanceof Error ? err : new Error(String(err));
       error.set(resolvedError);
       options.onError?.(resolvedError);
     } finally {
-      isStreaming.set(false);
+      if (isCurrent()) {
+        isStreaming.set(false);
+      }
     }
   };
 
@@ -608,7 +616,12 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
 
     // Abort any existing request
     abortController?.abort();
-    abortController = new AbortController();
+    const controller = new AbortController();
+    abortController = controller;
+
+    // See injectUIStream: a superseded request must not clear `isStreaming`
+    // out from under the request that replaced it.
+    const isCurrent = () => abortController === controller;
 
     const userMessage: ChatMessage = {
       id: generateChatId(),
@@ -657,7 +670,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: historyForApi }),
-        signal: abortController.signal,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -720,7 +733,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       };
       options.onComplete?.(finalMessage);
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
+      if ((err as Error).name === 'AbortError' || !isCurrent()) {
         return;
       }
       const resolvedError = err instanceof Error ? err : new Error(String(err));
@@ -731,7 +744,9 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       );
       options.onError?.(resolvedError);
     } finally {
-      isStreaming.set(false);
+      if (isCurrent()) {
+        isStreaming.set(false);
+      }
     }
   };
 

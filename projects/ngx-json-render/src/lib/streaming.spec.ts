@@ -24,6 +24,43 @@ function streamResponse(chunks: string[]): Response {
   return new Response(stream, { status: 200 });
 }
 
+/**
+ * A response whose body stays open until the test closes it, so a request can
+ * be observed while it is still in flight.
+ */
+function openStream(): {
+  response: Response;
+  push: (chunk: string) => void;
+  close: () => void;
+  abort: () => void;
+  fail: (error: Error) => void;
+} {
+  const encoder = new TextEncoder();
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+  });
+  return {
+    response: new Response(stream, { status: 200 }),
+    push: (chunk) => controller.enqueue(encoder.encode(chunk)),
+    close: () => controller.close(),
+    abort: () => {
+      // What fetch does to an in-flight body when its signal is aborted.
+      const error = new Error('The operation was aborted.');
+      error.name = 'AbortError';
+      controller.error(error);
+    },
+    fail: (error) => controller.error(error),
+  };
+}
+
+/** Let pending microtasks and stream reads run. */
+function tick(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('applyPatch', () => {
   it('builds a spec from add patches without mutating the input', () => {
     const empty: Spec = { root: '', elements: {} };
@@ -129,6 +166,79 @@ describe('injectUIStream', () => {
     expect(ui.error()?.message).toBe('nope');
     expect(onError).toHaveBeenCalled();
   });
+
+  it('keeps isStreaming true when a second send supersedes the first', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const target = ++call === 1 ? first : second;
+      (init as RequestInit).signal?.addEventListener('abort', target.abort);
+      return target.response;
+    });
+
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    const firstSend = ui.send('first');
+    await tick();
+    first.push('{"op":"add","path":"/root","value":"a"}\n');
+    await tick();
+    expect(ui.isStreaming()).toBe(true);
+
+    // Supersede it. The first request aborts and unwinds while the second is
+    // still open — it must not clear the flag on its way out.
+    const secondSend = ui.send('second');
+    await tick();
+    second.push('{"op":"add","path":"/root","value":"b"}\n');
+    await tick();
+
+    expect(ui.isStreaming()).toBe(true);
+    expect(ui.error()).toBeNull();
+
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    expect(ui.isStreaming()).toBe(false);
+    expect(ui.spec()?.root).toBe('b');
+  });
+
+  it('ignores a superseded request that fails after being replaced', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      ++call === 1 ? first.response : second.response,
+    );
+
+    const onError = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', onError }),
+    );
+
+    const firstSend = ui.send('first');
+    await tick();
+    const secondSend = ui.send('second');
+    await tick();
+
+    // The superseded stream fails for its own reason rather than by abort.
+    first.fail(new Error('connection reset'));
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    expect(ui.error()).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+    expect(ui.isStreaming()).toBe(false);
+  });
 });
 
 describe('injectChatUI', () => {
@@ -165,6 +275,45 @@ describe('injectChatUI', () => {
     expect(assistant.text).toContain('Done!');
     expect(assistant.spec?.root).toBe('main');
     expect(assistant.spec?.elements['main']).toBeTruthy();
+  });
+
+  it('keeps isStreaming true when a second send supersedes the first', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const target = ++call === 1 ? first : second;
+      (init as RequestInit).signal?.addEventListener('abort', target.abort);
+      return target.response;
+    });
+
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat' }),
+    );
+
+    const firstSend = chat.send('first');
+    await tick();
+    first.push('Thinking...\n');
+    await tick();
+    expect(chat.isStreaming()).toBe(true);
+
+    const secondSend = chat.send('second');
+    await tick();
+    second.push('Answer\n');
+    await tick();
+
+    expect(chat.isStreaming()).toBe(true);
+    expect(chat.error()).toBeNull();
+
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    expect(chat.isStreaming()).toBe(false);
+    expect(chat.messages().at(-1)?.text).toBe('Answer');
   });
 });
 
