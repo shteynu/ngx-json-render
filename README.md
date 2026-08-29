@@ -57,6 +57,43 @@ The demo is deployed to GitHub Pages by [`ci.yml`](.github/workflows/ci.yml) on 
 
 There is no first-party Angular renderer in the json-render monorepo (checked 2026-08-29; community PRs [#244](https://github.com/vercel-labs/json-render/pull/244) and [#310](https://github.com/vercel-labs/json-render/pull/310) were never merged). This library mirrors the baseline renderer contract (React = Vue = Solid = Svelte) and is structured so its `src/lib` can be adapted into a `packages/angular` PR upstream.
 
+### Adoption checkpoint — 2026-10-29
+
+Written down in advance so the answer cannot be argued into whatever is
+convenient on the day.
+
+**The checkpoint only means something if distribution actually happened.**
+Before reading any signal, confirm all three:
+
+- `ngx-json-render-material` is published to npm;
+- the upstream maintainers have been asked, in an issue, whether they would
+  accept a `packages/angular` at all;
+- the catalog has been announced somewhere Angular developers read.
+
+If any is missing, the checkpoint measures the absence of distribution, not the
+absence of demand. Do the missing one and move the date — once.
+
+**Record the numbers on the day.** Do not recall them later:
+
+1. Issues or PRs opened by anyone other than the author.
+2. Weekly npm downloads for both packages.
+3. Repositories depending on either package (npm dependents, GitHub code search).
+4. Whether upstream answered about `packages/angular`.
+
+Stars are deliberately not on this list. They do not indicate use.
+
+**The decision:**
+
+- Upstream said yes → continue; the work moves to the upstream PR and this
+  repo becomes the staging ground for it.
+- At least one external issue or PR, or one identifiable dependent repository
+  → continue; the next work is whatever that user ran into, not a roadmap
+  invented here.
+- Neither, and downloads are indistinguishable from CI and bot traffic → stop
+  feature work. Maintenance only: keep the Angular peer range current, keep up
+  with `@json-render/core` majors, fix security issues. No new components, no
+  new API surface, until someone asks.
+
 ## License
 
 Apache-2.0 — matching the upstream json-render project.
