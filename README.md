@@ -45,17 +45,26 @@ git tag material-v0.x.y && git push origin main material-v0.x.y
 
 The workflow verifies the tag matches the package version, builds, runs the library tests, publishes to npm, and creates the GitHub release. One-time setup on npmjs.com: package **Settings → Trusted publisher → GitHub Actions**, repository `shteynu/ngx-json-render`, workflow `release.yml`.
 
-Manual fallback (requires 2FA OTP):
+Manual fallback (requires 2FA OTP). Pass `--registry` explicitly: npm reads
+project config from the current directory only, so the `registry` line in this
+repo's `.npmrc` does **not** apply once you `cd` into `dist/`, and the publish
+silently targets whatever your global `~/.npmrc` points at.
 
 ```bash
-npm run build:lib && cp LICENSE dist/ngx-json-render/ && cd dist/ngx-json-render && npm publish
+npm run build:lib && cp LICENSE dist/ngx-json-render/ && cd dist/ngx-json-render && npm publish --registry https://registry.npmjs.org/
+```
+
+Same for the Material catalog:
+
+```bash
+npm run build:material && cp LICENSE dist/ngx-json-render-material/ && cd dist/ngx-json-render-material && npm publish --registry https://registry.npmjs.org/
 ```
 
 The demo is deployed to GitHub Pages by [`ci.yml`](.github/workflows/ci.yml) on every push to `main`.
 
 ## Status & upstream
 
-There is no first-party Angular renderer in the json-render monorepo (checked 2026-08-29; community PRs [#244](https://github.com/vercel-labs/json-render/pull/244) and [#310](https://github.com/vercel-labs/json-render/pull/310) were never merged). This library mirrors the baseline renderer contract (React = Vue = Solid = Svelte) and is structured so its `src/lib` can be adapted into a `packages/angular` PR upstream.
+There is no first-party Angular renderer in the json-render monorepo, and none on npm: 28 other `@json-render/*` packages sit at 0.20.0, but no `@json-render/angular` (checked 2026-08-29). Community PR [#244](https://github.com/vercel-labs/json-render/pull/244) has been open since March 2026 without a maintainer decision; [#310](https://github.com/vercel-labs/json-render/pull/310) came later and was closed by its own author on 2026-08-03. This library mirrors the baseline renderer contract (React = Vue = Solid = Svelte) and is structured so its `src/lib` can be adapted into a `packages/angular` PR upstream.
 
 ### Adoption checkpoint — 2026-10-29
 
