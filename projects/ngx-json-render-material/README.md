@@ -87,18 +87,37 @@ export const { registry } = defineRegistry(materialCatalog, {
 ## Known issue: the test runner does not exit
 
 `ng test ngx-json-render-material` runs the suite correctly — 8/8 pass in well
-under a second — but the process then stays alive instead of exiting, so the
-command has to be interrupted. This is a defect in the
-`@angular/build:unit-test` + vitest combination, not in the catalog:
+under a second — but the process then stays alive instead of exiting. This is a
+defect in the `@angular/build:unit-test` + Vitest combination, not in the
+catalog: the test worker is clean when the suite ends (no pending timers, no
+stray handles), and it is the runner process that lingers.
 
+What the bisect actually shows, against Angular 21.2 and Vitest 4.1:
+
+- a spec containing nothing but `expect(1).toBe(1)` hangs too, as long as the
+  rest of the project's sources are on disk — so it is not what the tests *do*;
+- importing `./form.components` reproduces it; `./layout.components`,
+  `./content.components`, `./catalog` and `./registry`'s other dependencies do
+  not;
 - importing all nine Material form modules on their own exits cleanly;
-- the `effect()` + `viewChild()` pattern the inputs use exits cleanly on its own;
-- only the combination, in `form.components.ts`, keeps the process alive;
-- `isolate: true` with either the `forks` or `threads` pool does not change it.
+- so does a file of nine plain components that use those modules in their
+  templates;
+- so does each of `JrmInput`, `JrmSelect` and `JrmSlider` on its own — which
+  rules out the `effect()` + `viewChild()` pattern the inputs use, an earlier
+  suspect here;
+- `--watch=false` and `isolate: true` with either the `forks` or `threads` pool
+  change nothing.
 
-Because of this the tests are not part of `npm test` or CI. CI builds the
-package instead, which type-checks every component template against the
-catalog. Run the suite locally with:
+It looks like a threshold in the runner rather than any one API: only the whole
+of `form.components.ts` trips it, and nothing smaller does.
+
+The tests do run in CI. Because the results are complete and written out before
+the process hangs, `npm run test:material` goes through
+[`scripts/run-material-tests.mjs`](../../scripts/run-material-tests.mjs), which
+asks Vitest for a JSON report, waits for the report rather than for the
+process, kills the runner, and exits on what the report says. A failing test, a
+build failure, an empty run and a suite that never finishes all fail the
+command.
 
 ```bash
 npm run test:material

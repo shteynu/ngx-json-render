@@ -7,9 +7,9 @@
     "build": "ng build ngx-json-render && ng build ngx-json-render-material && ng build demo",
     "build:lib": "ng build ngx-json-render",
     "watch:lib": "ng build ngx-json-render --watch --configuration development",
-    "test": "ng test ngx-json-render && ng test demo",
+    "test": "ng test ngx-json-render && ng test demo && npm run test:material",
     "build:material": "ng build ngx-json-render-material",
-    "test:material": "ng test ngx-json-render-material"
+    "test:material": "node scripts/run-material-tests.mjs"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

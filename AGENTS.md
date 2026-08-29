@@ -46,7 +46,7 @@ are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 | Changed area | Commands |
 | --- | --- |
 | `projects/ngx-json-render` | `npm run build:lib` then `npx ng test ngx-json-render`; when the public API changed, also `npm run build:material` and `npx ng build demo` |
-| `projects/ngx-json-render-material` | `npm run build:lib`, then `npm run build:material` — the build type-checks every catalog template — and `npm run test:material` locally |
+| `projects/ngx-json-render-material` | `npm run build:lib`, then `npm run build:material` — the build type-checks every catalog template — and `npm run test:material` |
 | `projects/demo` | `npm run build:lib`, then `npx ng test demo` and `npx ng build demo` |
 | Public API, exports or the JSON spec/contract | The full `npm run build` and `npm test`, plus a read of the affected `README.md` — a contract change that the docs still describe the old way is not done |
 | `package.json`, `package-lock.json`, Angular version | `npm ci` then the full `npm run build` and `npm test`; for an Angular-version change also `node scripts/angular-compat.mjs 20` in a throwaway checkout, mirroring the `angular-compat` CI job — it rewrites the workspace, so never run it in the user's working tree |
@@ -56,11 +56,13 @@ are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 Formatting: `npx prettier --check <paths>` (config in `.prettierrc`). It is
 not enforced in CI, so run it only on files you touched.
 
-Known caveat, already handled in CI: `ng test ngx-json-render-material`
+Known caveat, handled by the runner script: `ng test ngx-json-render-material`
 passes but the runner process does not exit (see
-`projects/ngx-json-render-material/README.md`). Run it locally with a timeout
-and read the reported results; do not treat the hang as a failure, and do not
-"fix" it as a side quest.
+`projects/ngx-json-render-material/README.md` for what has been ruled out).
+Always invoke it as `npm run test:material`, which goes through
+`scripts/run-material-tests.mjs` and exits on the reported results. Do not call
+the raw `ng test` for that project — it will hang — and do not chase the
+underlying runner defect as a side quest.
 
 Deployment: pushing to `main` deploys the demo to GitHub Pages via
 `.github/workflows/ci.yml`. Treat `main` as deployed state.
