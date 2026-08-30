@@ -482,3 +482,424 @@ describe('spec part helpers', () => {
     expect(spec.elements['root'].children).toEqual(['child']);
   });
 });
+
+describe('applyPatch operations and paths', () => {
+  /** A spec with something in every path family a patch can address. */
+  function seed(): Spec {
+    return {
+      root: 'main',
+      state: { count: 1, user: { name: 'Ada' } },
+      elements: {
+        main: { type: 'Card', props: { title: 'Hi' }, children: ['leaf'] },
+        leaf: { type: 'Text', props: { content: 'body', tone: 'muted' } },
+      },
+    } as unknown as Spec;
+  }
+
+  it('removes the whole state branch', () => {
+    const before = seed();
+    const after = applyPatch(before, { op: 'remove', path: '/state' });
+
+    expect(after.state).toBeUndefined();
+    expect(before.state).toEqual({ count: 1, user: { name: 'Ada' } });
+  });
+
+  it('removes a single state key and leaves its siblings', () => {
+    const before = seed();
+    const after = applyPatch(before, { op: 'remove', path: '/state/count' });
+
+    expect(after.state).toEqual({ user: { name: 'Ada' } });
+    expect(before.state).toEqual({ count: 1, user: { name: 'Ada' } });
+  });
+
+  it('removes a nested state key', () => {
+    const after = applyPatch(seed(), {
+      op: 'remove',
+      path: '/state/user/name',
+    });
+
+    expect(after.state).toEqual({ count: 1, user: {} });
+  });
+
+  it('removes a single prop and leaves the element its other props', () => {
+    const after = applyPatch(seed(), {
+      op: 'remove',
+      path: '/elements/leaf/props/tone',
+    });
+
+    expect(after.elements['leaf'].props).toEqual({ content: 'body' });
+    expect(after.elements['leaf'].type).toBe('Text');
+    // NOTE: the input spec is deliberately not asserted here. applyPatch
+    // copies only one level deep, so a patch below an element or below a
+    // top-level state key writes through into the caller's object. That is a
+    // defect, not a contract — see the immutability tests above, which cover
+    // the depths that do hold today.
+  });
+
+  it('ignores a remove aimed at an element that is not there', () => {
+    const after = applyPatch(seed(), {
+      op: 'remove',
+      path: '/elements/ghost/props/content',
+    });
+
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('ignores a remove with an empty element key', () => {
+    const after = applyPatch(seed(), { op: 'remove', path: '/elements/' });
+
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('ignores a state remove on a spec that has no state', () => {
+    const stateless: Spec = { root: 'a', elements: {} } as unknown as Spec;
+    const after = applyPatch(stateless, { op: 'remove', path: '/state/x' });
+
+    expect(after.state).toBeUndefined();
+  });
+
+  it('ignores a remove on a path it does not recognise', () => {
+    const after = applyPatch(seed(), { op: 'remove', path: '/nonsense' });
+
+    expect(after.root).toBe('main');
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('moves an element to a new key', () => {
+    const before = seed();
+    const after = applyPatch(before, {
+      op: 'move',
+      from: '/elements/leaf',
+      path: '/elements/moved',
+    });
+
+    expect(after.elements['leaf']).toBeUndefined();
+    expect(after.elements['moved']).toEqual({
+      type: 'Text',
+      props: { content: 'body', tone: 'muted' },
+    });
+    expect(before.elements['leaf']).toBeDefined();
+  });
+
+  it('moves a value between state paths', () => {
+    const after = applyPatch(seed(), {
+      op: 'move',
+      from: '/state/count',
+      path: '/state/total',
+    });
+
+    expect(after.state).toEqual({ total: 1, user: { name: 'Ada' } });
+  });
+
+  it('moves the root value into state', () => {
+    const after = applyPatch(seed(), {
+      op: 'move',
+      from: '/root',
+      path: '/state/wasRoot',
+    });
+
+    expect(after.state).toMatchObject({ wasRoot: 'main' });
+  });
+
+  it('does nothing for a move with no from', () => {
+    const after = applyPatch(seed(), {
+      op: 'move',
+      path: '/elements/moved',
+    });
+
+    expect(after.elements['moved']).toBeUndefined();
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('copies an element, leaving the original in place', () => {
+    const after = applyPatch(seed(), {
+      op: 'copy',
+      from: '/elements/leaf',
+      path: '/elements/clone',
+    });
+
+    expect(after.elements['leaf']).toBeDefined();
+    expect(after.elements['clone']).toEqual(after.elements['leaf']);
+  });
+
+  it('copies a whole state branch', () => {
+    const after = applyPatch(seed(), {
+      op: 'copy',
+      from: '/state',
+      path: '/state/snapshot',
+    });
+
+    expect(after.state).toMatchObject({
+      snapshot: { count: 1, user: { name: 'Ada' } },
+    });
+  });
+
+  it('does nothing for a copy with no from', () => {
+    const after = applyPatch(seed(), {
+      op: 'copy',
+      path: '/elements/clone',
+    });
+
+    expect(after.elements['clone']).toBeUndefined();
+  });
+
+  it('leaves the spec alone for a test op', () => {
+    const before = seed();
+    const after = applyPatch(before, {
+      op: 'test',
+      path: '/root',
+      value: 'main',
+    });
+
+    // `test` is a validation op with nothing to render, so it passes the spec
+    // through — as a new object, like every other patch.
+    expect(after).not.toBe(before);
+    expect(after.root).toBe('main');
+    expect(after.state).toEqual(before.state);
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('replaces the whole state object', () => {
+    const after = applyPatch(seed(), {
+      op: 'replace',
+      path: '/state',
+      value: { fresh: true },
+    });
+
+    expect(after.state).toEqual({ fresh: true });
+  });
+
+  it('creates the state branch when a state path is set on a spec without one', () => {
+    const stateless: Spec = { root: 'a', elements: {} } as unknown as Spec;
+    const after = applyPatch(stateless, {
+      op: 'add',
+      path: '/state/count',
+      value: 3,
+    });
+
+    expect(after.state).toEqual({ count: 3 });
+    expect(stateless.state).toBeUndefined();
+  });
+
+  it('ignores an add with an empty element key', () => {
+    const after = applyPatch(seed(), {
+      op: 'add',
+      path: '/elements/',
+      value: { type: 'Text', props: {} },
+    });
+
+    expect(Object.keys(after.elements).sort()).toEqual(['leaf', 'main']);
+  });
+
+  it('ignores a prop add aimed at an element that is not there', () => {
+    const after = applyPatch(seed(), {
+      op: 'add',
+      path: '/elements/ghost/props/content',
+      value: 'x',
+    });
+
+    expect(after.elements['ghost']).toBeUndefined();
+  });
+});
+
+describe('spec part helper guards', () => {
+  it('buildSpecFromParts returns null when nothing carries a spec', () => {
+    expect(buildSpecFromParts([])).toBeNull();
+    expect(
+      buildSpecFromParts([
+        { type: 'text', text: 'just prose' },
+        { type: 'reasoning', text: 'thinking' },
+      ]),
+    ).toBeNull();
+  });
+
+  it('buildSpecFromParts skips payloads that are not shaped like a spec part', () => {
+    // A model can emit anything into a data part; none of these should throw
+    // or half-build a spec.
+    const spec = buildSpecFromParts([
+      { type: 'data-spec', data: null },
+      { type: 'data-spec', data: 'not an object' },
+      { type: 'data-spec', data: { type: 'patch', patch: null } },
+      { type: 'data-spec', data: { type: 'flat', spec: 'nope' } },
+      { type: 'data-spec', data: { type: 'nested', spec: 42 } },
+      { type: 'data-spec', data: { type: 'something-else' } },
+      { type: 'data-spec', data: {} },
+    ]);
+
+    expect(spec).toBeNull();
+  });
+
+  it('buildSpecFromParts keeps the good parts among the bad', () => {
+    const spec = buildSpecFromParts([
+      { type: 'data-spec', data: { type: 'patch', patch: null } },
+      {
+        type: 'data-spec',
+        data: {
+          type: 'flat',
+          spec: { root: 'a', elements: { a: { type: 'Text', props: {} } } },
+        },
+      },
+      { type: 'data-spec', data: { type: 'unknown' } },
+    ]);
+
+    expect(spec?.root).toBe('a');
+    expect(Object.keys(spec?.elements ?? {})).toEqual(['a']);
+  });
+
+  it('buildSpecFromParts flattens a nested payload', () => {
+    const spec = buildSpecFromParts([
+      {
+        type: 'data-spec',
+        data: {
+          type: 'nested',
+          spec: {
+            type: 'Card',
+            props: { title: 'Hello' },
+            children: [{ type: 'Text', props: { content: 'World' } }],
+            state: { count: 0 },
+          },
+        },
+      },
+    ]);
+
+    expect(spec?.root).toBe('el-0');
+    expect(spec?.elements['el-0'].children).toEqual(['el-1']);
+    expect(spec?.elements['el-1'].props).toEqual({ content: 'World' });
+    expect(spec?.state).toEqual({ count: 0 });
+  });
+
+  it('getTextFromParts ignores text parts with no string to show', () => {
+    expect(
+      getTextFromParts([
+        { type: 'text' },
+        { type: 'text', text: '   ' },
+        { type: 'text', text: 'kept' },
+      ]),
+    ).toBe('kept');
+    expect(getTextFromParts([])).toBe('');
+  });
+
+  it('jsonRenderMessage reports no spec when the spec has no elements', () => {
+    const msg = jsonRenderMessage(() => [
+      { type: 'text', text: 'hi' },
+      {
+        type: 'data-spec',
+        data: {
+          type: 'patch',
+          patch: { op: 'add', path: '/root', value: 'a' },
+        },
+      },
+    ]);
+
+    // A root pointing at nothing is not something a renderer can show.
+    expect(msg.spec()).not.toBeNull();
+    expect(msg.hasSpec()).toBe(false);
+    expect(msg.text()).toBe('hi');
+  });
+
+  it('flatToTree drops a child whose parent is not in the list', () => {
+    const spec = flatToTree([
+      { key: 'root', type: 'Box', props: {} },
+      { key: 'orphan', parentKey: 'ghost', type: 'Text', props: {} },
+    ]);
+
+    expect(spec.root).toBe('root');
+    expect(spec.elements['root'].children).toEqual([]);
+    // The element itself survives; only the parent link is dropped.
+    expect(spec.elements['orphan']).toBeDefined();
+  });
+
+  it('flatToTree carries visible through and nests deeply', () => {
+    const spec = flatToTree([
+      { key: 'a', type: 'Box', props: {} },
+      { key: 'b', parentKey: 'a', type: 'Box', props: {}, visible: false },
+      { key: 'c', parentKey: 'b', type: 'Text', props: { content: 'x' } },
+    ]);
+
+    expect(spec.elements['a'].children).toEqual(['b']);
+    expect(spec.elements['b'].children).toEqual(['c']);
+    expect(spec.elements['b'].visible).toBe(false);
+  });
+});
+
+describe('injectUIStream line parsing', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function setupStream(lines: string[]) {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(streamResponse(lines));
+    return TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+  }
+
+  it('skips blank lines, comments and unparsable JSON', async () => {
+    const ui = setupStream([
+      '\n',
+      '   \n',
+      '// a comment the model felt like adding\n',
+      '{"op":"add","path":"/root","value":"main"}\n',
+      '{"op":"add","path":"/elements/\n',
+      'not json at all\n',
+      '{"op":"add","path":"/elements/main","value":{"type":"Text","props":{}}}\n',
+    ]);
+
+    await ui.send('go');
+
+    // A half-written or commented line is normal in a model's output; it has
+    // to be dropped rather than aborting the generation.
+    expect(ui.spec()?.root).toBe('main');
+    expect(Object.keys(ui.spec()?.elements ?? {})).toEqual(['main']);
+    expect(ui.error()).toBeNull();
+    // Only the two real patches are recorded.
+    expect(ui.rawLines().length).toBe(2);
+  });
+
+  it('fills in a usage line that omits its counts', async () => {
+    const ui = setupStream([
+      '{"op":"add","path":"/root","value":"main"}\n',
+      '{"__meta":"usage"}\n',
+    ]);
+
+    await ui.send('go');
+
+    expect(ui.usage()).toEqual({
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    });
+  });
+
+  it('continues from a previous spec passed in the context', async () => {
+    const ui = setupStream([
+      '{"op":"add","path":"/elements/added","value":{"type":"Text","props":{}}}\n',
+    ]);
+    const previousSpec: Spec = {
+      root: 'main',
+      elements: { main: { type: 'Card', props: {}, children: [] } },
+    } as unknown as Spec;
+
+    await ui.send('add one more', { previousSpec });
+
+    expect(ui.spec()?.root).toBe('main');
+    expect(Object.keys(ui.spec()?.elements ?? {}).sort()).toEqual([
+      'added',
+      'main',
+    ]);
+  });
+
+  it('starts from an empty spec when the previous one has no root', async () => {
+    const ui = setupStream(['{"op":"add","path":"/root","value":"fresh"}\n']);
+
+    await ui.send('start over', {
+      previousSpec: { root: '', elements: {} } as unknown as Spec,
+    });
+
+    expect(ui.spec()?.root).toBe('fresh');
+    expect(ui.spec()?.elements).toEqual({});
+  });
+});
