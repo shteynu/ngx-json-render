@@ -1,0 +1,227 @@
+:host {
+  display: block;
+}
+
+.catalog-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.catalog-bar .label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.switch {
+  display: inline-flex;
+  gap: 4px;
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.switch button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 7px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.switch button.active {
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.blurb {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.panel h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel-tabs {
+  display: inline-flex;
+  gap: 12px;
+}
+
+.panel-tabs button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0 0 3px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.panel-tabs button.active {
+  color: inherit;
+  border-bottom-color: var(--accent);
+}
+
+.ghost {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.ghost:hover {
+  color: inherit;
+  border-color: var(--accent);
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hint.ok {
+  margin-bottom: 0;
+}
+
+.hint code,
+.issues code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.editor {
+  display: block;
+  width: 100%;
+  min-height: 420px;
+  resize: vertical;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: inherit;
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 12px;
+  tab-size: 2;
+}
+
+.editor:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.code {
+  margin: 0;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  max-height: 420px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.prompt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.banner {
+  margin: 0 0 14px;
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.banner.error {
+  color: #b3261e;
+  background: color-mix(in srgb, #b3261e 10%, transparent);
+  border: 1px solid color-mix(in srgb, #b3261e 30%, transparent);
+}
+
+.issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.issues li {
+  border-left: 3px solid #b3261e;
+  background: color-mix(in srgb, #b3261e 8%, transparent);
+  border-radius: 0 6px 6px 0;
+  padding: 5px 10px;
+  overflow-wrap: anywhere;
+}
+
+.issues li.warn {
+  border-left-color: #b26a00;
+  background: color-mix(in srgb, #b26a00 8%, transparent);
+}

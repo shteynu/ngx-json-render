@@ -1,3 +1,20 @@
+@use '@angular/material' as mat;
+
+// The Material catalog's components read these tokens. Emitting the theme
+// under `color-scheme: light dark` gives both palettes in one pass, so the
+// catalog follows the demo's own light/dark switch instead of fighting it.
+html {
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;

@@ -14,14 +14,15 @@ import {
   applyPatch,
 } from 'ngx-json-render';
 import { registry } from './catalog/registry';
+import { Playground } from './playground/playground';
 import { dashboardSpec } from './specs/dashboard';
 import { STREAM_LINES } from './specs/stream';
 
-type Tab = 'interactive' | 'streaming';
+type Tab = 'playground' | 'interactive' | 'streaming';
 
 @Component({
   selector: 'app-root',
-  imports: [JsonRenderer],
+  imports: [JsonRenderer, Playground],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -29,7 +30,7 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly registry = registry;
-  readonly tab = signal<Tab>('interactive');
+  readonly tab = signal<Tab>('playground');
 
   // --- Interactive demo ------------------------------------------------------
 

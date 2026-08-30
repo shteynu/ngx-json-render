@@ -6,6 +6,13 @@
   <nav class="tabs">
     <button
       type="button"
+      [class.active]="tab() === 'playground'"
+      (click)="tab.set('playground')"
+    >
+      Playground
+    </button>
+    <button
+      type="button"
       [class.active]="tab() === 'interactive'"
       (click)="tab.set('interactive')"
     >
@@ -21,7 +28,9 @@
   </nav>
 </header>
 
-@if (tab() === 'interactive') {
+@if (tab() === 'playground') {
+  <app-playground />
+} @else if (tab() === 'interactive') {
   <main class="layout">
     <section class="pane">
       <json-render

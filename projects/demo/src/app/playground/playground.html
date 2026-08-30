@@ -1,0 +1,98 @@
+<div class="catalog-bar">
+  <span class="label">Catalog</span>
+  <div class="switch">
+    @for (choice of catalogs; track choice.id) {
+      <button
+        type="button"
+        [class.active]="catalogId() === choice.id"
+        (click)="selectCatalog(choice.id)"
+      >
+        {{ choice.label }}
+      </button>
+    }
+  </div>
+  <p class="blurb">{{ blurb() }}</p>
+</div>
+
+<div class="layout">
+  <section class="pane">
+    @if (parseError()) {
+      <p class="banner error">
+        JSON error: {{ parseError() }} — showing the last spec that parsed.
+      </p>
+    }
+    <json-render [spec]="spec()" [registry]="registry()" />
+  </section>
+
+  <aside class="pane side">
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-tabs">
+          <button
+            type="button"
+            [class.active]="panel() === 'spec'"
+            (click)="panel.set('spec')"
+          >
+            Spec
+          </button>
+          <button
+            type="button"
+            [class.active]="panel() === 'prompt'"
+            (click)="panel.set('prompt')"
+          >
+            System prompt
+          </button>
+        </div>
+        @if (panel() === 'spec') {
+          <button type="button" class="ghost" (click)="reset()">Reset</button>
+        } @else {
+          <button type="button" class="ghost" (click)="copyPrompt()">
+            {{ copied() ? 'Copied' : 'Copy' }}
+          </button>
+        }
+      </div>
+
+      @if (panel() === 'spec') {
+        <p class="hint">
+          Edit this JSON — the UI on the left is rendered from it, live.
+          {{ elementCount() }} elements.
+        </p>
+        <textarea
+          class="editor"
+          spellcheck="false"
+          [value]="source()"
+          (input)="onSourceInput($any($event.target).value)"
+        ></textarea>
+      } @else {
+        <p class="hint">
+          Exactly what <code>catalog.prompt()</code> returns for this catalog —
+          {{ componentNames().length }} components, {{ promptSize() }}. This is
+          the system prompt your server sends to the model.
+        </p>
+        <pre class="code prompt">{{ prompt() }}</pre>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Spec check</h2>
+      @if (parseError()) {
+        <p class="hint">Fix the JSON above to check the spec.</p>
+      } @else if (issues().length === 0) {
+        <p class="hint ok">
+          No structural issues, and every component type exists in this catalog.
+        </p>
+      } @else {
+        <ul class="issues">
+          @for (issue of issues(); track $index) {
+            <li [class.warn]="issue.severity === 'warning'">
+              @if (issue.elementKey) {
+                <code>{{ issue.elementKey }}</code>
+              }
+              {{ issue.message }}
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </aside>
+</div>
