@@ -2,11 +2,12 @@
 
 ## Metadata
 
-- Branch: feat/playground-editor
-- Base branch: main
+- Branch: `feat/playground-editor`
+- Base branch: `main`
 - Base commit: 80eeda3
-- Current HEAD: 80eeda3
-- Status: step 1 complete, unreviewed and uncommitted
+- Current HEAD: `2c87d2c` and `d9ccfd4` on `main` — the branch was merged and
+  deleted
+- Status: implemented, verified
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
@@ -88,7 +89,8 @@ so the library and the Material catalog must be built first.
 
 ## Remaining
 
-- Review and commit. Steps 2–5 of the plan live in their own tasks.
+Nothing. Steps 2–5 of the plan live in their own tasks; step 2 is
+`feat--playground-uistream.md`.
 
 ## Changed files
 
@@ -148,11 +150,9 @@ Local worktree, macOS, Node via npm 10.9.8.
 
 ## Known risks
 
-- The worktree carried three uncommitted changes from before this task:
-  `angular.json` (Angular CLI analytics id), `package.json` and
-  `package-lock.json` (`@vitest/coverage-v8` added). They are not mine and are
-  left untouched; the analytics id in `angular.json` is machine-specific and
-  probably should not be committed.
+None beyond the residual risk above. The Angular CLI analytics id that kept
+reappearing in `angular.json` was removed and analytics disabled globally, so
+it stays out of the tree.
 
 ## Approval gates
 
@@ -164,6 +164,6 @@ Local worktree, macOS, Node via npm 10.9.8.
 
 ## Next concrete step
 
-Review the diff and commit it on this branch; nothing is committed yet, so the
-work is visible only in this worktree. Then open step 2 (drive `injectUIStream`
-through a mocked endpoint) as its own task.
+Nothing on this branch. Step 2 — the Streaming tab on `injectUIStream` with a
+recorded transport — is ready to start: the transport option it needed landed
+on `main` in 2345615.
