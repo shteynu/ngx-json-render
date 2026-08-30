@@ -74,25 +74,11 @@
     </section>
 
     <section class="panel">
-      <h2>Spec check</h2>
-      @if (parseError()) {
-        <p class="hint">Fix the JSON above to check the spec.</p>
-      } @else if (issues().length === 0) {
-        <p class="hint ok">
-          No structural issues, and every component type exists in this catalog.
-        </p>
-      } @else {
-        <ul class="issues">
-          @for (issue of issues(); track $index) {
-            <li [class.warn]="issue.severity === 'warning'">
-              @if (issue.elementKey) {
-                <code>{{ issue.elementKey }}</code>
-              }
-              {{ issue.message }}
-            </li>
-          }
-        </ul>
-      }
+      <app-spec-check
+        [spec]="spec()"
+        [componentNames]="componentNames()"
+        [unavailable]="checkUnavailable()"
+      />
     </section>
   </aside>
 </div>

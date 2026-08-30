@@ -1,5 +1,4 @@
 import { Component, computed, signal } from '@angular/core';
-import { validateSpec } from '@json-render/core';
 import {
   JsonRenderer,
   type ComponentRegistry,
@@ -8,6 +7,7 @@ import {
 import { materialCatalog, materialRegistry } from 'ngx-json-render-material';
 import { catalog as demoCatalog } from '../catalog/catalog';
 import { registry as demoRegistry } from '../catalog/registry';
+import { SpecCheck } from '../spec-check/spec-check';
 import { demoStarterSpec } from '../specs/demo-starter';
 import { materialStarterSpec } from '../specs/material-starter';
 
@@ -22,13 +22,6 @@ type Panel = 'spec' | 'prompt';
 interface CatalogFacts {
   prompt(): string;
   readonly componentNames: string[];
-}
-
-/** One problem with the spec in the editor, ready to display. */
-interface Issue {
-  readonly severity: 'error' | 'warning';
-  readonly message: string;
-  readonly elementKey?: string;
 }
 
 interface CatalogChoice {
@@ -74,7 +67,7 @@ function format(spec: Spec): string {
  */
 @Component({
   selector: 'app-playground',
-  imports: [JsonRenderer],
+  imports: [JsonRenderer, SpecCheck],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
@@ -110,28 +103,10 @@ export class Playground {
     () => Object.keys(this.spec().elements ?? {}).length,
   );
 
-  /**
-   * Structural issues plus component types this catalog does not have — the
-   * second is what makes switching catalogs instructive rather than blank.
-   */
-  readonly issues = computed<Issue[]>(() => {
-    if (this.parseError()) return [];
-    const spec = this.spec();
-    const known = new Set(this.componentNames());
-    const unknown: Issue[] = Object.entries(spec.elements ?? {})
-      .filter(([, el]) => !known.has(el.type))
-      .map(([key, el]) => ({
-        severity: 'error',
-        elementKey: key,
-        message: `Component "${el.type}" is not in this catalog — nothing renders for it.`,
-      }));
-    const structural: Issue[] = validateSpec(spec).issues.map((issue) => ({
-      severity: issue.severity,
-      message: issue.message,
-      elementKey: issue.elementKey,
-    }));
-    return [...structural, ...unknown];
-  });
+  /** Why the check cannot run: a spec that does not parse cannot be checked. */
+  readonly checkUnavailable = computed(() =>
+    this.parseError() ? 'Fix the JSON above to check the spec.' : null,
+  );
 
   onSourceInput(text: string): void {
     this.source.set(text);

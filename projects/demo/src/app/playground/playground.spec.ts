@@ -23,6 +23,14 @@ async function render() {
   return fixture;
 }
 
+/** Text of the spec-check panel. */
+function checkText(fixture: ComponentFixture<Playground>): string {
+  const el = (fixture.nativeElement as HTMLElement).querySelector(
+    'app-spec-check',
+  );
+  return el?.textContent ?? '';
+}
+
 function editor(fixture: ComponentFixture<Playground>): HTMLTextAreaElement {
   const el = (fixture.nativeElement as HTMLElement).querySelector('textarea');
   if (!el) throw new Error('the spec editor is not rendered');
@@ -93,8 +101,7 @@ describe('Playground', () => {
       }),
     );
 
-    const messages = fixture.componentInstance.issues().map((i) => i.message);
-    expect(messages.join(' ')).toContain('ghost');
+    expect(checkText(fixture)).toContain('ghost');
   });
 
   it('reports component types the selected catalog does not have', async () => {
@@ -111,8 +118,7 @@ describe('Playground', () => {
       }),
     );
 
-    const messages = fixture.componentInstance.issues().map((i) => i.message);
-    expect(messages.join(' ')).toContain('"Grid" is not in this catalog');
+    expect(checkText(fixture)).toContain('"Grid" is not in this catalog');
   });
 
   it('switches catalog, starter spec and prompt together', async () => {

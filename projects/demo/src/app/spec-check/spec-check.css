@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.issues li {
+  border-left: 3px solid #b3261e;
+  background: color-mix(in srgb, #b3261e 8%, transparent);
+  border-radius: 0 6px 6px 0;
+  padding: 5px 10px;
+  overflow-wrap: anywhere;
+}
+
+.issues li.warn {
+  border-left-color: #b26a00;
+  background: color-mix(in srgb, #b26a00 8%, transparent);
+}
+
+.issues code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
