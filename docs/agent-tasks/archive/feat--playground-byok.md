@@ -5,8 +5,8 @@
 - Branch: `feat/playground-byok`
 - Base branch: `main`
 - Base commit: 37d1d6b
-- Current HEAD: `37d1d6b` on `main`, in sync with `origin/main`
-- Status: implemented, verified
+- Current HEAD: `9a3680f` on `main` — the branch was merged and deleted
+- Status: implemented, verified, merged
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
