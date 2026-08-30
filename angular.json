@@ -106,10 +106,10 @@
               "projects/demo/src/**"
             ],
             "coverageThresholds": {
-              "statements": 77,
-              "branches": 79,
-              "functions": 60,
-              "lines": 81
+              "statements": 89,
+              "branches": 87,
+              "functions": 75,
+              "lines": 92
             },
             "coverageExclude": [
               "projects/demo/src/index.html"
