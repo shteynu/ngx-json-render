@@ -1,0 +1,59 @@
+<section class="key-panel" [class.live]="store.isLive()">
+  <div class="head">
+    <h2>Run against a real model</h2>
+    @if (store.isLive()) {
+      <span class="badge live">live</span>
+    } @else {
+      <span class="badge">recorded</span>
+    }
+  </div>
+
+  @if (store.isLive()) {
+    <div class="row">
+      <p class="state">
+        Your key is set for this tab. The Streaming and Chat tabs now generate
+        from
+        <select
+          class="model"
+          [value]="store.model()"
+          (change)="onModel($event)"
+        >
+          @for (model of models; track model.id) {
+            <option [value]="model.id">{{ model.label }}</option>
+          }
+        </select>
+        instead of replaying a recording.
+      </p>
+      <button type="button" class="clear" (click)="clear()">Forget it</button>
+    </div>
+  } @else {
+    <form class="row" (submit)="save($event)">
+      <input
+        type="password"
+        class="key"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="sk-ant-…"
+        aria-label="Anthropic API key"
+        [value]="draft()"
+        (input)="onDraft($event)"
+      />
+      <select class="model" [value]="store.model()" (change)="onModel($event)">
+        @for (model of models; track model.id) {
+          <option [value]="model.id">{{ model.label }}</option>
+        }
+      </select>
+      <button type="submit" [disabled]="draft().trim().length === 0">
+        Use this key
+      </button>
+    </form>
+  }
+
+  <p class="fineprint">
+    The key stays in this browser tab. It goes straight from here into the
+    <code>x-api-key</code> header of a request your browser makes to
+    <code>api.anthropic.com</code> — this site has no server, stores nothing and
+    sees nothing. It is kept in <code>sessionStorage</code>, so closing the tab
+    forgets it. Calls are billed to your account.
+  </p>
+</section>

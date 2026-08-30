@@ -1,7 +1,13 @@
 <p class="hint disclosure">
-  Recorded replies, real client: <code>injectChatUI</code> posts the whole
-  conversation and reads one stream carrying both prose and JSONL patches. Each
-  assistant message keeps the spec it generated.
+  @if (keys.isLive()) {
+    Live replies on your own key. <code>injectChatUI</code> posts the whole
+    conversation and reads one stream carrying both prose and JSONL patches;
+    each assistant message keeps the spec it generated.
+  } @else {
+    Recorded replies, real client: <code>injectChatUI</code> posts the whole
+    conversation and reads one stream carrying both prose and JSONL patches.
+    Each assistant message keeps the spec it generated.
+  }
 </p>
 
 <div class="layout">
@@ -34,13 +40,30 @@
     }
 
     @if (chat.messages().length === 0 && !chat.error()) {
-      <p class="hint">Send one of the messages below to start.</p>
+      <p class="hint">Send a message to start.</p>
     }
   </section>
 
   <aside class="pane side">
     <section class="panel">
       <h2>Say something</h2>
+      @if (keys.isLive()) {
+        <form class="composer" (submit)="send($event)">
+          <input
+            type="text"
+            placeholder="ask for a UI, or just talk"
+            aria-label="Message"
+            [value]="draft()"
+            (input)="onDraft($event)"
+          />
+          <button
+            type="submit"
+            [disabled]="chat.isStreaming() || draft().trim().length === 0"
+          >
+            Send
+          </button>
+        </form>
+      }
       <div class="asks">
         @for (exchange of exchanges; track exchange.ask) {
           <button
@@ -52,14 +75,16 @@
           </button>
         }
       </div>
-      <label class="toggle">
-        <input
-          type="checkbox"
-          [checked]="failNext()"
-          (change)="failNext.set(!failNext())"
-        />
-        Fail the next reply
-      </label>
+      @if (!keys.isLive()) {
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [checked]="failNext()"
+            (change)="failNext.set(!failNext())"
+          />
+          Fail the next reply
+        </label>
+      }
       <p class="hint status">
         @if (chat.isStreaming()) {
           Replying…

@@ -35,6 +35,10 @@
   </nav>
 </header>
 
+@if (tab() === 'streaming' || tab() === 'chat') {
+  <app-key-panel />
+}
+
 @if (tab() === 'playground') {
   <app-playground />
 } @else if (tab() === 'interactive') {

@@ -1,0 +1,101 @@
+.key-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px 14px;
+  margin-bottom: 20px;
+}
+
+.key-panel.live {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+
+.badge.live {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.state {
+  margin: 0;
+  font-size: 13px;
+  flex: 1 1 320px;
+}
+
+input.key {
+  flex: 1 1 260px;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+
+select.model {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.fineprint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}

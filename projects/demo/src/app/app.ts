@@ -14,6 +14,7 @@ import {
 } from 'ngx-json-render';
 import { registry } from './catalog/registry';
 import { ChatTab } from './chat/chat';
+import { KeyPanel } from './live/key-panel';
 import { Playground } from './playground/playground';
 import { StreamTab } from './streaming/streaming';
 import { dashboardSpec } from './specs/dashboard';
@@ -22,7 +23,7 @@ type Tab = 'playground' | 'interactive' | 'streaming' | 'chat';
 
 @Component({
   selector: 'app-root',
-  imports: [ChatTab, JsonRenderer, Playground, StreamTab],
+  imports: [ChatTab, JsonRenderer, KeyPanel, Playground, StreamTab],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

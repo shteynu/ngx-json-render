@@ -160,3 +160,21 @@
   background: color-mix(in srgb, #b3261e 10%, transparent);
   border: 1px solid color-mix(in srgb, #b3261e 30%, transparent);
 }
+
+.composer {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.composer input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}

@@ -11,21 +11,47 @@
       </button>
     }
   </div>
-  <label class="toggle">
-    <input
-      type="checkbox"
-      [checked]="failNext()"
-      (change)="failNext.set(!failNext())"
-    />
-    Fail the next request
-  </label>
+  @if (!keys.isLive()) {
+    <label class="toggle">
+      <input
+        type="checkbox"
+        [checked]="failNext()"
+        (change)="failNext.set(!failNext())"
+      />
+      Fail the next request
+    </label>
+  }
 </div>
 
+@if (keys.isLive()) {
+  <form class="prompt-bar ask" (submit)="generateDraft($event)">
+    <span class="label">Or ask for anything</span>
+    <input
+      type="text"
+      class="free"
+      placeholder="a settings page for a backup service"
+      aria-label="Prompt"
+      [value]="draft()"
+      (input)="onDraft($event)"
+    />
+    <button type="submit" [disabled]="draft().trim().length === 0">
+      Generate
+    </button>
+  </form>
+}
+
 <p class="hint disclosure">
-  These are recorded generations, not a live model. The client is real:
-  <code>injectUIStream</code> POSTs the prompt, reads the JSONL patch stream and
-  applies each line as it arrives. Pick the other prompt mid-stream to see the
-  first generation superseded.
+  @if (keys.isLive()) {
+    Generating with your own key. <code>injectUIStream</code> POSTs the prompt
+    and applies each JSONL patch as it arrives; the transport turns the model's
+    stream into those lines. A real model will sometimes emit something this
+    catalog cannot render — the check on the right says what.
+  } @else {
+    These are recorded generations, not a live model. The client is real:
+    <code>injectUIStream</code> POSTs the prompt, reads the JSONL patch stream
+    and applies each line as it arrives. Pick the other prompt mid-stream to see
+    the first generation superseded.
+  }
 </p>
 
 <div class="layout">

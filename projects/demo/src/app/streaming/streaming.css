@@ -52,6 +52,39 @@
   cursor: pointer;
 }
 
+.prompt-bar.ask {
+  margin-bottom: 14px;
+}
+
+input.free {
+  flex: 1 1 320px;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+
+.prompt-bar.ask button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.prompt-bar.ask button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .disclosure {
   max-width: 70ch;
 }
