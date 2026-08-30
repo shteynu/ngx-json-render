@@ -5,8 +5,8 @@
 - Branch: `feat/playground-uistream`
 - Base branch: `main`
 - Base commit: 76e7b82
-- Current HEAD: 76e7b82 (work uncommitted in the worktree)
-- Status: implemented, verified — not committed
+- Current HEAD: `a5e290d` on `main` — the branch was merged and deleted
+- Status: implemented, verified
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
@@ -119,7 +119,7 @@ recording and already has the right shape; it has no usage line yet.
 
 ## Remaining
 
-- Review and commit.
+Nothing.
 
 ## Verification evidence
 
@@ -151,6 +151,6 @@ recording and already has the right shape; it has no usage line yet.
 
 ## Next concrete step
 
-Commit on this branch. Step 3 of the plan — a preset whose patches are broken,
+Nothing on this branch. Step 3 of the plan — a preset whose patches are broken,
 so the demo shows a bad generation degrading instead of blanking — is the next
 task, and the Spec check panel from step 1 already has the vocabulary for it.
