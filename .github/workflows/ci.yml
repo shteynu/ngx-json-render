@@ -110,6 +110,11 @@ jobs:
       - name: Build library
         run: npm run build:lib
 
+      # The demo's playground renders the Material catalog, so the demo does
+      # not compile until this is in dist/ too.
+      - name: Build Material catalog
+        run: npm run build:material
+
       - name: Build demo for GitHub Pages
         run: npx ng build demo --base-href /ngx-json-render/
 
