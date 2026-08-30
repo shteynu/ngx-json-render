@@ -26,8 +26,11 @@ jobs:
       - name: Build library
         run: npm run build:lib
 
+      # --coverage is what turns on the coverageThresholds each project
+      # declares in angular.json; without it the builder collects nothing and
+      # has nothing to enforce.
       - name: Test library
-        run: npx ng test ngx-json-render
+        run: npx ng test ngx-json-render --coverage
 
       # Building the catalog type-checks every component template against it.
       - name: Build Material catalog
@@ -35,12 +38,14 @@ jobs:
 
       # The catalog's runner reports its results and then never exits (see
       # projects/ngx-json-render-material/README.md), so this goes through a
-      # script that waits for the report rather than for the process.
+      # script that waits for the report rather than for the process. The
+      # script asks for coverage and checks the thresholds itself, because the
+      # builder's own check would come after the point where it gets killed.
       - name: Test Material catalog
         run: npm run test:material
 
       - name: Test demo
-        run: npx ng test demo
+        run: npx ng test demo --coverage
 
       - name: Build demo
         run: npx ng build demo

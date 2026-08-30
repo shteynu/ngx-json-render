@@ -27,7 +27,16 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/ngx-json-render/tsconfig.spec.json"
+            "tsConfig": "projects/ngx-json-render/tsconfig.spec.json",
+            "coverageInclude": [
+              "projects/ngx-json-render/src/**"
+            ],
+            "coverageThresholds": {
+              "statements": 90,
+              "branches": 84,
+              "functions": 90,
+              "lines": 92
+            }
           }
         }
       }
@@ -91,7 +100,21 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "coverageInclude": [
+              "projects/demo/src/**"
+            ],
+            "coverageThresholds": {
+              "statements": 77,
+              "branches": 79,
+              "functions": 60,
+              "lines": 81
+            },
+            "coverageExclude": [
+              "projects/demo/src/index.html"
+            ]
+          }
         }
       }
     },
@@ -116,7 +139,16 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/ngx-json-render-material/tsconfig.spec.json"
+            "tsConfig": "projects/ngx-json-render-material/tsconfig.spec.json",
+            "coverageInclude": [
+              "projects/ngx-json-render-material/src/**"
+            ],
+            "coverageThresholds": {
+              "statements": 97,
+              "branches": 95,
+              "functions": 91,
+              "lines": 98
+            }
           }
         }
       }

@@ -7,7 +7,7 @@
     "build": "ng build ngx-json-render && ng build ngx-json-render-material && ng build demo",
     "build:lib": "ng build ngx-json-render",
     "watch:lib": "ng build ngx-json-render --watch --configuration development",
-    "test": "ng test ngx-json-render && ng test demo && npm run test:material",
+    "test": "ng test ngx-json-render --coverage && ng test demo --coverage && npm run test:material",
     "build:material": "ng build ngx-json-render-material",
     "test:material": "node scripts/run-material-tests.mjs",
     "format": "prettier --write .",

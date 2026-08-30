@@ -14,6 +14,12 @@
  * or a genuine hang before the suite finishes — fails. A build failure fails
  * immediately rather than sitting out the timeout, because the builder keeps
  * running after it reports one.
+ *
+ * Coverage thresholds are checked here for the same reason. The builder
+ * enforces its own `coverageThresholds`, but only at the end of a run this
+ * script never lets finish, so the check would be killed before it happened.
+ * The thresholds are still read from angular.json rather than restated here,
+ * so all three projects declare them in one place.
  */
 
 import { spawn } from 'node:child_process';
@@ -25,6 +31,12 @@ import { join } from 'node:path';
 const TIMEOUT_MS = Number(process.env['MATERIAL_TEST_TIMEOUT_MS'] ?? 600_000);
 /** How often to look for it. */
 const POLL_MS = 500;
+/** How long to wait for coverage once the tests themselves have reported. */
+const COVERAGE_TIMEOUT_MS = 60_000;
+
+/** Where the builder puts a project's coverage, by convention. */
+const COVERAGE_SUMMARY =
+  'coverage/ngx-json-render-material/coverage-summary.json';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -118,6 +130,68 @@ function summarize(report) {
   return 0;
 }
 
+/** The thresholds this project declares in angular.json. */
+async function readThresholds() {
+  const workspace = JSON.parse(await readFile('angular.json', 'utf8'));
+  return (
+    workspace.projects['ngx-json-render-material'].architect.test.options
+      ?.coverageThresholds ?? {}
+  );
+}
+
+/** Read the coverage summary once it is present and completely written. */
+async function readCoverage() {
+  try {
+    const raw = await readFile(COVERAGE_SUMMARY, 'utf8');
+    if (!raw.trim()) return null;
+    const summary = JSON.parse(raw);
+    return summary.total?.statements ? summary.total : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Compare the run's coverage against the thresholds. Returns an exit code. */
+async function checkCoverage() {
+  const deadline = Date.now() + COVERAGE_TIMEOUT_MS;
+  let total = null;
+  while (!total && Date.now() < deadline) {
+    total = await readCoverage();
+    if (!total) await sleep(POLL_MS);
+  }
+
+  if (!total) {
+    console.error(`\nNo coverage summary at ${COVERAGE_SUMMARY}.`);
+    return 1;
+  }
+
+  const thresholds = await readThresholds();
+  const failures = [];
+  for (const [metric, min] of Object.entries(thresholds)) {
+    const pct = total[metric]?.pct;
+    // `perFile` is a flag rather than a percentage; skip anything unmeasured.
+    if (typeof pct !== 'number' || typeof min !== 'number') continue;
+    if (pct < min) failures.push(`${metric} ${pct}% < ${min}%`);
+  }
+
+  if (failures.length > 0) {
+    console.error('\nCoverage below threshold:');
+    for (const failure of failures) console.error(`  ✗ ${failure}`);
+    return 1;
+  }
+
+  console.log(
+    `Coverage: ${total.statements.pct}% statements, ${total.branches.pct}% branches.`,
+  );
+  return 0;
+}
+
+// A stale summary from an earlier run would be read as this run's result.
+await rm('coverage/ngx-json-render-material', {
+  recursive: true,
+  force: true,
+});
+
 const dir = await mkdtemp(join(tmpdir(), 'ngx-json-render-material-'));
 const reportPath = join(dir, 'report.json');
 
@@ -129,6 +203,8 @@ const child = spawn(
     'ngx-json-render-material',
     '--reporters=json',
     `--output-file=${reportPath}`,
+    '--coverage',
+    '--coverage-reporters=json-summary',
     '--watch=false',
   ],
   { stdio: ['ignore', 'pipe', 'pipe'], detached: true },
@@ -156,7 +232,10 @@ forward(child.stderr, process.stderr);
 // Set exitCode rather than calling process.exit(): the runner is detached, so
 // it has to be killed before this process goes away or it outlives the script.
 try {
-  process.exitCode = await run(child, reportPath, state);
+  const testCode = await run(child, reportPath, state);
+  // Only judge coverage on a green suite: a failing run's numbers say more
+  // about which tests died than about what the catalog covers.
+  process.exitCode = testCode === 0 ? await checkCoverage() : testCode;
 } finally {
   terminate(child);
   await rm(dir, { recursive: true, force: true });

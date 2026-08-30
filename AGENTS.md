@@ -45,13 +45,23 @@ are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 
 | Changed area                                         | Commands                                                                                                                                                                                                                                                              |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projects/ngx-json-render`                           | `npm run build:lib` then `npx ng test ngx-json-render`; when the public API changed, also `npm run build:material` and `npx ng build demo`                                                                                                                            |
+| `projects/ngx-json-render`                           | `npm run build:lib` then `npx ng test ngx-json-render --coverage`; when the public API changed, also `npm run build:material` and `npx ng build demo`                                                                                                                 |
 | `projects/ngx-json-render-material`                  | `npm run build:lib`, then `npm run build:material` — the build type-checks every catalog template — and `npm run test:material`                                                                                                                                       |
-| `projects/demo`                                      | `npm run build:lib` **and** `npm run build:material` — the demo's playground renders the Material catalog — then `npx ng test demo` and `npx ng build demo`. A stale `dist/` hides a missing build step locally; CI starts empty                                      |
+| `projects/demo`                                      | `npm run build:lib` **and** `npm run build:material` — the demo's playground renders the Material catalog — then `npx ng test demo --coverage` and `npx ng build demo`. A stale `dist/` hides a missing build step locally; CI starts empty                           |
 | Public API, exports or the JSON spec/contract        | The full `npm run build` and `npm test`, plus a read of the affected `README.md` — a contract change that the docs still describe the old way is not done                                                                                                             |
 | `package.json`, `package-lock.json`, Angular version | `npm ci` then the full `npm run build` and `npm test`; for an Angular-version change also `node scripts/angular-compat.mjs 20` in a throwaway checkout, mirroring the `angular-compat` CI job — it rewrites the workspace, so never run it in the user's working tree |
 | `.github/workflows/**`, release config               | Read the workflow diff against the matching `npm run` script; releases are tag-driven and publish to npm — never trigger one as verification                                                                                                                          |
 | Docs only (`README.md`, `docs/**`)                   | `git diff --check` and a link check; no build needed                                                                                                                                                                                                                  |
+
+Coverage: each project declares `coverageThresholds` in `angular.json`,
+scoped to its own sources by `coverageInclude`. They are only enforced when
+coverage is collected, which is why the test commands above pass `--coverage`
+and why `npm test` does too — run `ng test` without it and a regression passes
+silently. `npm run test:material` always collects it: the catalog's runner is
+killed before the builder's own threshold check would run, so
+`scripts/run-material-tests.mjs` reads the thresholds out of `angular.json`
+and checks them itself. Raise a threshold when a suite clears it with room;
+never lower one to make a red build green.
 
 Formatting: `npm run format:check` (config in `.prettierrc`, exclusions in
 `.prettierignore`). CI runs it, so a failure is something you introduced;
