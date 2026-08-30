@@ -35,6 +35,7 @@ export class StreamTab {
     fetch: recordedTransport({
       delayMs: LINE_DELAY_MS,
       fail: () => this.failNext(),
+      promptOf: (body) => String(body['prompt'] ?? ''),
       find: (prompt) => RECORDINGS.find((r) => r.prompt === prompt),
     }),
   });

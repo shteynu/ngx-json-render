@@ -13,15 +13,16 @@ import {
   type StateChange,
 } from 'ngx-json-render';
 import { registry } from './catalog/registry';
+import { ChatTab } from './chat/chat';
 import { Playground } from './playground/playground';
 import { StreamTab } from './streaming/streaming';
 import { dashboardSpec } from './specs/dashboard';
 
-type Tab = 'playground' | 'interactive' | 'streaming';
+type Tab = 'playground' | 'interactive' | 'streaming' | 'chat';
 
 @Component({
   selector: 'app-root',
-  imports: [JsonRenderer, Playground, StreamTab],
+  imports: [ChatTab, JsonRenderer, Playground, StreamTab],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

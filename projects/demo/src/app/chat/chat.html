@@ -1,0 +1,77 @@
+<p class="hint disclosure">
+  Recorded replies, real client: <code>injectChatUI</code> posts the whole
+  conversation and reads one stream carrying both prose and JSONL patches. Each
+  assistant message keeps the spec it generated.
+</p>
+
+<div class="layout">
+  <section class="pane">
+    <ol class="transcript">
+      @for (message of chat.messages(); track message.id) {
+        <li [class]="'turn ' + message.role">
+          <span
+            class="who"
+            >{{ message.role === 'user' ? 'You' : 'Assistant' }}</span
+          >
+          @if (message.text) {
+            <p class="text">{{ message.text }}</p>
+          }
+          @if (message.spec) {
+            <div class="generated">
+              <json-render
+                [spec]="message.spec"
+                [registry]="registry"
+                [loading]="chat.isStreaming()"
+              />
+            </div>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (chat.error(); as error) {
+      <p class="banner error">The reply failed: {{ error.message }}</p>
+    }
+
+    @if (chat.messages().length === 0 && !chat.error()) {
+      <p class="hint">Send one of the messages below to start.</p>
+    }
+  </section>
+
+  <aside class="pane side">
+    <section class="panel">
+      <h2>Say something</h2>
+      <div class="asks">
+        @for (exchange of exchanges; track exchange.ask) {
+          <button
+            type="button"
+            [disabled]="chat.isStreaming()"
+            (click)="ask(exchange)"
+          >
+            {{ exchange.label }}
+          </button>
+        }
+      </div>
+      <label class="toggle">
+        <input
+          type="checkbox"
+          [checked]="failNext()"
+          (change)="failNext.set(!failNext())"
+        />
+        Fail the next reply
+      </label>
+      <p class="hint status">
+        @if (chat.isStreaming()) {
+          Replying…
+        } @else {
+          {{ chat.messages().length }} messages in this conversation.
+        }
+      </p>
+      @if (chat.messages().length > 0) {
+        <button type="button" class="ghost" (click)="chat.clear()">
+          Clear conversation
+        </button>
+      }
+    </section>
+  </aside>
+</div>

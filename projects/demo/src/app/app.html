@@ -25,6 +25,13 @@
     >
       Streaming
     </button>
+    <button
+      type="button"
+      [class.active]="tab() === 'chat'"
+      (click)="tab.set('chat')"
+    >
+      Chat
+    </button>
   </nav>
 </header>
 
@@ -66,6 +73,8 @@
       </section>
     </aside>
   </main>
-} @else {
+} @else if (tab() === 'streaming') {
   <app-stream />
+} @else {
+  <app-chat />
 }

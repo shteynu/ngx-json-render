@@ -1,4 +1,7 @@
-import type { Recording } from '../specs/stream';
+/** Anything that carries a recorded response body. */
+interface Recorded {
+  readonly lines: readonly string[];
+}
 
 /** How the recorded server behaves for the next request. */
 export interface RecordedServer {
@@ -6,8 +9,14 @@ export interface RecordedServer {
   readonly delayMs: number;
   /** When true, answer with a 500 instead of a stream. */
   readonly fail: () => boolean;
+  /**
+   * Pull the prompt out of the request body. The two clients word it
+   * differently: `injectUIStream` sends `{ prompt }`, `injectChatUI` sends
+   * `{ messages: [{ role, content }] }`.
+   */
+  readonly promptOf: (body: Record<string, unknown>) => string;
   /** Pick the recording to replay for a prompt. */
-  readonly find: (prompt: string) => Recording | undefined;
+  readonly find: (prompt: string) => Recorded | undefined;
 }
 
 /** The abort a `fetch` raises when its signal fires. */
@@ -36,8 +45,11 @@ export function recordedTransport(
   server: RecordedServer,
 ): typeof globalThis.fetch {
   return async (_url, init) => {
-    const body = JSON.parse(String(init?.body ?? '{}')) as { prompt?: string };
-    const recording = server.find(body.prompt ?? '');
+    const body = JSON.parse(String(init?.body ?? '{}')) as Record<
+      string,
+      unknown
+    >;
+    const recording = server.find(server.promptOf(body));
 
     if (server.fail()) {
       return errorResponse(500, 'The model provider returned 503.');
