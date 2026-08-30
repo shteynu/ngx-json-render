@@ -235,4 +235,344 @@ describe('injectFieldValidation', () => {
     expect(validation.validateAll()).toBe(true);
     expect(validation.fieldStates()).toEqual({});
   });
+
+  it('marks the field touched through the returned handle', () => {
+    const { validation } = setup({ state: { email: '' } });
+
+    const field = TestBed.runInInjectionContext(() =>
+      injectFieldValidation('/email', REQUIRED),
+    );
+    TestBed.tick();
+
+    // This is the path a catalog field takes on blur, before anything has
+    // decided whether the value is valid.
+    field.touch();
+
+    expect(field.state().touched).toBe(true);
+    expect(field.state().validated).toBe(false);
+    expect(field.errors()).toEqual([]);
+  });
+
+  it('validates against nothing when the field has no config', () => {
+    const { validation } = setup({ state: { email: '' } });
+
+    const field = TestBed.runInInjectionContext(() =>
+      injectFieldValidation('/email'),
+    );
+    TestBed.tick();
+
+    // Nothing registered it, but the field is still a control someone can
+    // call validate() on; with no checks to run that is vacuously valid.
+    expect(field.validate().valid).toBe(true);
+    expect(validation.fieldStates()['/email'].validated).toBe(true);
+  });
+
+  it('follows a config that changes', () => {
+    const { validation } = setup({ state: { email: 'not-an-email' } });
+    // A catalog field passes its config as a getter over props, so this is
+    // the shape the renderer actually runs with.
+    const config = signal<ValidationConfig>({
+      checks: [{ type: 'required', message: 'Required' }],
+    });
+
+    const field = TestBed.runInInjectionContext(() =>
+      injectFieldValidation('/email', () => config()),
+    );
+    TestBed.tick();
+    expect(field.validate().valid).toBe(true);
+
+    config.set({
+      checks: [{ type: 'email', message: 'Not an email' }],
+    });
+    TestBed.tick();
+
+    expect(field.validate().valid).toBe(false);
+    expect(field.errors()).toEqual(['Not an email']);
+    // The re-registration has to reach validateForm too, not just the
+    // field's own validate().
+    expect(validation.validateAll()).toBe(false);
+  });
+});
+
+describe('registerField config changes', () => {
+  // registerField drops an incoming config it considers equal to the one it
+  // already holds. A wrong "equal" verdict is silent — the field simply keeps
+  // validating by the old rules — so each of these registers twice and then
+  // asserts validateAll ran the *second* config.
+
+  it('takes a new message for the same check', () => {
+    const { validation } = setup({ state: { email: '' } });
+
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'Old message' }],
+    });
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'New message' }],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/email'].result?.errors).toEqual([
+      'New message',
+    ]);
+  });
+
+  it('takes a new check type', () => {
+    const { validation } = setup({ state: { value: 'abc' } });
+
+    validation.registerField('/value', {
+      checks: [{ type: 'numeric', message: 'Not acceptable' }],
+    });
+    // 'abc' fails numeric but passes required: a stale config would still
+    // report the field as invalid.
+    validation.registerField('/value', {
+      checks: [{ type: 'required', message: 'Not acceptable' }],
+    });
+
+    expect(validation.validateAll()).toBe(true);
+  });
+
+  it('takes an added check', () => {
+    const { validation } = setup({ state: { email: 'not-an-email' } });
+
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'Required' }],
+    });
+    validation.registerField('/email', {
+      checks: [
+        { type: 'required', message: 'Required' },
+        { type: 'email', message: 'Not an email' },
+      ],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/email'].result?.errors).toEqual([
+      'Not an email',
+    ]);
+  });
+
+  it('takes a changed check argument', () => {
+    const { validation } = setup({ state: { pin: '1234' } });
+
+    validation.registerField('/pin', {
+      checks: [{ type: 'minLength', args: { min: 4 }, message: 'Too short' }],
+    });
+    // Only the argument moves; the type and the message are identical, so
+    // nothing but dynamicArgsEqual can tell these two configs apart.
+    validation.registerField('/pin', {
+      checks: [{ type: 'minLength', args: { min: 6 }, message: 'Too short' }],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/pin'].result?.errors).toEqual([
+      'Too short',
+    ]);
+  });
+
+  it('takes a changed state reference in a check argument', () => {
+    const { validation } = setup({
+      state: { password: 'secret', repeat: 'secret' },
+    });
+
+    validation.registerField('/repeat', {
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: { $state: '/password' } },
+          message: 'Must match',
+        },
+      ],
+    });
+    // Same shape, different path: /missing resolves to undefined, so the
+    // check that passed against /password now fails.
+    validation.registerField('/repeat', {
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: { $state: '/missing' } },
+          message: 'Must match',
+        },
+      ],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+  });
+
+  it('keeps validating when the same config is registered again', () => {
+    const { validation } = setup({
+      state: { password: 'secret', repeat: 'nope' },
+    });
+    const config: ValidationConfig = {
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: { $state: '/password' } },
+          message: 'Must match',
+        },
+      ],
+    };
+
+    validation.registerField('/repeat', config);
+    validation.registerField('/repeat', config);
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/repeat'].result?.errors).toEqual([
+      'Must match',
+    ]);
+  });
+
+  it('keeps validating when an equal config arrives as a fresh object', () => {
+    const { validation } = setup({
+      state: { password: 'secret', repeat: 'nope' },
+    });
+    // Props are recomputed into new objects on every pass, so a field
+    // re-registers a structurally identical config constantly. That has to
+    // stay a no-op rather than resetting anything.
+    const build = (): ValidationConfig => ({
+      validateOn: 'blur',
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: { $state: '/password' } },
+          message: 'Must match',
+        },
+      ],
+    });
+
+    validation.registerField('/repeat', build());
+    validation.registerField('/repeat', build());
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/repeat'].result?.errors).toEqual([
+      'Must match',
+    ]);
+  });
+
+  it('takes a config that drops a check argument', () => {
+    const { validation } = setup({ state: { repeat: 'secret' } });
+
+    validation.registerField('/repeat', {
+      checks: [
+        { type: 'equalTo', args: { other: 'secret' }, message: 'Must match' },
+      ],
+    });
+    // Losing `args` entirely leaves nothing to compare against, so the check
+    // that passed must now fail.
+    validation.registerField('/repeat', {
+      checks: [{ type: 'equalTo', message: 'Must match' }],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+  });
+
+  it('takes a config that adds a second check argument', () => {
+    const { validation } = setup({ state: { size: 5 } });
+
+    validation.registerField('/size', {
+      checks: [{ type: 'max', args: { max: 3 }, message: 'Out of range' }],
+    });
+    // The type and the message hold still and only the argument count moves,
+    // so the number of keys is the one thing that can separate these.
+    validation.registerField('/size', {
+      checks: [
+        { type: 'max', args: { max: 9, min: 0 }, message: 'Out of range' },
+      ],
+    });
+
+    expect(validation.validateAll()).toBe(true);
+  });
+
+  it('takes a changed argument that sits beside an unchanged one', () => {
+    const { validation } = setup({ state: { size: 5 } });
+
+    validation.registerField('/size', {
+      checks: [
+        { type: 'max', args: { min: 0, max: 3 }, message: 'Out of range' },
+      ],
+    });
+    // `min` is identical in both and `max` is not: the comparison has to walk
+    // past the first argument rather than stopping at it.
+    validation.registerField('/size', {
+      checks: [
+        { type: 'max', args: { min: 0, max: 9 }, message: 'Out of range' },
+      ],
+    });
+
+    expect(validation.validateAll()).toBe(true);
+  });
+
+  it('keeps validating when both configs share one arguments object', () => {
+    const { validation } = setup({ state: { pin: '12' } });
+    // Recomputed props can hand back a new check object wrapping the very
+    // same nested args, which is the one case the identity shortcut covers.
+    const args = { min: 4 };
+
+    validation.registerField('/pin', {
+      checks: [{ type: 'minLength', args, message: 'Too short' }],
+    });
+    validation.registerField('/pin', {
+      checks: [{ type: 'minLength', args, message: 'Too short' }],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/pin'].result?.errors).toEqual([
+      'Too short',
+    ]);
+  });
+
+  it('tells a state reference apart from a literal argument', () => {
+    const { validation } = setup({
+      state: { password: 'secret', repeat: 'secret' },
+    });
+
+    validation.registerField('/repeat', {
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: { $state: '/password' } },
+          message: 'Must match',
+        },
+      ],
+    });
+    // An object arg and a literal arg are never equal, whatever the object
+    // resolves to.
+    validation.registerField('/repeat', {
+      checks: [
+        {
+          type: 'equalTo',
+          args: { other: 'something else' },
+          message: 'Must match',
+        },
+      ],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+  });
+
+  it('registers a config that has no checks at all', () => {
+    const { validation } = setup({ state: { email: '' } });
+
+    validation.registerField('/email', {});
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'Required' }],
+    });
+
+    expect(validation.validateAll()).toBe(false);
+    expect(validation.fieldStates()['/email'].result?.errors).toEqual([
+      'Required',
+    ]);
+  });
+
+  it('takes a config that drops every check', () => {
+    const { validation } = setup({ state: { email: '' } });
+
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'Required' }],
+    });
+    // Emptying the checks has to take effect, or a field goes on failing
+    // against rules the spec no longer declares.
+    validation.registerField('/email', {});
+
+    expect(validation.validateAll()).toBe(true);
+    expect(validation.fieldStates()['/email'].result?.errors).toEqual([]);
+  });
 });
