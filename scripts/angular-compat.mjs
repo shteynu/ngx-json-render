@@ -27,7 +27,10 @@ for (const name of Object.keys(pkg.devDependencies)) {
 }
 if (major === '20') {
   // @angular/build@20 declares a peer of vitest ^3.1.1; vitest 4 fails ERESOLVE.
+  // The coverage provider peers on its own major, so it has to move with
+  // vitest — pinning one and not the other trades this conflict for that one.
   pkg.devDependencies.vitest = '^3.2.0';
+  pkg.devDependencies['@vitest/coverage-v8'] = '^3.2.0';
   pkg.devDependencies.typescript = '~5.8.0';
 }
 write('package.json', pkg);
@@ -43,6 +46,13 @@ if (major === '20') {
       buildTarget: 'demo:build',
       runner: 'vitest',
     };
+    // The v20 builder's schema rejects unknown options outright, and the
+    // coverage settings are v21-only. This job proves the library still
+    // compiles and passes on v20; the thresholds are enforced by the main
+    // job, which runs on the version the workspace actually pins.
+    delete test.options.coverageInclude;
+    delete test.options.coverageExclude;
+    delete test.options.coverageThresholds;
   }
   write('angular.json', ng);
 }
