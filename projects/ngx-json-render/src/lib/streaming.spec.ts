@@ -1076,3 +1076,359 @@ describe('applyPatch through a scalar', () => {
     expect(before.state).toEqual({ count: 3 });
   });
 });
+
+describe('injectChatUI errors and lifecycle', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function setupChat(options: Parameters<typeof injectChatUI>[0]) {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    return TestBed.runInInjectionContext(() => injectChatUI(options));
+  }
+
+  /** A failed response carrying `body`, which may or may not be JSON. */
+  function errorResponse(status: number, body: string): Response {
+    return new Response(body, { status });
+  }
+
+  it('sends nothing for a message that is only whitespace', async () => {
+    const transport = vi.fn(async () => streamResponse(['hi\n']));
+    const chat = setupChat({ api: '/api/chat', fetch: transport });
+
+    await chat.send('   ');
+    await chat.send('');
+
+    expect(transport).not.toHaveBeenCalled();
+    expect(chat.messages()).toEqual([]);
+  });
+
+  it('clears the conversation and the error with it', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => errorResponse(500, JSON.stringify({ message: 'no' })),
+    });
+
+    await chat.send('hello');
+    expect(chat.error()).not.toBeNull();
+
+    chat.clear();
+
+    expect(chat.messages()).toEqual([]);
+    expect(chat.error()).toBeNull();
+  });
+
+  it('takes the error message the server reports', async () => {
+    const onError = vi.fn();
+    const chat = setupChat({
+      api: '/api/chat',
+      onError,
+      fetch: async () =>
+        errorResponse(500, JSON.stringify({ message: 'model overloaded' })),
+    });
+
+    await chat.send('hello');
+
+    expect(chat.error()?.message).toBe('model overloaded');
+    expect(onError).toHaveBeenCalledWith(chat.error());
+    expect(chat.isStreaming()).toBe(false);
+  });
+
+  it('falls back to an `error` field when there is no `message`', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () =>
+        errorResponse(429, JSON.stringify({ error: 'rate limited' })),
+    });
+
+    await chat.send('hello');
+
+    expect(chat.error()?.message).toBe('rate limited');
+  });
+
+  it('falls back to the status when the error body is not JSON', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => errorResponse(502, '<html>Bad Gateway</html>'),
+    });
+
+    await chat.send('hello');
+
+    expect(chat.error()?.message).toBe('HTTP error: 502');
+  });
+
+  it('falls back to the status when the JSON says nothing useful', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => errorResponse(503, JSON.stringify({ detail: 'busy' })),
+    });
+
+    await chat.send('hello');
+
+    expect(chat.error()?.message).toBe('HTTP error: 503');
+  });
+
+  it('reports a response that arrives with no body', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => new Response(null, { status: 200 }),
+    });
+
+    await chat.send('hello');
+
+    expect(chat.error()?.message).toBe('No response body');
+  });
+
+  it('drops the empty assistant placeholder when the request fails', async () => {
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => errorResponse(500, JSON.stringify({ message: 'no' })),
+    });
+
+    await chat.send('hello');
+
+    // The user's turn stays — it is what they typed — but the assistant
+    // bubble never got any content and would render as an empty reply.
+    const messages = chat.messages();
+    expect(messages.length).toBe(1);
+    expect(messages[0].role).toBe('user');
+    expect(messages[0].text).toBe('hello');
+  });
+
+  it('keeps a partly streamed reply when the stream fails', async () => {
+    const open = openStream();
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => open.response,
+    });
+
+    const sent = chat.send('hello');
+    await tick();
+    open.push('Half an answer\n');
+    await tick();
+    open.fail(new Error('connection reset'));
+    await sent;
+
+    // Something was said, so the bubble stays rather than vanishing.
+    const assistant = chat.messages().at(-1);
+    expect(assistant?.role).toBe('assistant');
+    expect(assistant?.text).toBe('Half an answer');
+    expect(chat.error()?.message).toBe('connection reset');
+  });
+
+  it('hands onComplete the finished message', async () => {
+    const onComplete = vi.fn();
+    const chat = setupChat({
+      api: '/api/chat',
+      onComplete,
+      fetch: async () =>
+        streamResponse([
+          'All set\n',
+          '```spec\n',
+          '{"op":"add","path":"/root","value":"main"}\n',
+          '{"op":"add","path":"/state/count","value":2}\n',
+          '```\n',
+        ]),
+    });
+
+    await chat.send('build it');
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    const finished = onComplete.mock.calls[0][0];
+    expect(finished.role).toBe('assistant');
+    expect(finished.text).toBe('All set');
+    expect(finished.spec?.root).toBe('main');
+    // A spec that carries state has to survive the snapshot.
+    expect(finished.spec?.state).toEqual({ count: 2 });
+    expect(chat.messages().at(-1)?.spec?.state).toEqual({ count: 2 });
+  });
+
+  it('gives onComplete a null spec when the reply was only prose', async () => {
+    const onComplete = vi.fn();
+    const chat = setupChat({
+      api: '/api/chat',
+      onComplete,
+      fetch: async () => streamResponse(['Just talking\n']),
+    });
+
+    await chat.send('hello');
+
+    expect(onComplete.mock.calls[0][0].spec).toBeNull();
+  });
+
+  it('sends the whole conversation back on the next turn', async () => {
+    const bodies: unknown[] = [];
+    const replies = [
+      streamResponse(['First reply\n']),
+      streamResponse(['Second reply\n']),
+    ];
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async (_url, init) => {
+        bodies.push(JSON.parse(String((init as RequestInit).body)));
+        return replies.shift() as Response;
+      },
+    });
+
+    await chat.send('one');
+    await chat.send('two');
+
+    expect(bodies[0]).toEqual({ messages: [{ role: 'user', content: 'one' }] });
+    // The second turn carries the first exchange, and the new turn appears
+    // once rather than twice — the placeholder pair is filtered out first.
+    expect(bodies[1]).toEqual({
+      messages: [
+        { role: 'user', content: 'one' },
+        { role: 'assistant', content: 'First reply' },
+        { role: 'user', content: 'two' },
+      ],
+    });
+    expect(chat.messages().length).toBe(4);
+  });
+
+  it('gives every message an id without crypto.randomUUID', async () => {
+    const real = globalThis.crypto;
+    // Node and browsers both have randomUUID, but the helper carries a
+    // counter-based fallback for hosts that do not.
+    vi.stubGlobal('crypto', {
+      getRandomValues: real.getRandomValues.bind(real),
+    });
+
+    const chat = setupChat({
+      api: '/api/chat',
+      fetch: async () => streamResponse(['ok\n']),
+    });
+
+    await chat.send('hello');
+
+    const ids = chat.messages().map((message) => message.id);
+    expect(ids.length).toBe(2);
+    expect(ids[0]).toMatch(/^msg-\d+-\d+$/);
+    expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe('stream failures that are not Errors', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function setup() {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+  }
+
+  it('injectChatUI wraps a transport that throws something else', async () => {
+    setup();
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({
+        api: '/api/chat',
+        fetch: async () => {
+          // Not everything a transport can throw is an Error.
+          throw 'kaboom';
+        },
+      }),
+    );
+
+    await chat.send('hello');
+
+    expect(chat.error()).toBeInstanceOf(Error);
+    expect(chat.error()?.message).toBe('kaboom');
+  });
+
+  it('injectUIStream wraps a transport that throws something else', async () => {
+    setup();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({
+        api: '/api/generate',
+        fetch: async () => {
+          throw 'kaboom';
+        },
+      }),
+    );
+
+    await ui.send('go');
+
+    expect(ui.error()).toBeInstanceOf(Error);
+    expect(ui.error()?.message).toBe('kaboom');
+    expect(ui.isStreaming()).toBe(false);
+  });
+});
+
+describe('injectUIStream error responses', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function setupStream(fetch: typeof globalThis.fetch) {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    return TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', fetch }),
+    );
+  }
+
+  it('falls back to an `error` field when there is no `message`', async () => {
+    const ui = setupStream(
+      async () =>
+        new Response(JSON.stringify({ error: 'rate limited' }), {
+          status: 429,
+        }),
+    );
+
+    await ui.send('go');
+
+    expect(ui.error()?.message).toBe('rate limited');
+  });
+
+  it('falls back to the status when the error body is not JSON', async () => {
+    const ui = setupStream(
+      async () => new Response('<html>Bad Gateway</html>', { status: 502 }),
+    );
+
+    await ui.send('go');
+
+    expect(ui.error()?.message).toBe('HTTP error: 502');
+  });
+
+  it('falls back to the status when the JSON says nothing useful', async () => {
+    const ui = setupStream(
+      async () =>
+        new Response(JSON.stringify({ detail: 'busy' }), { status: 503 }),
+    );
+
+    await ui.send('go');
+
+    expect(ui.error()?.message).toBe('HTTP error: 503');
+  });
+
+  it('reports a response that arrives with no body', async () => {
+    const ui = setupStream(async () => new Response(null, { status: 200 }));
+
+    await ui.send('go');
+
+    expect(ui.error()?.message).toBe('No response body');
+  });
+
+  it('applies a last line that arrives without a trailing newline', async () => {
+    const ui = setupStream(async () =>
+      streamResponse([
+        '{"op":"add","path":"/root","value":"main"}\n',
+        // No trailing newline: this one only ever reaches the parser when
+        // the buffer is flushed at the end of the stream.
+        '{"op":"add","path":"/elements/main","value":{"type":"Text","props":{}}}',
+      ]),
+    );
+
+    await ui.send('go');
+
+    expect(ui.spec()?.root).toBe('main');
+    expect(Object.keys(ui.spec()?.elements ?? {})).toEqual(['main']);
+    expect(ui.rawLines().length).toBe(2);
+  });
+});
