@@ -36,8 +36,11 @@ jobs:
       - name: Build library
         run: npm run build:lib
 
+      # --coverage is what turns on the coverageThresholds in angular.json;
+      # without it this gate is weaker than the one CI already applied to the
+      # same commit, which is the wrong way round for the step that publishes.
       - name: Test library
-        run: npx ng test ngx-json-render
+        run: npx ng test ngx-json-render --coverage
 
       - name: Copy LICENSE into package
         run: cp LICENSE dist/ngx-json-render/
