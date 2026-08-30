@@ -5,8 +5,8 @@
 - Branch: `feat/playground-chat`
 - Base branch: `main`
 - Base commit: 8109b81
-- Current HEAD: 8109b81 (work uncommitted in the worktree)
-- Status: implemented, verified — not committed
+- Current HEAD: `8bf7df3` on `main` — the branch was merged and deleted
+- Status: implemented, verified
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
@@ -119,6 +119,6 @@ demo test and build.
 
 ## Next concrete step
 
-Commit on this branch. Step 5, bring-your-own-key, is the last one in the plan:
-both tabs now take their transport the same way, so it should swap the
+Nothing on this branch. Step 5, bring-your-own-key, is the last one in the
+plan: both tabs now take their transport the same way, so it should swap the
 transport rather than add a third code path.
