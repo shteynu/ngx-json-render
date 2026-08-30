@@ -522,18 +522,18 @@ describe('applyPatch operations and paths', () => {
   });
 
   it('removes a single prop and leaves the element its other props', () => {
-    const after = applyPatch(seed(), {
+    const before = seed();
+    const after = applyPatch(before, {
       op: 'remove',
       path: '/elements/leaf/props/tone',
     });
 
     expect(after.elements['leaf'].props).toEqual({ content: 'body' });
     expect(after.elements['leaf'].type).toBe('Text');
-    // NOTE: the input spec is deliberately not asserted here. applyPatch
-    // copies only one level deep, so a patch below an element or below a
-    // top-level state key writes through into the caller's object. That is a
-    // defect, not a contract — see the immutability tests above, which cover
-    // the depths that do hold today.
+    expect(before.elements['leaf'].props).toEqual({
+      content: 'body',
+      tone: 'muted',
+    });
   });
 
   it('ignores a remove aimed at an element that is not there', () => {
@@ -901,5 +901,178 @@ describe('injectUIStream line parsing', () => {
 
     expect(ui.spec()?.root).toBe('fresh');
     expect(ui.spec()?.elements).toEqual({});
+  });
+});
+
+describe('applyPatch leaves its input alone', () => {
+  // applyPatch copies every node a patch descends through and shares the
+  // rest. These pin the copying down at each depth a patch can reach: a
+  // caller who keeps a spec — a previousSpec handed to send(), a snapshot
+  // taken off the spec signal for undo or a diff view — must never see it
+  // change underneath them.
+
+  it('at a top-level state key', () => {
+    const before = { root: 'a', state: { count: 1 }, elements: {} } as Spec;
+    applyPatch(before, { op: 'replace', path: '/state/count', value: 2 });
+
+    expect(before.state).toEqual({ count: 1 });
+  });
+
+  it('at a nested state key, on set and on remove', () => {
+    const before = {
+      root: 'a',
+      state: { user: { name: 'Ada', age: 36 } },
+      elements: {},
+    } as unknown as Spec;
+
+    applyPatch(before, {
+      op: 'replace',
+      path: '/state/user/name',
+      value: 'Grace',
+    });
+    applyPatch(before, { op: 'remove', path: '/state/user/age' });
+
+    expect(before.state).toEqual({ user: { name: 'Ada', age: 36 } });
+  });
+
+  it('at an element prop, on set and on remove', () => {
+    const before = {
+      root: 'a',
+      elements: { a: { type: 'Text', props: { x: 1, y: 2 } } },
+    } as unknown as Spec;
+
+    applyPatch(before, {
+      op: 'replace',
+      path: '/elements/a/props/x',
+      value: 9,
+    });
+    applyPatch(before, { op: 'remove', path: '/elements/a/props/y' });
+
+    expect(before.elements['a'].props).toEqual({ x: 1, y: 2 });
+  });
+
+  it('inside an array', () => {
+    const before = {
+      root: 'a',
+      state: { todos: [{ done: false }] },
+      elements: { a: { type: 'Box', props: {}, children: ['x'] } },
+    } as unknown as Spec;
+
+    applyPatch(before, {
+      op: 'add',
+      path: '/elements/a/children/1',
+      value: 'y',
+    });
+    applyPatch(before, {
+      op: 'replace',
+      path: '/state/todos/0/done',
+      value: true,
+    });
+
+    expect(before.elements['a'].children).toEqual(['x']);
+    expect(before.state).toEqual({ todos: [{ done: false }] });
+  });
+
+  it('through a move and a copy', () => {
+    const before = {
+      root: 'a',
+      state: { user: { name: 'Ada' } },
+      elements: { a: { type: 'Text', props: { x: 1 } } },
+    } as unknown as Spec;
+
+    applyPatch(before, {
+      op: 'move',
+      from: '/state/user/name',
+      path: '/state/moved',
+    });
+    applyPatch(before, {
+      op: 'copy',
+      from: '/elements/a',
+      path: '/elements/clone',
+    });
+
+    expect(before.state).toEqual({ user: { name: 'Ada' } });
+    expect(Object.keys(before.elements)).toEqual(['a']);
+  });
+
+  it('shares the parts a patch never touches', () => {
+    const before = {
+      root: 'a',
+      state: { kept: { deep: true } },
+      elements: {
+        a: { type: 'Text', props: { x: 1 } },
+        untouched: { type: 'Box', props: {}, children: [] },
+      },
+    } as unknown as Spec;
+
+    const after = applyPatch(before, {
+      op: 'replace',
+      path: '/elements/a/props/x',
+      value: 2,
+    });
+
+    // Structural sharing is the point: only the path that was written gets
+    // new objects, so a patch costs its depth rather than the whole spec.
+    expect(after.elements['untouched']).toBe(before.elements['untouched']);
+    expect(after.state?.['kept']).toBe(before.state?.['kept']);
+    expect(after.elements['a']).not.toBe(before.elements['a']);
+    expect(after.elements['a'].props).not.toBe(before.elements['a'].props);
+  });
+
+  it('keeps earlier specs stable as a stream applies patch after patch', () => {
+    const first = applyPatch(
+      {
+        root: 'a',
+        elements: { a: { type: 'Text', props: { n: 0 } } },
+      } as unknown as Spec,
+      { op: 'replace', path: '/elements/a/props/n', value: 1 },
+    );
+    const second = applyPatch(first, {
+      op: 'replace',
+      path: '/elements/a/props/n',
+      value: 2,
+    });
+
+    // A consumer that snapshotted `first` still sees 1, and got no signal
+    // telling it otherwise because the object never changed identity.
+    expect(first.elements['a'].props).toEqual({ n: 1 });
+    expect(second.elements['a'].props).toEqual({ n: 2 });
+  });
+});
+
+describe('applyPatch through a scalar', () => {
+  it('replaces a scalar that a path tries to descend through', () => {
+    const before = {
+      root: 'a',
+      elements: { a: { type: 'Text', props: { meta: 7 } } },
+    } as unknown as Spec;
+
+    // A model can address a path below something that is not an object.
+    // setByPath overwrites it, and there is nothing of the caller's beneath
+    // it to preserve — but the element above it still has to be copied.
+    const after = applyPatch(before, {
+      op: 'replace',
+      path: '/elements/a/props/meta/nested',
+      value: 1,
+    });
+
+    expect(after.elements['a'].props).toEqual({ meta: { nested: 1 } });
+    expect(before.elements['a'].props).toEqual({ meta: 7 });
+  });
+
+  it('ignores a remove below a scalar', () => {
+    const before = {
+      root: 'a',
+      state: { count: 3 },
+      elements: {},
+    } as unknown as Spec;
+
+    const after = applyPatch(before, {
+      op: 'remove',
+      path: '/state/count/nested',
+    });
+
+    expect(after.state).toEqual({ count: 3 });
+    expect(before.state).toEqual({ count: 3 });
   });
 });

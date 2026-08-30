@@ -69,6 +69,50 @@ function parseLine(line: string): ParsedLine {
 }
 
 /**
+ * Split a JSON Pointer into its segments, undoing RFC 6901's escapes.
+ *
+ * `@json-render/core` parses pointers the same way for `setByPath` and
+ * friends but does not export the helper, so {@link copyAlongPath} carries
+ * its own copy. The two must agree on where a path descends, or a write would
+ * land on a node that was never copied.
+ */
+function parseJsonPointer(path: string): string[] {
+  const raw = path.startsWith('/') ? path.slice(1).split('/') : path.split('/');
+  return raw.map((token) => token.replace(/~1/g, '/').replace(/~0/g, '~'));
+}
+
+/**
+ * Replace every node `path` descends through with a shallow copy of itself.
+ *
+ * `root` must already be private to the caller. Afterwards a mutating write
+ * along that same path — `setByPath`, `removeByPath` — only ever touches
+ * nodes nobody else is holding, while everything off the path stays shared.
+ * That keeps a patch proportional to the depth of its path rather than to the
+ * size of the spec, which matters when a stream applies hundreds of them.
+ *
+ * Descent stops at anything that is not an object: `setByPath` overwrites
+ * such a node outright, and one that does not exist yet is created fresh, so
+ * in neither case is there anything of the caller's left to protect.
+ */
+function copyAlongPath(root: Record<string, unknown>, path: string): void {
+  const segments = parseJsonPointer(path);
+  let current = root;
+
+  // The final segment is written, not descended into, so it needs no copy.
+  for (let i = 0; i < segments.length - 1; i++) {
+    const segment = segments[i];
+    const child = current[segment];
+    if (child === null || typeof child !== 'object') return;
+
+    const copy = Array.isArray(child)
+      ? [...child]
+      : { ...(child as Record<string, unknown>) };
+    current[segment] = copy;
+    current = copy as unknown as Record<string, unknown>;
+  }
+}
+
+/**
  * Set a value at a spec path (for add/replace operations).
  */
 function setSpecValue(newSpec: Spec, path: string, value: unknown): void {
@@ -85,7 +129,9 @@ function setSpecValue(newSpec: Spec, path: string, value: unknown): void {
   if (path.startsWith('/state/')) {
     if (!newSpec.state) newSpec.state = {};
     const statePath = path.slice('/state'.length); // e.g. "/posts"
-    setByPath(newSpec.state as Record<string, unknown>, statePath, value);
+    const state = newSpec.state as Record<string, unknown>;
+    copyAlongPath(state, statePath);
+    setByPath(state, statePath, value);
     return;
   }
 
@@ -100,13 +146,10 @@ function setSpecValue(newSpec: Spec, path: string, value: unknown): void {
       const element = newSpec.elements[elementKey];
       if (element) {
         const propPath = '/' + pathParts.slice(1).join('/');
-        const newElement = { ...element };
-        setByPath(
-          newElement as unknown as Record<string, unknown>,
-          propPath,
-          value,
-        );
-        newSpec.elements[elementKey] = newElement;
+        const newElement = { ...element } as unknown as Record<string, unknown>;
+        copyAlongPath(newElement, propPath);
+        setByPath(newElement, propPath, value);
+        newSpec.elements[elementKey] = newElement as unknown as UIElement;
       }
     }
   }
@@ -123,7 +166,9 @@ function removeSpecValue(newSpec: Spec, path: string): void {
 
   if (path.startsWith('/state/') && newSpec.state) {
     const statePath = path.slice('/state'.length);
-    removeByPath(newSpec.state as Record<string, unknown>, statePath);
+    const state = newSpec.state as Record<string, unknown>;
+    copyAlongPath(state, statePath);
+    removeByPath(state, statePath);
     return;
   }
 
@@ -139,12 +184,10 @@ function removeSpecValue(newSpec: Spec, path: string): void {
       const element = newSpec.elements[elementKey];
       if (element) {
         const propPath = '/' + pathParts.slice(1).join('/');
-        const newElement = { ...element };
-        removeByPath(
-          newElement as unknown as Record<string, unknown>,
-          propPath,
-        );
-        newSpec.elements[elementKey] = newElement;
+        const newElement = { ...element } as unknown as Record<string, unknown>;
+        copyAlongPath(newElement, propPath);
+        removeByPath(newElement, propPath);
+        newSpec.elements[elementKey] = newElement as unknown as UIElement;
       }
     }
   }
