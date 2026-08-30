@@ -11,24 +11,21 @@ import {
   JsonRenderer,
   type Spec,
   type StateChange,
-  applyPatch,
 } from 'ngx-json-render';
 import { registry } from './catalog/registry';
 import { Playground } from './playground/playground';
+import { StreamTab } from './streaming/streaming';
 import { dashboardSpec } from './specs/dashboard';
-import { STREAM_LINES } from './specs/stream';
 
 type Tab = 'playground' | 'interactive' | 'streaming';
 
 @Component({
   selector: 'app-root',
-  imports: [JsonRenderer, Playground],
+  imports: [JsonRenderer, Playground, StreamTab],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
-  private readonly destroyRef = inject(DestroyRef);
-
   readonly registry = registry;
   readonly tab = signal<Tab>('playground');
 
@@ -85,45 +82,5 @@ export class App {
 
   private pushLog(entry: string): void {
     this.log.update((prev) => [entry, ...prev].slice(0, 14));
-  }
-
-  // --- Streaming demo --------------------------------------------------------
-
-  readonly streamSpec = signal<Spec>({ root: '', elements: {} });
-  readonly streamedLines = signal<string[]>([]);
-  readonly playing = signal(false);
-  private streamTimer: ReturnType<typeof setTimeout> | null = null;
-
-  constructor() {
-    this.destroyRef.onDestroy(() => this.stopStream());
-  }
-
-  replayStream(): void {
-    this.stopStream();
-    this.streamSpec.set({ root: '', elements: {} });
-    this.streamedLines.set([]);
-    this.playing.set(true);
-
-    let index = 0;
-    const step = () => {
-      if (index >= STREAM_LINES.length) {
-        this.playing.set(false);
-        this.streamTimer = null;
-        return;
-      }
-      const line = STREAM_LINES[index++];
-      this.streamedLines.update((prev) => [...prev, line]);
-      this.streamSpec.update((spec) => applyPatch(spec, JSON.parse(line)));
-      this.streamTimer = setTimeout(step, 300);
-    };
-    step();
-  }
-
-  private stopStream(): void {
-    if (this.streamTimer !== null) {
-      clearTimeout(this.streamTimer);
-      this.streamTimer = null;
-    }
-    this.playing.set(false);
   }
 }

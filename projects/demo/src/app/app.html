@@ -67,42 +67,5 @@
     </aside>
   </main>
 } @else {
-  <main class="layout">
-    <section class="pane">
-      <div class="stream-controls">
-        <button type="button" class="replay" (click)="replayStream()">
-          {{ playing() ? 'Streaming…' : '▶ Replay stream' }}
-        </button>
-        @if (!playing() && streamedLines().length > 0) {
-          <span class="hint"
-            >Done — {{ streamedLines().length }} patches applied.</span
-          >
-        }
-      </div>
-      @if (streamedLines().length === 0) {
-        <p class="hint">
-          Press replay to feed a prerecorded LLM patch stream (RFC 6902 JSONL)
-          into the renderer, one line at a time.
-        </p>
-      }
-      <json-render
-        [spec]="streamSpec()"
-        [registry]="registry"
-        [loading]="playing()"
-      />
-    </section>
-    <aside class="pane side">
-      <section class="panel">
-        <h2>SpecStream</h2>
-        <p class="hint">
-          Each line is a JSON Patch op; the spec (and the UI) builds up as lines
-          arrive.
-        </p>
-        <pre
-          class="code stream-log"
-        >@for (line of streamedLines(); track $index) {{{ line }}
-}</pre>
-      </section>
-    </aside>
-  </main>
+  <app-stream />
 }

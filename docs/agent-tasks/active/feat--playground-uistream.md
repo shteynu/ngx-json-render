@@ -2,12 +2,11 @@
 
 ## Metadata
 
-- Branch: feat/playground-uistream (not created yet)
-- Base branch: main
-- Base commit: to be set when the branch is cut — take it from
-  `feat/playground-editor` once that merges, or from `main` if it has not
-- Current HEAD: n/a
-- Status: not started
+- Branch: `feat/playground-uistream`
+- Base branch: `main`
+- Base commit: 76e7b82
+- Current HEAD: 76e7b82 (work uncommitted in the worktree)
+- Status: implemented, verified — not committed
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
@@ -108,25 +107,42 @@ recording and already has the right shape; it has no usage line yet.
 
 ## Completed
 
-- (nothing)
+- Streaming tab extracted into `projects/demo/src/app/streaming/`, driven by
+  `injectUIStream` against `recordedTransport` — a `fetch`-shaped function that
+  replays a recording, honours the abort signal and can answer 500 on demand.
+- `specs/stream.ts` reshaped into `RECORDINGS`: the original weekly report plus
+  an onboarding checklist, each ending in a `__meta: "usage"` line.
+- The tab surfaces `spec`, `isStreaming`, `rawLines`, `usage` and `error`, and
+  says plainly that the generations are recorded.
+- `App` no longer applies patches itself; the hand-rolled replay and its CSS
+  are gone.
 
 ## Remaining
 
-- Everything in Scope.
+- Review and commit.
 
 ## Verification evidence
 
 ### Passed
 
-- (none yet)
+- `npx ng test demo` — 13 passed (4 new): recorded generation end to end with
+  the global `fetch` untouched, usage line, failure then recovery, and a
+  supersede that keeps `isStreaming` true and leaves nothing of the first
+  generation behind.
+- `npx ng build demo` and `npm run format:check` — clean.
+- Browser check at localhost:4200: patches land progressively (2 → 6 → 11),
+  switching prompts mid-stream restarts cleanly with no console errors, the
+  finished run reports "1284 prompt + 388 completion = 1672 tokens", the
+  repeat/`$bindItem` checklist renders, and the failure toggle shows
+  "Generation failed: The model provider returned 503." from the JSON body.
 
 ### Failed
 
-- (none yet)
+- (none)
 
 ### Blocked or not run
 
-- All checks — not started.
+- Library and Material suites — untouched by this task.
 
 ## Known risks
 
@@ -135,5 +151,6 @@ recording and already has the right shape; it has no usage line yet.
 
 ## Next concrete step
 
-Cut `feat/playground-uistream` once the transport change has landed, and build
-the Streaming tab on `injectUIStream` with a recorded transport.
+Commit on this branch. Step 3 of the plan — a preset whose patches are broken,
+so the demo shows a bad generation degrading instead of blanking — is the next
+task, and the Spec check panel from step 1 already has the vocabulary for it.

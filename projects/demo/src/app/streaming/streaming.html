@@ -1,0 +1,76 @@
+<div class="prompt-bar">
+  <span class="label">Prompt</span>
+  <div class="switch">
+    @for (recording of recordings; track recording.prompt) {
+      <button
+        type="button"
+        [class.active]="prompt() === recording.prompt"
+        (click)="generate(recording.prompt)"
+      >
+        {{ recording.label }}
+      </button>
+    }
+  </div>
+  <label class="toggle">
+    <input
+      type="checkbox"
+      [checked]="failNext()"
+      (change)="failNext.set(!failNext())"
+    />
+    Fail the next request
+  </label>
+</div>
+
+<p class="hint disclosure">
+  These are recorded generations, not a live model. The client is real:
+  <code>injectUIStream</code> POSTs the prompt, reads the JSONL patch stream and
+  applies each line as it arrives. Pick the other prompt mid-stream to see the
+  first generation superseded.
+</p>
+
+<div class="layout">
+  <section class="pane">
+    @if (ui.error(); as error) {
+      <p class="banner error">Generation failed: {{ error.message }}</p>
+    }
+    @if (!hasOutput() && !ui.isStreaming() && !ui.error()) {
+      <p class="hint">Pick a prompt to generate a UI.</p>
+    }
+    <json-render
+      [spec]="ui.spec()"
+      [registry]="registry"
+      [loading]="ui.isStreaming()"
+    />
+  </section>
+
+  <aside class="pane side">
+    <section class="panel">
+      <h2>Stream</h2>
+      <p class="status">
+        @if (ui.isStreaming()) {
+          <span class="dot streaming"></span> streaming —
+          {{ ui.rawLines().length }} patches so far
+        } @else if (ui.error()) {
+          <span class="dot failed"></span> failed
+        } @else if (hasOutput()) {
+          <span class="dot done"></span> done —
+          {{ ui.rawLines().length }} patches applied
+        } @else {
+          <span class="dot idle"></span> idle
+        }
+      </p>
+      @if (ui.usage(); as usage) {
+        <p class="hint usage">
+          {{ usage.promptTokens }} prompt +
+          {{ usage.completionTokens }} completion =
+          {{ usage.totalTokens }} tokens, reported by the
+          <code>__meta</code> line.
+        </p>
+      }
+      <pre
+        class="code stream-log"
+      >@for (line of ui.rawLines(); track $index) {{{ line }}
+}</pre>
+    </section>
+  </aside>
+</div>
