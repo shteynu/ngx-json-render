@@ -5,8 +5,9 @@
 - Branch: `feat/playground-bad-generation`
 - Base branch: `main`
 - Base commit: 9064475
-- Current HEAD: 5625b56 — the second commit is not made yet
-- Status: implemented, verified — the broken recording is uncommitted
+- Current HEAD: `5625b56` and `8482411` on `main` — the branch was merged and
+  deleted
+- Status: implemented, verified
 - Last updated: 2026-08-30
 - Last agent/tool: Claude Opus 5 / Claude Code
 
@@ -143,6 +144,6 @@ Failure modes worth recording, drawn from the rules `schema.ts` spends its
 
 ## Next concrete step
 
-Commit the broken recording and the streaming-tab wiring; 5625b56 already has
-the extraction. Then step 4, the chat tab on `injectChatUI` — which has had a
-transport option since 2345615.
+Nothing on this branch. Step 4 is the chat tab on `injectChatUI`, which has had
+a transport option since 2345615; step 5, bring-your-own-key, is the last one
+in the plan.
