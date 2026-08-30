@@ -458,7 +458,9 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
  * and parent-child relationships are expressed through children arrays.
  */
 export function flatToTree(elements: FlatElement[]): Spec {
-  const elementMap: Record<string, UIElement> = {};
+  // The map is what gives every element its children array, so the second
+  // pass can push into one without checking for it.
+  const elementMap: Record<string, UIElement & { children: string[] }> = {};
   let root = '';
 
   // First pass: add all elements to map
@@ -476,9 +478,6 @@ export function flatToTree(elements: FlatElement[]): Spec {
     if (element.parentKey) {
       const parent = elementMap[element.parentKey];
       if (parent) {
-        if (!parent.children) {
-          parent.children = [];
-        }
         parent.children.push(element.key);
       }
     } else {
