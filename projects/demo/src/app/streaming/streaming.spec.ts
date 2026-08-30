@@ -33,6 +33,14 @@ function rendered(fixture: ComponentFixture<StreamTab>): string {
   return pane?.textContent ?? '';
 }
 
+/** Text of the spec-check panel. */
+function checkText(fixture: ComponentFixture<StreamTab>): string {
+  const el = (fixture.nativeElement as HTMLElement).querySelector(
+    'app-spec-check',
+  );
+  return el?.textContent ?? '';
+}
+
 /** Wait until the stream settles, with a bound so a hang fails the test. */
 async function drain(fixture: ComponentFixture<StreamTab>) {
   const ui = fixture.componentInstance.ui;
@@ -97,6 +105,60 @@ describe('StreamTab', () => {
 
     expect(fixture.componentInstance.ui.error()).toBeNull();
     expect(rendered(fixture)).toContain('Getting started');
+  });
+
+  it('renders around a bad generation instead of blanking', async () => {
+    const fixture = await render();
+    const broken = RECORDINGS[2];
+
+    fixture.componentInstance.generate(broken.prompt);
+    await drain(fixture);
+
+    const ui = fixture.componentInstance.ui;
+    const shown = rendered(fixture);
+
+    expect(ui.error()).toBeNull();
+    // The truncated line is skipped, not fatal: every other patch applied.
+    expect(ui.rawLines().length).toBe(broken.lines.length - 2);
+
+    // The sound parts of the page are on screen.
+    expect(shown).toContain('Pricing');
+    expect(shown).toContain('$0');
+    expect(shown).toContain('$19');
+    expect(shown).toContain('Choose Pro');
+    // And so is the card whose child went missing — minus that child.
+    expect(shown).toContain('$49');
+    // The component this catalog does not have renders nothing.
+    expect(shown).not.toContain('PricingTable');
+  });
+
+  it('holds the check until the stream finishes', async () => {
+    const fixture = await render();
+    fixture.componentInstance.generate(RECORDINGS[2].prompt);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await settle(fixture);
+
+    expect(fixture.componentInstance.ui.isStreaming()).toBe(true);
+    const check = checkText(fixture);
+    // Children that simply have not streamed in yet are not defects.
+    expect(check).toContain('Checking when the stream finishes');
+    expect(check).not.toContain('does not exist in the elements map');
+
+    await drain(fixture);
+  });
+
+  it('names what is wrong with a bad generation', async () => {
+    const fixture = await render();
+    fixture.componentInstance.generate(RECORDINGS[2].prompt);
+    await drain(fixture);
+
+    const check = checkText(fixture);
+    // The child that was promised and never emitted.
+    expect(check).toContain('team-note');
+    // The component the catalog does not define.
+    expect(check).toContain('"PricingTable" is not in this catalog');
+    // `visible` written inside props, where the renderer never looks.
+    expect(check).toContain('pro-badge');
   });
 
   it('supersedes a generation that is still streaming', async () => {

@@ -12,6 +12,8 @@ export interface Recording {
   readonly label: string;
   /** Response body, one line at a time. */
   readonly lines: readonly string[];
+  /** Shown alongside the run when the recording is deliberately flawed. */
+  readonly note?: string;
 }
 
 const WEEKLY_REPORT: readonly string[] = [
@@ -49,6 +51,35 @@ const ONBOARDING: readonly string[] = [
   '{"__meta":"usage","promptTokens":1284,"completionTokens":388,"totalTokens":1672}',
 ];
 
+/**
+ * A generation that went wrong, in the ways `schema.ts` spends its rules
+ * warning models about. Most of the page still renders — that is the point.
+ */
+const BROKEN_PRICING: readonly string[] = [
+  '{"op":"add","path":"/root","value":"root"}',
+  '{"op":"add","path":"/elements/root","value":{"type":"Stack","props":{"gap":16},"children":["title","intro","plans","note-card"]}}',
+  '{"op":"add","path":"/elements/title","value":{"type":"Heading","props":{"content":"Pricing","level":1},"children":[]}}',
+  '{"op":"add","path":"/elements/intro","value":{"type":"Text","props":{"content":"Three plans. The two on the left came out fine.","tone":"muted"},"children":[]}}',
+  '{"op":"add","path":"/elements/plans","value":{"type":"Stack","props":{"direction":"horizontal","gap":10},"children":["plan-free","plan-pro","plan-team"]}}',
+  '{"op":"add","path":"/elements/plan-free","value":{"type":"Card","props":{"title":"Free"},"children":["free-price","free-cta"]}}',
+  '{"op":"add","path":"/elements/free-price","value":{"type":"Metric","props":{"label":"Monthly","value":"$0"},"children":[]}}',
+  '{"op":"add","path":"/elements/free-cta","value":{"type":"Button","props":{"label":"Choose Free","variant":"secondary"},"children":[]}}',
+  '{"op":"add","path":"/elements/plan-pro","value":{"type":"Card","props":{"title":"Pro"},"children":["pro-price","pro-badge","pro-cta"]}}',
+  '{"op":"add","path":"/elements/pro-price","value":{"type":"Metric","props":{"label":"Monthly","value":"$19"},"children":[]}}',
+  // The model put `visible` inside props, where the renderer never looks.
+  '{"op":"add","path":"/elements/pro-badge","value":{"type":"Badge","props":{"label":"Most popular","color":"green","visible":true},"children":[]}}',
+  '{"op":"add","path":"/elements/pro-cta","value":{"type":"Button","props":{"label":"Choose Pro","variant":"primary"},"children":[]}}',
+  // A line that got truncated in transit: parseLine skips it and reads on.
+  '{"op":"add","path":"/elements/plan-team","value":{"type":"Card","props":{"ti',
+  // The Team card promises a child the model never emitted.
+  '{"op":"add","path":"/elements/plan-team","value":{"type":"Card","props":{"title":"Team"},"children":["team-price","team-note"]}}',
+  '{"op":"add","path":"/elements/team-price","value":{"type":"Metric","props":{"label":"Monthly","value":"$49"},"children":[]}}',
+  '{"op":"add","path":"/elements/note-card","value":{"type":"Card","props":{"title":"Compare plans"},"children":["comparison"]}}',
+  // PricingTable is not in this catalog; the renderer skips it and warns.
+  '{"op":"add","path":"/elements/comparison","value":{"type":"PricingTable","props":{"plans":3},"children":[]}}',
+  '{"__meta":"usage","promptTokens":1284,"completionTokens":501,"totalTokens":1785}',
+];
+
 export const RECORDINGS: readonly Recording[] = [
   {
     prompt: 'A weekly report for the platform team',
@@ -59,5 +90,15 @@ export const RECORDINGS: readonly Recording[] = [
     prompt: 'An onboarding checklist for a new user',
     label: 'Onboarding checklist',
     lines: ONBOARDING,
+  },
+  {
+    prompt: 'A pricing page with three plans',
+    label: 'A bad generation',
+    lines: BROKEN_PRICING,
+    note:
+      'This recording is deliberately flawed: one card asks for a child that ' +
+      'was never emitted, a badge puts `visible` inside `props`, a component ' +
+      'is not in the catalog, and one line arrived truncated. Nothing throws — ' +
+      'the rest of the page renders and the check names the damage.',
   },
 ];

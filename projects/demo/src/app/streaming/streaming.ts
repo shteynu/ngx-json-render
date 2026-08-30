@@ -1,6 +1,8 @@
 import { Component, computed, signal } from '@angular/core';
 import { JsonRenderer, injectUIStream } from 'ngx-json-render';
+import { catalog } from '../catalog/catalog';
 import { registry } from '../catalog/registry';
+import { SpecCheck } from '../spec-check/spec-check';
 import { RECORDINGS } from '../specs/stream';
 import { recordedTransport } from './recorded-transport';
 
@@ -16,13 +18,14 @@ const LINE_DELAY_MS = 220;
  */
 @Component({
   selector: 'app-stream',
-  imports: [JsonRenderer],
+  imports: [JsonRenderer, SpecCheck],
   templateUrl: './streaming.html',
   styleUrl: './streaming.css',
 })
 export class StreamTab {
   readonly registry = registry;
   readonly recordings = RECORDINGS;
+  readonly componentNames = catalog.componentNames;
 
   readonly prompt = signal(RECORDINGS[0].prompt);
   readonly failNext = signal(false);
@@ -37,6 +40,22 @@ export class StreamTab {
   });
 
   readonly hasOutput = computed(() => this.ui.rawLines().length > 0);
+
+  /**
+   * A spec that is still streaming is *supposed* to reference children that
+   * have not arrived yet — that is what `loading` means to the renderer — so
+   * checking it mid-stream reports gaps that are not defects.
+   */
+  readonly checkUnavailable = computed(() =>
+    this.ui.isStreaming()
+      ? 'Checking when the stream finishes — a partial spec is expected to have gaps.'
+      : null,
+  );
+
+  /** The note attached to the running prompt, if it is a flawed recording. */
+  readonly note = computed(
+    () => RECORDINGS.find((r) => r.prompt === this.prompt())?.note ?? null,
+  );
 
   generate(prompt: string): void {
     this.prompt.set(prompt);

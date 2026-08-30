@@ -30,6 +30,9 @@
 
 <div class="layout">
   <section class="pane">
+    @if (note(); as note) {
+      <p class="banner note">{{ note }}</p>
+    }
     @if (ui.error(); as error) {
       <p class="banner error">Generation failed: {{ error.message }}</p>
     }
@@ -44,6 +47,14 @@
   </section>
 
   <aside class="pane side">
+    <section class="panel">
+      <app-spec-check
+        [spec]="ui.spec()"
+        [componentNames]="componentNames"
+        [unavailable]="checkUnavailable()"
+      />
+    </section>
+
     <section class="panel">
       <h2>Stream</h2>
       <p class="status">

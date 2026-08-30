@@ -157,6 +157,12 @@
   padding: 8px 12px;
 }
 
+.banner.note {
+  color: inherit;
+  background: color-mix(in srgb, #b26a00 8%, transparent);
+  border: 1px solid color-mix(in srgb, #b26a00 28%, transparent);
+}
+
 .banner.error {
   color: #b3261e;
   background: color-mix(in srgb, #b3261e 10%, transparent);
