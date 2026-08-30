@@ -217,6 +217,17 @@ export interface UIStreamOptions {
   onComplete?: (spec: Spec) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
+  /**
+   * Transport, defaulting to the global `fetch`.
+   *
+   * Anything with fetch's shape works, so a test, a demo replaying a recorded
+   * generation, or an app that has to add auth headers or route through its
+   * own HTTP layer can supply one instead of patching the global. It is called
+   * with the endpoint and a request carrying the JSON body and the abort
+   * signal, and must resolve to a `Response` whose `body` is a readable
+   * stream of the JSONL patches.
+   */
+  fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -309,8 +320,12 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       }
     };
 
+    // Bound, because a bare `globalThis.fetch` called as a plain function is
+    // an illegal invocation in the browser.
+    const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
+
     try {
-      const response = await fetch(options.api, {
+      const response = await doFetch(options.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -572,6 +587,13 @@ export interface ChatUIOptions {
   onComplete?: (message: ChatMessage) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
+  /**
+   * Transport, defaulting to the global `fetch`. Same contract as
+   * {@link UIStreamOptions.fetch}: it receives the endpoint and a request
+   * carrying the JSON body and the abort signal, and must resolve to a
+   * `Response` whose `body` streams the reply.
+   */
+  fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -679,8 +701,12 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       ...(currentSpec.state ? { state: { ...currentSpec.state } } : {}),
     });
 
+    // Bound, because a bare `globalThis.fetch` called as a plain function is
+    // an illegal invocation in the browser.
+    const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
+
     try {
-      const response = await fetch(options.api, {
+      const response = await doFetch(options.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: historyForApi }),

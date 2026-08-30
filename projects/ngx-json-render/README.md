@@ -175,9 +175,27 @@ app.post('/api/generate', async (req, res) => {
 
 The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `catalog.validate(spec)` checks a finished spec against the catalog.
 
+### Supplying the transport
+
+By default the request goes through the global `fetch`. Pass your own to add
+auth headers, route through your app's HTTP layer, or replay a recorded
+generation in a test — it is called with the endpoint and a request carrying
+the JSON body and the abort signal, and must resolve to a `Response` whose
+`body` streams the JSONL:
+
+```ts
+readonly ui = injectUIStream({
+  api: '/api/generate',
+  fetch: (url, init) =>
+    fetch(url, { ...init, headers: { ...init?.headers, Authorization: token } }),
+});
+```
+
+`injectChatUI` takes the same option.
+
 Also available:
 
-- `injectChatUI({ api })` — chat + GenUI: the endpoint takes `{ messages }` and streams prose mixed with ` ```spec ` fenced JSONL; each assistant message carries `text` and/or a `spec`.
+- `injectChatUI({ api, fetch? })` — chat + GenUI: the endpoint takes `{ messages }` and streams prose mixed with ` ```spec ` fenced JSONL; each assistant message carries `text` and/or a `spec`.
 - `applyPatch(spec, patch)` — immutably apply one RFC 6902 patch to a spec.
 - `buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` — derive specs from AI SDK `message.parts`.
 - `catalog.prompt()` / `buildUserPrompt` (from `@json-render/core`) — generate the system/user prompts for your catalog.

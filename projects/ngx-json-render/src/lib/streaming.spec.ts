@@ -148,6 +148,79 @@ describe('injectUIStream', () => {
     expect(ui.spec()).toBeNull();
   });
 
+  it('streams through a supplied fetch instead of the global one', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const globalFetch = vi.spyOn(globalThis, 'fetch');
+    const calls: RequestInit[] = [];
+    const transport = vi.fn(
+      async (_url: RequestInfo | URL, init?: RequestInit) => {
+        calls.push(init ?? {});
+        return streamResponse([
+          '{"op":"add","path":"/root","value":"main"}\n',
+          '{"op":"add","path":"/elements/main","value":{"type":"Text","props":{"content":"hi"}}}\n',
+        ]);
+      },
+    );
+
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', fetch: transport }),
+    );
+
+    await ui.send('build me a text');
+
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(transport).toHaveBeenCalledTimes(1);
+    // The supplied transport gets the same request the global one would.
+    expect(JSON.parse(String(calls[0].body))).toEqual({
+      prompt: 'build me a text',
+      context: undefined,
+      currentSpec: { root: '', elements: {} },
+    });
+    expect(calls[0].signal).toBeInstanceOf(AbortSignal);
+    expect(ui.spec()).toEqual({
+      root: 'main',
+      elements: { main: { type: 'Text', props: { content: 'hi' } } },
+    });
+    expect(ui.error()).toBeNull();
+  });
+
+  it('aborts a supplied fetch when a second send supersedes it', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const first = openStream();
+    const responses = [
+      first.response,
+      streamResponse(['{"op":"add","path":"/root","value":"second"}\n']),
+    ];
+    const signals: (AbortSignal | null | undefined)[] = [];
+    const transport = vi.fn(
+      async (_url: RequestInfo | URL, init?: RequestInit) => {
+        signals.push(init?.signal);
+        return responses.shift() as Response;
+      },
+    );
+
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', fetch: transport }),
+    );
+
+    void ui.send('first');
+    await tick();
+    const second = ui.send('second');
+    first.abort();
+    await second;
+    await tick();
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(ui.spec()?.root).toBe('second');
+    expect(ui.isStreaming()).toBe(false);
+  });
+
   it('surfaces HTTP errors', async () => {
     TestBed.configureTestingModule({
       providers: [provideZonelessChangeDetection()],
@@ -275,6 +348,36 @@ describe('injectChatUI', () => {
     expect(assistant.text).toContain('Done!');
     expect(assistant.spec?.root).toBe('main');
     expect(assistant.spec?.elements['main']).toBeTruthy();
+  });
+
+  it('streams through a supplied fetch instead of the global one', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const globalFetch = vi.spyOn(globalThis, 'fetch');
+    const calls: RequestInit[] = [];
+    const transport = vi.fn(
+      async (_url: RequestInfo | URL, init?: RequestInit) => {
+        calls.push(init ?? {});
+        return streamResponse(['Hello back\n']);
+      },
+    );
+
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat', fetch: transport }),
+    );
+
+    await chat.send('hello');
+
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(calls[0].body))).toEqual({
+      messages: [{ role: 'user', content: 'hello' }],
+    });
+    expect(calls[0].signal).toBeInstanceOf(AbortSignal);
+    expect(chat.messages().at(-1)?.text).toBe('Hello back');
+    expect(chat.error()).toBeNull();
   });
 
   it('keeps isStreaming true when a second send supersedes the first', async () => {
