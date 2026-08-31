@@ -1,4 +1,5 @@
 import {
+  DestroyRef,
   Injectable,
   type Signal,
   computed,
@@ -76,9 +77,21 @@ function validationConfigEqual(
 }
 
 /**
+ * Owner of a registration made through the service's own API rather than by
+ * a field component. Manual registrations release together, which is the
+ * behaviour a caller of `registerField(path, config)` would expect.
+ */
+const MANUAL_OWNER: object = { manual: true };
+
+/**
  * Form validation state of a `<json-render>` subtree. Fields register their
  * {@link ValidationConfig}; the built-in `validateForm` action validates all
  * registered fields and writes the result to state.
+ *
+ * Registrations are owner-scoped: a path stays registered while at least one
+ * owner holds it, and its config and state are dropped when the last one
+ * releases. A spec that swaps screens or hides fields therefore stops
+ * validating what is no longer on screen.
  */
 @Injectable()
 export class JsonRenderValidationService {
@@ -89,6 +102,8 @@ export class JsonRenderValidationService {
     {},
   );
   private readonly _fieldConfigs = signal<Record<string, ValidationConfig>>({});
+  /** Live owners per path — the reference count behind a registration. */
+  private readonly fieldOwners = new Map<string, Set<object>>();
 
   /** Validation state per registered field path. */
   readonly fieldStates: Signal<Record<string, FieldValidationState>> =
@@ -98,12 +113,46 @@ export class JsonRenderValidationService {
     return untracked(this.root.validationFunctions) ?? {};
   }
 
-  /** Register (or update) a field's validation config. */
-  registerField(path: string, config: ValidationConfig): void {
+  /**
+   * Register (or update) a field's validation config.
+   *
+   * @param owner Identity holding the registration — pass the same value to
+   * {@link unregisterField} to release it. Field components pass themselves,
+   * so two components bound to one path each hold their own claim.
+   */
+  registerField(
+    path: string,
+    config: ValidationConfig,
+    owner: object = MANUAL_OWNER,
+  ): void {
+    const owners = this.fieldOwners.get(path);
+    if (owners) owners.add(owner);
+    else this.fieldOwners.set(path, new Set([owner]));
+
     const prev = untracked(this._fieldConfigs);
     const existing = prev[path];
     if (existing && validationConfigEqual(existing, config)) return;
     this._fieldConfigs.set({ ...prev, [path]: config });
+  }
+
+  /**
+   * Release one owner's registration of a field. The config and validation
+   * state survive while another owner still holds the path; once the last
+   * one lets go, `validateAll` stops seeing the field.
+   */
+  unregisterField(path: string, owner: object = MANUAL_OWNER): void {
+    const owners = this.fieldOwners.get(path);
+    if (!owners) return;
+    owners.delete(owner);
+    if (owners.size > 0) return;
+
+    this.fieldOwners.delete(path);
+    const prev = untracked(this._fieldConfigs);
+    if (path in prev) {
+      const { [path]: _removed, ...rest } = prev;
+      this._fieldConfigs.set(rest);
+    }
+    this.clear(path);
   }
 
   /** Validate a single field and record the result. */
@@ -181,6 +230,10 @@ export function injectValidation(): JsonRenderValidationService {
 /**
  * Field-level validation helper for catalog input components: registers the
  * config and exposes the field's validation state as signals.
+ *
+ * The registration follows the component: it moves when the bound path
+ * changes and is released when the component is destroyed, so a field that
+ * has left the screen no longer takes part in `validateForm`.
  */
 export function injectFieldValidation(
   path: string | (() => string),
@@ -197,12 +250,30 @@ export function injectFieldValidation(
   const getPath = typeof path === 'function' ? path : () => path;
   const getConfig = typeof config === 'function' ? config : () => config;
 
+  // Identity of this field's claim on a path. Two components bound to the
+  // same path hold separate claims, so one being destroyed does not
+  // deregister the other.
+  const owner: object = {};
+  let registeredPath: string | null = null;
+
   effect(() => {
     const p = getPath();
     const c = getConfig();
-    if (p && c) {
-      validation.registerField(p, c);
+    const next = p && c ? p : null;
+    if (registeredPath !== null && registeredPath !== next) {
+      validation.unregisterField(registeredPath, owner);
+      registeredPath = null;
     }
+    if (next && c) {
+      validation.registerField(next, c, owner);
+      registeredPath = next;
+    }
+  });
+
+  inject(DestroyRef).onDestroy(() => {
+    if (registeredPath === null) return;
+    validation.unregisterField(registeredPath, owner);
+    registeredPath = null;
   });
 
   const state = computed<FieldValidationState>(() => {

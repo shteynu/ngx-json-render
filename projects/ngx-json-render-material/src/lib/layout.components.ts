@@ -1,9 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  Injectable,
+  type Signal,
   type TemplateRef,
-  afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -14,7 +17,11 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { JrChildren, injectRenderContext } from 'ngx-json-render';
+import {
+  JrChildren,
+  injectElementKey,
+  injectRenderContext,
+} from 'ngx-json-render';
 import type { ThemeColor } from './theme';
 
 /** Layout container that stacks children vertically or horizontally. */
@@ -182,6 +189,16 @@ export class JrmExpansionPanel {
   readonly props = this.ctx.props;
 }
 
+/** A {@link JrmTab} currently mounted under a {@link JrmTabs}. */
+export interface RegisteredTab {
+  /** Registration identity, stable for the lifetime of the `JrmTab`. */
+  id: number;
+  /** Spec key of the `Tab` element, which is what gives the tab its place. */
+  key: Signal<string>;
+  label: Signal<string>;
+  body: TemplateRef<unknown>;
+}
+
 /**
  * Collects the {@link JrmTab} children of a {@link JrmTabs}.
  *
@@ -190,16 +207,49 @@ export class JrmExpansionPanel {
  * projected `<mat-tab>` nodes. Each `JrmTab` therefore hands its label and
  * body template to this registry, and `JrmTabs` replays them into real
  * `<mat-tab>` elements.
+ *
+ * The registry is a projection of the tabs that are mounted right now, not a
+ * log of the ones that ever registered: entries leave when their component is
+ * destroyed, labels are held as signals so a label refined later in the
+ * stream updates in place, and order comes from the `Tabs` element's
+ * `children` array. A spec that keeps changing — the library's headline
+ * scenario — therefore stays in sync.
  */
+@Injectable()
 export class JrmTabRegistry {
-  readonly tabs = signal<
-    ReadonlyArray<{ id: number; label: string; body: TemplateRef<unknown> }>
-  >([]);
+  private readonly ctx = injectRenderContext();
+  private readonly entries = signal<ReadonlyArray<RegisteredTab>>([]);
   private nextId = 0;
 
-  register(label: string, body: TemplateRef<unknown>): void {
+  /** The `Tabs` element's ordered child keys. */
+  private readonly order = computed<ReadonlyArray<string>>(
+    () => this.ctx.element()?.children ?? [],
+  );
+
+  /**
+   * The mounted tabs in spec order. Registration order only breaks ties —
+   * between repeated keys, or for a tab whose key the `Tabs` element does not
+   * list (a `Tab` reparented mid-stream, say).
+   */
+  readonly tabs = computed<ReadonlyArray<RegisteredTab>>(() => {
+    const order = this.order();
+    const rank = (tab: RegisteredTab): number => {
+      const index = order.indexOf(tab.key());
+      return index === -1 ? order.length : index;
+    };
+    return [...this.entries()].sort((a, b) => rank(a) - rank(b) || a.id - b.id);
+  });
+
+  /** Register a mounted tab. Returns the id that releases it again. */
+  register(tab: Omit<RegisteredTab, 'id'>): number {
     const id = this.nextId++;
-    this.tabs.update((tabs) => [...tabs, { id, label, body }]);
+    this.entries.update((tabs) => [...tabs, { ...tab, id }]);
+    return id;
+  }
+
+  /** Release a tab whose component has been destroyed. */
+  unregister(id: number): void {
+    this.entries.update((tabs) => tabs.filter((tab) => tab.id !== id));
   }
 }
 
@@ -216,7 +266,7 @@ export class JrmTabRegistry {
 
     <mat-tab-group>
       @for (tab of registry.tabs(); track tab.id) {
-        <mat-tab [label]="tab.label">
+        <mat-tab [label]="tab.label()">
           <div class="jrm-tab-body">
             <ng-container *ngTemplateOutlet="tab.body" />
           </div>
@@ -245,14 +295,32 @@ export class JrmTabs {
 export class JrmTab {
   private readonly ctx = injectRenderContext<{ label?: string }>();
   private readonly registry = inject(JrmTabRegistry, { optional: true });
-  private readonly body = viewChild.required<TemplateRef<unknown>>('body');
+  private readonly key = injectElementKey();
+  private readonly body = viewChild<TemplateRef<unknown>>('body');
+  private readonly label = computed(() => this.ctx.props().label ?? '');
 
   constructor() {
+    let id: number | null = null;
+
     // Registering is a write to a signal the parent already read this cycle,
-    // so it has to land outside change detection to avoid NG0100. The view
-    // must also be created before `body()` resolves.
-    afterNextRender(() => {
-      this.registry?.register(this.ctx.props().label ?? '', this.body());
+    // so it has to land outside change detection to avoid NG0100 — and the
+    // view must be created before `body()` resolves. An effect satisfies
+    // both and, unlike afterNextRender, also runs on the server. Only the
+    // template is read here: the label travels as a signal, so a patched
+    // label reaches the group without re-registering.
+    effect(() => {
+      const body = this.body();
+      if (id !== null || !body) return;
+      id =
+        this.registry?.register({
+          key: this.key,
+          label: this.label,
+          body,
+        }) ?? null;
+    });
+
+    inject(DestroyRef).onDestroy(() => {
+      if (id !== null) this.registry?.unregister(id);
     });
   }
 }

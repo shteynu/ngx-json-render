@@ -396,7 +396,7 @@ handler, on the server.
 
 Components: `JsonRenderer` (`<json-render>`), `JrChildren`, `JrConfirmDialog`, `JrElement`, `JrRepeatScope`.
 
-Injectables/helpers: `injectRenderContext`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`.
+Injectables/helpers: `injectRenderContext`, `injectElementKey`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`.
 

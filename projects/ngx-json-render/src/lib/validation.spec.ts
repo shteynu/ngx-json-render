@@ -1,4 +1,10 @@
-import { provideZonelessChangeDetection, signal } from '@angular/core';
+import {
+  EnvironmentInjector,
+  createEnvironmentInjector,
+  provideZonelessChangeDetection,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type {
   StateModel,
@@ -223,7 +229,72 @@ describe('injectFieldValidation', () => {
     TestBed.tick();
 
     expect(field.validate().valid).toBe(true);
-    expect(Object.keys(validation.fieldStates()).sort()).toEqual(['/a', '/b']);
+    // The registration moves with the path rather than piling up: the field
+    // left behind stops being validated instead of failing `validateForm`
+    // forever with an error that renders nowhere.
+    expect(Object.keys(validation.fieldStates())).toEqual(['/b']);
+    expect(validation.validateAll()).toBe(true);
+  });
+
+  it('releases the field when the component holding it is destroyed', () => {
+    const { validation } = setup({ state: { a: 'set', gone: '' } });
+    validation.registerField('/a', REQUIRED);
+
+    // A field on a screen the spec is about to replace: push/pop navigation
+    // and `visible` both destroy the component while the renderer lives on.
+    const screen = createEnvironmentInjector(
+      [],
+      TestBed.inject(EnvironmentInjector),
+    );
+    runInInjectionContext(screen, () =>
+      injectFieldValidation('/gone', REQUIRED),
+    );
+    TestBed.tick();
+
+    expect(validation.validateAll()).toBe(false);
+
+    screen.destroy();
+
+    // Without this, a required field from a screen nobody can see keeps
+    // failing validateForm, with an error that renders nowhere.
+    expect(validation.validateAll()).toBe(true);
+    expect(validation.fieldStates()['/gone']).toBeUndefined();
+  });
+
+  it('keeps a shared path registered until the last field lets go', () => {
+    const { validation } = setup({ state: { email: '' } });
+    const parent = TestBed.inject(EnvironmentInjector);
+
+    // Two controls bound to one state path — a compact and a detailed
+    // editor of the same field, say.
+    const first = createEnvironmentInjector([], parent);
+    const second = createEnvironmentInjector([], parent);
+    runInInjectionContext(first, () =>
+      injectFieldValidation('/email', REQUIRED),
+    );
+    runInInjectionContext(second, () =>
+      injectFieldValidation('/email', REQUIRED),
+    );
+    TestBed.tick();
+
+    first.destroy();
+
+    expect(validation.validateAll()).toBe(false);
+
+    second.destroy();
+
+    expect(validation.validateAll()).toBe(true);
+  });
+
+  it('unregisterField drops the config and the recorded state', () => {
+    const { validation } = setup({ state: { email: '' } });
+    validation.registerField('/email', REQUIRED);
+    validation.validate('/email', REQUIRED);
+
+    validation.unregisterField('/email');
+
+    expect(validation.validateAll()).toBe(true);
+    expect(validation.fieldStates()).toEqual({});
   });
 
   it('registers nothing without a config', () => {

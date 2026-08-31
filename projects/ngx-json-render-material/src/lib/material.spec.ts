@@ -209,6 +209,65 @@ describe('material components', () => {
     expect(host.textContent).toContain('inside tab a');
   });
 
+  it('follows the spec when Tab children are removed and reordered', async () => {
+    const tabsSpec = (children: string[], keep: string[]): Spec => {
+      const elements: Record<string, unknown> = {
+        tabs: { type: 'Tabs', props: {}, children },
+      };
+      for (const key of keep) {
+        elements[key] = {
+          type: 'Tab',
+          props: { label: key.toUpperCase() },
+          children: [],
+        };
+      }
+      return { root: 'tabs', elements } as unknown as Spec;
+    };
+
+    const fixture = await render(tabsSpec(['a', 'b', 'c'], ['a', 'b', 'c']));
+    const labels = () =>
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.mat-mdc-tab'),
+      ).map((tab) => tab.textContent?.trim());
+
+    expect(labels()).toEqual(['A', 'B', 'C']);
+
+    // A regenerated spec drops one tab and reorders the rest. The Tabs
+    // element survives (same key, same instance), so a registry that only
+    // appended would keep a header over a destroyed view and show the
+    // survivors in the order they first arrived.
+    fixture.componentInstance.spec.set(tabsSpec(['c', 'a'], ['a', 'c']));
+    await settle(fixture);
+
+    expect(labels()).toEqual(['C', 'A']);
+  });
+
+  it('updates a Tab label the stream refines later', async () => {
+    const spec = (label: string): Spec =>
+      ({
+        root: 'tabs',
+        elements: {
+          tabs: { type: 'Tabs', props: {}, children: ['tab-a'] },
+          'tab-a': { type: 'Tab', props: { label }, children: [] },
+        },
+      }) as unknown as Spec;
+
+    const fixture = await render(spec('Ov'));
+    const labels = () =>
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.mat-mdc-tab'),
+      ).map((tab) => tab.textContent?.trim());
+
+    expect(labels()).toEqual(['Ov']);
+
+    // Labels arrive character by character while a model streams; a label
+    // captured once at registration would stay truncated forever.
+    fixture.componentInstance.spec.set(spec('Overview'));
+    await settle(fixture);
+
+    expect(labels()).toEqual(['Overview']);
+  });
+
   it('only exposes a list row as a control when press is bound', async () => {
     const fixture = await render({
       root: 'list',

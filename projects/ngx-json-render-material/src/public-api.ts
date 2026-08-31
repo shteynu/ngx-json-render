@@ -19,6 +19,7 @@ export {
   JrmTabRegistry,
   JrmTabs,
   JrmToolbar,
+  type RegisteredTab,
 } from './lib/layout.components';
 export {
   JrmChip,

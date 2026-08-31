@@ -11,8 +11,10 @@ export { JrConfirmDialog } from './lib/confirm-dialog.component';
 
 // Render context / DI
 export {
+  ELEMENT_KEY,
   RENDER_CONTEXT,
   REPEAT_SCOPE,
+  injectElementKey,
   injectRenderContext,
   injectRepeatScope,
 } from './lib/tokens';

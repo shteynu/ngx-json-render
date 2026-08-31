@@ -1,4 +1,4 @@
-import { InjectionToken, inject } from '@angular/core';
+import { InjectionToken, type Signal, inject } from '@angular/core';
 import type { RenderContext, RepeatScope } from './types';
 
 /**
@@ -7,6 +7,14 @@ import type { RenderContext, RepeatScope } from './types';
  */
 export const RENDER_CONTEXT = new InjectionToken<RenderContext>(
   'ngx-json-render RENDER_CONTEXT',
+);
+
+/**
+ * The spec key of the element currently being rendered. Provided alongside
+ * {@link RENDER_CONTEXT} for every catalog component instance.
+ */
+export const ELEMENT_KEY = new InjectionToken<Signal<string>>(
+  'ngx-json-render ELEMENT_KEY',
 );
 
 /**
@@ -41,6 +49,30 @@ export function injectRenderContext<
     );
   }
   return ctx as RenderContext<P>;
+}
+
+/**
+ * Inject the spec key of the element this component renders.
+ *
+ * Catalog components that collect their children — a tab group discovering
+ * its tabs, for instance — need it to order registrations by the spec's
+ * `children` array rather than by the order the children happened to
+ * announce themselves in.
+ *
+ * @example
+ * ```ts
+ * const key = injectElementKey();
+ * const index = computed(() => parent.element().children?.indexOf(key()) ?? -1);
+ * ```
+ */
+export function injectElementKey(): Signal<string> {
+  const key = inject(ELEMENT_KEY, { optional: true });
+  if (!key) {
+    throw new Error(
+      'injectElementKey() must be used inside a component rendered by <json-render>',
+    );
+  }
+  return key;
 }
 
 /**

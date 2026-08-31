@@ -22,7 +22,7 @@ import { JsonRenderActionsService, isActionCancelled } from './actions.service';
 import { injectDevtoolsActive } from './devtools';
 import { JsonRenderRootContext } from './root-context';
 import { JsonRenderStateService } from './state.service';
-import { REPEAT_SCOPE, RENDER_CONTEXT } from './tokens';
+import { ELEMENT_KEY, REPEAT_SCOPE, RENDER_CONTEXT } from './tokens';
 import type { EventHandle, RenderContext } from './types';
 
 const warnedSlots = new Set<string>();
@@ -148,7 +148,10 @@ export class JrElement {
   };
 
   protected readonly outletInjector = Injector.create({
-    providers: [{ provide: RENDER_CONTEXT, useValue: this.renderCtx }],
+    providers: [
+      { provide: RENDER_CONTEXT, useValue: this.renderCtx },
+      { provide: ELEMENT_KEY, useValue: this.elementKey },
+    ],
     parent: inject(Injector),
   });
 
