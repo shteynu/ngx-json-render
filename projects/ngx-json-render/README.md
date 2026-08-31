@@ -20,6 +20,52 @@ npm install ngx-json-render @json-render/core zod
 
 Requires Angular ≥ 20.
 
+## The shortest path: a ready-made catalog
+
+Writing a catalog is the honest first step, but you do not have to take it to
+see a spec render. [`ngx-json-render-material`](https://www.npmjs.com/package/ngx-json-render-material)
+ships 28 Angular Material components already registered, so a generated spec
+renders with nothing else wired up:
+
+```bash
+npm install ngx-json-render-material @angular/material
+```
+
+Those are real Material components, so the app needs a Material theme and the
+icon font as usual.
+
+```ts
+import { Component, signal } from '@angular/core';
+import { JsonRenderer, type Spec } from 'ngx-json-render';
+import { materialRegistry } from 'ngx-json-render-material';
+
+@Component({
+  selector: 'app-root',
+  imports: [JsonRenderer],
+  template: `<json-render [spec]="spec()" [registry]="registry" />`,
+})
+export class App {
+  readonly registry = materialRegistry;
+  readonly spec = signal<Spec>({
+    root: 'card',
+    state: { name: '' },
+    elements: {
+      card: { type: 'Card', props: { title: 'Profile' }, children: ['name', 'hi'] },
+      name: { type: 'Input', props: { label: 'Name', value: { $bindState: '/name' } } },
+      hi: {
+        type: 'Text',
+        props: { content: { $template: 'Hello, ${/name}!' } },
+        visible: { $state: '/name', neq: '' },
+      },
+    },
+  });
+}
+```
+
+`materialCatalog.prompt()` is the system prompt that teaches a model that
+vocabulary. Everything below is the other path — your own components, which is
+what the catalog API is for.
+
 ## Quick start
 
 **1. Define a catalog** — the vocabulary the model (or your server) is allowed to use:
@@ -83,7 +129,13 @@ export class ButtonComponent {
 
 ```ts
 import { Component, signal } from '@angular/core';
-import { JsonRenderer, type Spec, defineRegistry } from 'ngx-json-render';
+import {
+  type ActionHandler,
+  JsonRenderer,
+  type Spec,
+  type StateChange,
+  defineRegistry,
+} from 'ngx-json-render';
 import { catalog } from './catalog';
 
 const { registry } = defineRegistry(catalog, {
@@ -119,8 +171,10 @@ export class Page {
       },
     },
   });
-  handlers = { refresh: async () => { /* ... */ } };
-  onStateChange(changes: unknown) { console.log(changes); }
+  readonly handlers: Record<string, ActionHandler> = {
+    refresh: async () => { /* ... */ },
+  };
+  onStateChange(changes: StateChange[]) { console.log(changes); }
 }
 ```
 
@@ -178,6 +232,35 @@ app.post('/api/generate', async (req, res) => {
 
 The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `catalog.validate(spec)` checks a finished spec against the catalog.
 
+### Chat + GenUI
+
+When the model answers in prose _and_ renders a UI in the same turn, reach for
+`injectChatUI` instead. Its endpoint takes `{ messages }` and streams prose
+mixed with ` ```spec ` fenced JSONL. Each assistant message carries `text`
+and/or its own `spec`, so earlier turns keep the UI they generated:
+
+```ts
+import { Component } from '@angular/core';
+import { JsonRenderer, injectChatUI } from 'ngx-json-render';
+
+@Component({
+  imports: [JsonRenderer],
+  template: `
+    @for (m of chat.messages(); track m.id) {
+      <p>{{ m.text }}</p>
+      @if (m.spec) {
+        <json-render [spec]="m.spec" [registry]="registry" />
+      }
+    }
+    <button (click)="chat.send('show me revenue for the quarter')">Ask</button>
+  `,
+})
+export class ChatPage {
+  readonly chat = injectChatUI({ api: '/api/chat' });
+  readonly registry = registry;
+}
+```
+
 ### Supplying the transport
 
 By default the request goes through the global `fetch`. Pass your own to add
@@ -218,7 +301,6 @@ The second argument also carries `context`, forwarded to the endpoint as-is:
 
 Also available:
 
-- `injectChatUI({ api, fetch? })` — chat + GenUI: the endpoint takes `{ messages }` and streams prose mixed with ` ```spec ` fenced JSONL; each assistant message carries `text` and/or a `spec`.
 - `applyPatch(spec, patch)` — immutably apply one RFC 6902 patch to a spec, sharing every subtree the patch did not touch. Both hooks and `buildSpecFromParts` apply through it, so the same stream produces the same spec whichever one you reach for. One deliberate deviation from the RFC: a failing `test` op is a no-op rather than an abort, because these patches come off a model's output and dropping a bad line beats killing the generation.
 - `buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` — derive specs from AI SDK `message.parts`.
 - `catalog.prompt()` / `buildUserPrompt` (from `@json-render/core`) — generate the system/user prompts for your catalog.
