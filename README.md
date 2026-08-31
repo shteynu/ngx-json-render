@@ -6,7 +6,7 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render): 
 
 **→ Package documentation: [`projects/ngx-json-render/README.md`](projects/ngx-json-render/README.md)**
 
-**→ Live demo: <https://shteynu.github.io/ngx-json-render/>** — a playground that renders a spec you edit by hand against either catalog and shows the system prompt a model would receive, an interactive spec (bindings, repeat, confirm, watch), and a replayable SpecStream showing progressive rendering — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
+**→ Live demo: <https://shteynu.github.io/ngx-json-render/>** — four tabs: a playground that renders a spec you edit by hand against either catalog and shows the system prompt a model would receive; an interactive spec (bindings, repeat, confirm, watch); a SpecStream rendering progressively, which you can stop mid-generation and inspect half-built; and a chat where prose and UI patches arrive in the same reply. The last two replay a recording by default and call a real model if you paste in your own key — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
 
 ![A SpecStream of RFC 6902 patches rendering progressively into an Angular dashboard](docs/streaming.gif)
 
@@ -14,7 +14,7 @@ Angular renderer for [json-render](https://github.com/vercel-labs/json-render): 
 
 - [`projects/ngx-json-render`](projects/ngx-json-render) — the renderer (published as `ngx-json-render`).
 - [`projects/ngx-json-render-material`](projects/ngx-json-render-material) — a ready-made Angular Material catalog of 28 components (published as `ngx-json-render-material`), so a spec can be generated and rendered without writing a catalog first.
-- [`projects/demo`](projects/demo) — demo app: a playground (edit a spec live, switch catalogs, read `catalog.prompt()`), an interactive spec (state bindings, repeat, confirm, watch) and a replayable SpecStream showing progressive rendering.
+- [`projects/demo`](projects/demo) — demo app, four tabs: a playground (edit a spec live, switch catalogs, read `catalog.prompt()`), an interactive spec (state bindings, repeat, confirm, watch), a SpecStream on `injectUIStream` with a stop button, and a chat on `injectChatUI` where prose and patches share one stream. The two streaming tabs swap only their transport between a recorded generation and a live model, so what you watch is the real client either way; the key is held in `sessionStorage` and goes straight from the browser to the provider.
 
 ## Develop
 
