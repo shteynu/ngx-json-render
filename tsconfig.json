@@ -9,6 +9,7 @@
     "noImplicitReturns": true,
     "paths": {
       "ngx-json-render": ["./dist/ngx-json-render"],
+      "ngx-json-render/testing": ["./dist/ngx-json-render/testing"],
       "ngx-json-render-material": ["./dist/ngx-json-render-material"]
     },
     "noFallthroughCasesInSwitch": true,

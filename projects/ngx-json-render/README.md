@@ -344,6 +344,71 @@ silently deletes elements.
 The check waits for the spec to settle. While `loading` is true a missing child
 is a patch that has not arrived yet, not a defect, so nothing is reported and
 `strict` keeps rendering; the hooks check once, when the generation completes.
+## Testing
+
+`ngx-json-render/testing` is a separate entry point, so nothing in it can reach
+an application bundle by accident.
+
+### Rendering a spec
+
+`renderSpec` mounts a spec against a registry and hands back the few things a
+test does to one — no host component, no TestBed module, no settling by hand:
+
+```ts
+import { renderSpec } from 'ngx-json-render/testing';
+
+it('dispatches the action its spec asked for', async () => {
+  const ui = await renderSpec(
+    {
+      root: 'save',
+      elements: {
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'save' } },
+        },
+      },
+    },
+    { registry: { Button: MyButton } },
+  );
+
+  expect(ui.text('button')).toBe('Save');
+  await ui.click('button');
+  expect(ui.dispatched).toEqual([{ name: 'save', params: {} }]);
+});
+```
+
+`dispatched` records every action the spec fired, handled or not. The rest of
+the harness: `text` / `texts` / `find` / `findAll` for the DOM, `click` /
+`fill` for input, `read` / `write` / `state` / `changes` for state, `setSpec` /
+`setLoading` / `settle` for later frames, and `fixture` / `element` /
+`renderer` / `store` / `validation` for everything the harness does not cover.
+Options mirror the renderer's inputs, plus `providers` for anything the
+components under test inject.
+
+### Replaying a generation
+
+`recordedTransport` is a `fetch` that answers from a recording, so a test runs
+the real client — request body, streamed lines, usage metadata, abort on
+supersede — with no server and no API key:
+
+```ts
+import { recordedTransport, specStream, usageLine } from 'ngx-json-render/testing';
+
+const ui = injectUIStream({
+  api: '/api/generate',
+  fetch: recordedTransport([...specStream(expectedSpec), usageLine({ totalTokens: 15 })]),
+});
+```
+
+`specStream(spec)` writes the JSONL patch lines a model would emit to build
+that spec, so a test says what it renders rather than how the wire spells it.
+Pass a `Record<prompt, lines>` to answer each prompt differently (anything
+else gets a 404 the hook surfaces as an error), or a function for more. The
+options are `delayMs` for a visible pace, `fail` for an error response — as a
+function, so it can be switched on and off between sends — and `promptOf` for
+a request body neither hook sends. The default reads `injectUIStream`'s
+`prompt` and `injectChatUI`'s last message.
 
 ## Spec features supported
 
@@ -520,6 +585,8 @@ dialog, which is a normal gesture rather than a failure — `isActionCancelled(e
 is how you tell the two apart.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`.
+
+Testing (`ngx-json-render/testing`): `renderSpec`, `recordedTransport`, `specStream`, `usageLine`.
 
 Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, prompt builders, spec validators, SpecStream compiler) composes with this package; the most common symbols are re-exported.
 

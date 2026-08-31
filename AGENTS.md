@@ -13,6 +13,16 @@ An Angular workspace with two published libraries and one demo application:
 Run `npm run build:lib` before building or testing anything that imports it,
 or the check tests a stale `dist/`.
 
+`ngx-json-render` has a second entry point, `ngx-json-render/testing`, whose
+sources live in `projects/ngx-json-render/testing/src` (ng-packagr finds it by
+the `ng-package.json` in that directory) and whose own imports of the primary
+entry point go through the package name, not a relative path — a relative one
+would bundle a second copy of the renderer, with its own DI tokens. Its specs
+need the explicit `include` in that project's `test.options`: the builder
+resolves those globs against `sourceRoot`, so a spec outside `src` is invisible
+without the `../testing/...` pattern, and it fails silently — the run just
+reports fewer tests.
+
 ## Skill routing
 
 - Starting, continuing or resuming work, reporting status, saving progress,

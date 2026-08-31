@@ -29,14 +29,19 @@
           "options": {
             "tsConfig": "projects/ngx-json-render/tsconfig.spec.json",
             "coverageInclude": [
-              "projects/ngx-json-render/src/**"
+              "projects/ngx-json-render/src/**",
+              "projects/ngx-json-render/testing/src/**"
             ],
             "coverageThresholds": {
               "statements": 94,
               "branches": 88,
               "functions": 92,
               "lines": 96
-            }
+            },
+            "include": [
+              "**/*.spec.ts",
+              "../testing/src/**/*.spec.ts"
+            ]
           }
         }
       }
