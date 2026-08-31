@@ -1846,3 +1846,128 @@ describe('a superseded chat turn that fails on its own', () => {
     expect(chat.error()).toBeNull();
   });
 });
+
+describe('validating what the model produced', () => {
+  /** A generation that ends pointing at a child it never emitted. */
+  const BROKEN_LINES = [
+    '{"op":"add","path":"/root","value":"root"}\n',
+    '{"op":"add","path":"/elements/root","value":{"type":"Box","props":{},"children":["ghost"]}}\n',
+  ];
+
+  /** The same mistake autoFixSpec repairs: `visible` written into `props`. */
+  const MISPLACED_LINES = [
+    '{"op":"add","path":"/root","value":"root"}\n',
+    '{"op":"add","path":"/elements/root","value":{"type":"Text","props":{"content":"hi","visible":{"$state":"/s","eq":true}}}}\n',
+  ];
+
+  function mockStream(lines: string[]): void {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(streamResponse(lines));
+  }
+
+  it('says nothing about a broken spec while validation is off', async () => {
+    mockStream(BROKEN_LINES);
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    await ui.send('a dashboard');
+
+    expect(ui.issues()).toEqual([]);
+    expect(ui.error()).toBeNull();
+  });
+
+  it('reports the issues of a completed generation under warn', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockStream(BROKEN_LINES);
+    const onComplete = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', validate: 'warn', onComplete }),
+    );
+
+    await ui.send('a dashboard');
+
+    expect(ui.issues().some((issue) => issue.code === 'missing_child')).toBe(
+      true,
+    );
+    // warn still hands the app what it generated.
+    expect(ui.spec()?.root).toBe('root');
+    expect(ui.error()).toBeNull();
+    expect(onComplete).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('fails the generation under strict instead of completing it', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockStream(BROKEN_LINES);
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({
+        api: '/api/generate',
+        validate: 'strict',
+        onComplete,
+        onError,
+      }),
+    );
+
+    await ui.send('a dashboard');
+
+    // onComplete is where apps persist a spec. A spec that cannot render is
+    // exactly what must not get there.
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+    expect(ui.error()?.message).toContain('failed validation');
+    error.mockRestore();
+  });
+
+  it('publishes the fixed spec, not the one that arrived', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockStream(MISPLACED_LINES);
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', validate: 'warn' }),
+    );
+
+    await ui.send('a greeting');
+
+    const root = ui.spec()?.elements?.['root'];
+    expect(root?.visible).toBeDefined();
+    expect(root?.props?.['visible']).toBeUndefined();
+    info.mockRestore();
+  });
+
+  it('does not judge a chat reply that produced no spec', async () => {
+    mockStream(['Just answering in prose.\n']);
+    const onComplete = vi.fn();
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat', validate: 'strict', onComplete }),
+    );
+
+    await chat.send('hello');
+
+    // "missing root" is a true statement about a sentence and a useless one.
+    expect(chat.issues()).toEqual([]);
+    expect(chat.error()).toBeNull();
+    expect(onComplete).toHaveBeenCalled();
+  });
+
+  it('fails a chat reply whose spec is broken under strict', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockStream(BROKEN_LINES);
+    const onComplete = vi.fn();
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat', validate: 'strict', onComplete }),
+    );
+
+    await chat.send('build me a dashboard');
+
+    expect(chat.issues().some((issue) => issue.code === 'missing_child')).toBe(
+      true,
+    );
+    expect(chat.error()?.message).toContain('failed validation');
+    expect(onComplete).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+});

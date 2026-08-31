@@ -1,5 +1,11 @@
 import { DestroyRef, type Signal, inject, signal } from '@angular/core';
-import type { JsonPatch, Spec } from '@json-render/core';
+import type { JsonPatch, Spec, SpecIssue } from '@json-render/core';
+import { formatSpecIssues } from '@json-render/core';
+import {
+  type SpecValidationMode,
+  checkSpec,
+  reportSpecCheck,
+} from '../spec-validation';
 import { applyPatch } from './patch';
 import {
   createLineConsumer,
@@ -87,6 +93,17 @@ export interface UIStreamOptions {
   /** Callback on error */
   onError?: (error: Error) => void;
   /**
+   * Whether to check the finished spec's structure, and what a problem means.
+   * Off by default.
+   *
+   * The check runs once, when the generation completes — a spec mid-stream is
+   * supposed to be incomplete. Both modes apply the lossless fixes and publish
+   * the fixed spec; `'warn'` reports what is left, while `'strict'` fails the
+   * generation instead of calling `onComplete`, so an app that persists the
+   * spec there does not persist a broken one.
+   */
+  validate?: SpecValidationMode;
+  /**
    * Transport, defaulting to the global `fetch`.
    *
    * Anything with fetch's shape works, so a test, a demo replaying a recorded
@@ -113,6 +130,11 @@ export interface UIStreamReturn {
   readonly usage: Signal<TokenUsage | null>;
   /** Raw JSONL lines received from the stream (JSON patch lines) */
   readonly rawLines: Signal<string[]>;
+  /**
+   * Structural issues in the finished spec. Empty until a generation
+   * completes, and always empty while `validate` is off.
+   */
+  readonly issues: Signal<readonly SpecIssue[]>;
   /** Send a prompt to generate UI */
   send: (prompt: string, options?: UIStreamSendOptions) => Promise<void>;
   /**
@@ -147,6 +169,8 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
   const error = signal<Error | null>(null);
   const usage = signal<TokenUsage | null>(null);
   const rawLines = signal<string[]>([]);
+  const issues = signal<readonly SpecIssue[]>([]);
+  const validate = options.validate ?? 'off';
   const session = createStreamSession();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
@@ -164,6 +188,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
     error.set(null);
     usage.set(null);
     rawLines.set([]);
+    issues.set([]);
   };
 
   const send = async (prompt: string, sendOptions?: UIStreamSendOptions) => {
@@ -173,6 +198,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
     error.set(null);
     usage.set(null);
     rawLines.set([]);
+    issues.set([]);
 
     const previousSpec = sendOptions?.previousSpec;
     let currentSpec: Spec =
@@ -210,7 +236,29 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
         createLineConsumer(handleLine),
       );
 
-      gate.commit(() => options.onComplete?.(currentSpec));
+      gate.commit(() => {
+        const check = checkSpec(currentSpec, validate);
+        reportSpecCheck(check, validate);
+        if (check.spec) {
+          currentSpec = check.spec;
+          spec.set(currentSpec);
+        }
+        issues.set(check.issues);
+
+        // Under `strict` a broken generation is a failure, not a result: the
+        // app's onComplete is where a spec usually gets persisted, and handing
+        // it one that cannot render is the outcome this mode is asked to
+        // prevent. The spec stays put so the app can show or discard it.
+        if (validate === 'strict' && check.hasErrors) {
+          const invalid = new Error(
+            `Generated spec failed validation:\n${formatSpecIssues([...check.issues])}`,
+          );
+          error.set(invalid);
+          options.onError?.(invalid);
+          return;
+        }
+        options.onComplete?.(currentSpec);
+      });
     } catch (err) {
       if (isAbortError(err)) return;
       const resolvedError = err instanceof Error ? err : new Error(String(err));
@@ -229,6 +277,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
     error: error.asReadonly(),
     usage: usage.asReadonly(),
     rawLines: rawLines.asReadonly(),
+    issues: issues.asReadonly(),
     send,
     stop,
     clear,

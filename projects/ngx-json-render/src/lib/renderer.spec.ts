@@ -5,6 +5,7 @@ import type { ActionHandler, ActionSettleInfo, Spec } from '@json-render/core';
 import { registerActionObserver } from '@json-render/core';
 import { JrChildren } from './children.component';
 import { JsonRenderer } from './renderer.component';
+import type { SpecValidationMode } from './spec-validation';
 import { injectRenderContext } from './tokens';
 import type { ComponentRegistry, StateChange } from './types';
 
@@ -92,6 +93,7 @@ const REGISTRY: ComponentRegistry = {
     [spec]="spec()"
     [registry]="registry"
     [loading]="loading()"
+    [validate]="validate()"
     [handlers]="handlers"
     [onAction]="onAction"
     [fallback]="fallback"
@@ -101,6 +103,7 @@ const REGISTRY: ComponentRegistry = {
 class Host {
   readonly spec = signal<Spec | null>(null);
   readonly loading = signal(false);
+  readonly validate = signal<SpecValidationMode>('off');
   registry: ComponentRegistry = REGISTRY;
   handlers: Record<string, ActionHandler> | undefined = undefined;
   onAction: ((name: string, params?: Record<string, unknown>) => void) | null =
@@ -708,5 +711,113 @@ describe('JsonRenderer', () => {
     stateService(fixture).set('/vip', false);
     await settle(fixture);
     expect(text(fixture, '.t-text')).toEqual(['Hello']);
+  });
+});
+
+describe('spec validation', () => {
+  /** Root points at a child that never arrives — an error-severity issue. */
+  const BROKEN: Spec = {
+    root: 'root',
+    elements: {
+      root: { type: 'Box', props: {}, children: ['ghost'] },
+    },
+  } as unknown as Spec;
+
+  /**
+   * The mistake `autoFixSpec` exists for: `visible` written inside `props`,
+   * where the renderer never looks at it, instead of on the element.
+   */
+  const MISPLACED_VISIBLE: Spec = {
+    root: 'root',
+    state: { show: false },
+    elements: {
+      root: { type: 'Box', props: {}, children: ['label'] },
+      label: {
+        type: 'Text',
+        props: { content: 'secret', visible: { $state: '/show', eq: true } },
+      },
+    },
+  } as unknown as Spec;
+
+  it('renders a broken spec untouched while validation is off', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fixture = await setup(MISPLACED_VISIBLE);
+
+    // Off is the default, so nothing about an existing app changes: the
+    // misplaced visible stays ignored and the element renders.
+    expect(text(fixture, '.t-text')).toEqual(['secret']);
+    expect(
+      warn.mock.calls.filter((call) =>
+        String(call[0]).includes('Spec validation'),
+      ),
+    ).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it('reports a broken spec under warn and renders it anyway', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fixture = await setup(BROKEN, (host) => host.validate.set('warn'));
+
+    expect(fixture.nativeElement.querySelector('.t-box')).toBeTruthy();
+    expect(
+      warn.mock.calls.some((call) => String(call[0]).includes('ghost')),
+    ).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('renders nothing under strict when the spec has errors', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fixture = await setup(BROKEN, (host) => host.validate.set('strict'));
+
+    // Half a broken UI is what strict is asked to refuse.
+    expect(fixture.nativeElement.querySelector('.t-box')).toBeNull();
+    expect(
+      error.mock.calls.some((call) => String(call[0]).includes('ghost')),
+    ).toBe(true);
+    error.mockRestore();
+  });
+
+  it('applies the lossless fixes to what actually renders', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const fixture = await setup(MISPLACED_VISIBLE, (host) =>
+      host.validate.set('warn'),
+    );
+
+    // The fix has to reach the tree, not just the report: with `visible` back
+    // on the element, /show being false hides it.
+    expect(text(fixture, '.t-text')).toEqual([]);
+
+    stateService(fixture).set('/show', true);
+    await settle(fixture);
+    expect(text(fixture, '.t-text')).toEqual(['secret']);
+
+    expect(
+      info.mock.calls.some((call) => String(call[0]).includes('Fixed')),
+    ).toBe(true);
+    info.mockRestore();
+  });
+
+  it('holds its judgement while the spec is still streaming', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fixture = await setup(BROKEN, (host) => {
+      host.validate.set('strict');
+      host.loading.set(true);
+    });
+
+    // Mid-stream, a child that has not arrived yet is the normal state of a
+    // generation, not a defect — blanking the screen for it would make
+    // strict unusable with the streaming hooks.
+    expect(fixture.nativeElement.querySelector('.t-box')).toBeTruthy();
+    expect(error).not.toHaveBeenCalled();
+
+    fixture.componentInstance.loading.set(false);
+    await settle(fixture);
+
+    // Once the stream settles, the same spec is judged.
+    expect(fixture.nativeElement.querySelector('.t-box')).toBeNull();
+    expect(
+      error.mock.calls.some((call) => String(call[0]).includes('ghost')),
+    ).toBe(true);
+    error.mockRestore();
   });
 });

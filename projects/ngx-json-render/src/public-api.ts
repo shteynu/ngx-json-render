@@ -46,6 +46,13 @@ export {
   type FieldValidationState,
 } from './lib/validation.service';
 
+// Spec validation
+export {
+  checkSpec,
+  type SpecCheck,
+  type SpecValidationMode,
+} from './lib/spec-validation';
+
 // Registry
 export {
   defineRegistry,
@@ -100,8 +107,15 @@ export type {
   ActionHandler,
   JsonPatch,
   Spec,
+  SpecIssue,
   StateStore,
   UIElement,
   VisibilityCondition,
 } from '@json-render/core';
-export { createStateStore, nestedToFlat } from '@json-render/core';
+export {
+  autoFixSpec,
+  createStateStore,
+  formatSpecIssues,
+  nestedToFlat,
+  validateSpec,
+} from '@json-render/core';
