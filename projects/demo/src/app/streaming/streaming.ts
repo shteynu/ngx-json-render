@@ -35,6 +35,14 @@ export class StreamTab {
   readonly draft = signal('');
   readonly failNext = signal(false);
 
+  /**
+   * Whether the last generation was stopped by hand. `injectUIStream` has no
+   * such flag — a stopped stream and a finished one both leave `isStreaming`
+   * false with the spec intact, which is the point — so the tab remembers it
+   * to keep the status line from calling a half-built UI "done".
+   */
+  readonly stopped = signal(false);
+
   readonly ui = injectUIStream({
     api: '/api/generate',
     fetch: liveOrRecorded(
@@ -71,14 +79,37 @@ export class StreamTab {
       : null,
   );
 
+  /**
+   * A stopped generation leaves children that were promised and never
+   * streamed, so the check reports gaps that are the reader's own doing. It
+   * still runs — inspecting a half-built spec is the point — but it says whose
+   * gaps these are before listing them.
+   */
+  readonly checkPreamble = computed(() =>
+    this.stopped()
+      ? 'Stopped mid-generation, so children that had not streamed in yet are genuinely missing. These gaps are yours, not the model’s.'
+      : null,
+  );
+
   /** The note attached to the running prompt, if it is a flawed recording. */
   readonly note = computed(
     () => RECORDINGS.find((r) => r.prompt === this.prompt())?.note ?? null,
   );
 
   generate(prompt: string): void {
+    this.stopped.set(false);
     this.prompt.set(prompt);
     void this.ui.send(prompt);
+  }
+
+  /**
+   * Abandon the generation and keep what has rendered. The half-built spec
+   * stays on screen — that is what separates `stop()` from `clear()`, and it
+   * is the reason the spec check becomes available the moment you press it.
+   */
+  stop(): void {
+    this.stopped.set(true);
+    this.ui.stop();
   }
 
   /** Live mode takes any prompt; the recordings only answer their own. */

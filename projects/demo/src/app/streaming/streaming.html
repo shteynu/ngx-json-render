@@ -21,6 +21,9 @@
       Fail the next request
     </label>
   }
+  @if (ui.isStreaming()) {
+    <button type="button" class="stop" (click)="stop()">Stop generating</button>
+  }
 </div>
 
 @if (keys.isLive()) {
@@ -78,6 +81,7 @@
         [spec]="ui.spec()"
         [componentNames]="componentNames"
         [unavailable]="checkUnavailable()"
+        [preamble]="checkPreamble()"
       />
     </section>
 
@@ -89,6 +93,9 @@
           {{ ui.rawLines().length }} patches so far
         } @else if (ui.error()) {
           <span class="dot failed"></span> failed
+        } @else if (stopped()) {
+          <span class="dot idle"></span> stopped —
+          {{ ui.rawLines().length }} patches kept
         } @else if (hasOutput()) {
           <span class="dot done"></span> done —
           {{ ui.rawLines().length }} patches applied

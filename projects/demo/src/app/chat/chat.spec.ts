@@ -99,4 +99,48 @@ describe('ChatTab', () => {
     expect(fixture.componentInstance.chat.error()).toBeNull();
     expect(host.textContent).toContain('Join the beta');
   });
+
+  it('stops a reply from the button and frees the composer', async () => {
+    const fixture = await render();
+    const chat = fixture.componentInstance.chat;
+    const host = fixture.nativeElement as HTMLElement;
+
+    fixture.componentInstance.ask(CHAT_EXCHANGES[0]);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await settle(fixture);
+    expect(chat.isStreaming()).toBe(true);
+    // Every way of speaking is shut while a reply runs, which is what makes a
+    // stop the only way out of a long one.
+    const asks = () => [
+      ...host.querySelectorAll<HTMLButtonElement>('.asks button'),
+    ];
+    expect(asks().every((button) => button.disabled)).toBe(true);
+
+    const stop = host.querySelector<HTMLButtonElement>('.actions .ghost');
+    expect(stop?.textContent?.trim()).toBe('Stop replying');
+    stop!.click();
+    await settle(fixture);
+
+    expect(chat.isStreaming()).toBe(false);
+    expect(chat.error()).toBeNull();
+    expect(host.querySelector('.actions .ghost')?.textContent?.trim()).toBe(
+      'Clear conversation',
+    );
+
+    // The turn keeps whatever was said into it rather than rolling back.
+    const said = chat.messages()[1].text;
+    expect(said.length).toBeGreaterThan(0);
+    expect(asks().every((button) => !button.disabled)).toBe(true);
+
+    // Nothing further arrives from the abandoned reply.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await settle(fixture);
+    expect(chat.messages()[1].text).toBe(said);
+    expect(chat.messages().length).toBe(2);
+
+    // The conversation carries on, partial turn and all.
+    await say(fixture, 1);
+    expect(chat.messages().length).toBe(4);
+    expect(host.textContent).toContain('Join the beta');
+  });
 });

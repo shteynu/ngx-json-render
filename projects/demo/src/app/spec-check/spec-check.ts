@@ -21,6 +21,9 @@ export interface Issue {
   selector: 'app-spec-check',
   template: `
     <h2>Spec check</h2>
+    @if (preamble(); as note) {
+      <p class="hint">{{ note }}</p>
+    }
     @if (unavailable(); as reason) {
       <p class="hint">{{ reason }}</p>
     } @else if (!spec()) {
@@ -51,6 +54,11 @@ export class SpecCheck {
   readonly componentNames = input.required<readonly string[]>();
   /** Why the check cannot run — shown instead of a result when set. */
   readonly unavailable = input<string | null>(null);
+  /**
+   * Context for a result that is about to look worse than it is — shown above
+   * it rather than in place of it, so the findings still stand.
+   */
+  readonly preamble = input<string | null>(null);
 
   readonly issues = computed<Issue[]>(() => {
     const spec = this.spec();

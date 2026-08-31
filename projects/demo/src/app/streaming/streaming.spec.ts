@@ -41,6 +41,17 @@ function checkText(fixture: ComponentFixture<StreamTab>): string {
   return el?.textContent ?? '';
 }
 
+/**
+ * Host text with runs of whitespace collapsed, so an assertion can read a
+ * sentence the template happens to have wrapped across lines.
+ */
+function flatText(fixture: ComponentFixture<StreamTab>): string {
+  return (fixture.nativeElement as HTMLElement).textContent!.replace(
+    /\s+/g,
+    ' ',
+  );
+}
+
 /** Wait until the stream settles, with a bound so a hang fails the test. */
 async function drain(fixture: ComponentFixture<StreamTab>) {
   const ui = fixture.componentInstance.ui;
@@ -183,5 +194,56 @@ describe('StreamTab', () => {
     expect(rendered(fixture)).toContain('Getting started');
     // The superseded generation left nothing behind.
     expect(rendered(fixture)).not.toContain('Weekly report');
+  });
+
+  it('stops a generation from the button and keeps what rendered', async () => {
+    const fixture = await render();
+    const ui = fixture.componentInstance.ui;
+    const host = fixture.nativeElement as HTMLElement;
+
+    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    // Long enough for the heading to land, far short of the whole recording.
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    await settle(fixture);
+    expect(ui.isStreaming()).toBe(true);
+
+    host.querySelector<HTMLButtonElement>('.stop')!.click();
+    await settle(fixture);
+
+    // Counted after the click, so no line can slip in between the two.
+    const applied = ui.rawLines().length;
+    expect(applied).toBeGreaterThanOrEqual(3);
+    expect(applied).toBeLessThan(RECORDINGS[0].lines.length - 1);
+
+    expect(ui.isStreaming()).toBe(false);
+    expect(ui.error()).toBeNull();
+    // Half a UI is the point of stopping rather than clearing: what arrived
+    // stays on screen, what had not yet been streamed is simply absent, and
+    // the button that acted on the stream goes away with it.
+    expect(ui.spec()?.root).toBe('root');
+    expect(rendered(fixture)).toContain('Weekly report');
+    expect(rendered(fixture)).not.toContain('p95 latency');
+    expect(host.querySelector('.stop')).toBeNull();
+    expect(flatText(fixture)).toContain(`stopped — ${applied} patches kept`);
+    // The check was held back while streaming and runs now — over a spec that
+    // really is missing children, so the panel says whose doing that was.
+    expect(fixture.componentInstance.checkUnavailable()).toBeNull();
+    expect(checkText(fixture)).toContain('These gaps are yours');
+    expect(checkText(fixture)).toContain('does not exist in the elements map');
+
+    // The abandoned replay really is dead, not merely ignored.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await settle(fixture);
+    expect(ui.rawLines().length).toBe(applied);
+    expect(ui.isStreaming()).toBe(false);
+    expect(ui.error()).toBeNull();
+
+    // And the tab still works: the next generation clears the stopped state.
+    fixture.componentInstance.generate(RECORDINGS[1].prompt);
+    await drain(fixture);
+
+    expect(fixture.componentInstance.stopped()).toBe(false);
+    expect(flatText(fixture)).toContain('patches applied');
+    expect(rendered(fixture)).toContain('Getting started');
   });
 });

@@ -92,11 +92,18 @@
           {{ chat.messages().length }} messages in this conversation.
         }
       </p>
-      @if (chat.messages().length > 0) {
-        <button type="button" class="ghost" (click)="chat.clear()">
-          Clear conversation
-        </button>
-      }
+      <div class="actions">
+        @if (chat.isStreaming()) {
+          <button type="button" class="ghost" (click)="chat.stop()">
+            Stop replying
+          </button>
+        }
+        @if (chat.messages().length > 0) {
+          <button type="button" class="ghost" (click)="chat.clear()">
+            Clear conversation
+          </button>
+        }
+      </div>
     </section>
   </aside>
 </div>

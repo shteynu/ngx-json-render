@@ -52,6 +52,25 @@
   cursor: pointer;
 }
 
+/* Pushed to the far end of the bar: it acts on the running generation, not on
+   the picker it would otherwise read as another option of. */
+.stop {
+  margin-left: auto;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.stop:hover {
+  border-color: var(--accent);
+}
+
 .prompt-bar.ask {
   margin-bottom: 14px;
 }
