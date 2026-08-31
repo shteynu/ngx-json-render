@@ -34,6 +34,7 @@ export {
   JsonRenderActionsService,
   injectActions,
   injectAction,
+  isActionCancelled,
   type PendingConfirmation,
 } from './lib/actions.service';
 
