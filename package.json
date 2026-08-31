@@ -12,7 +12,8 @@
     "test:material": "node scripts/run-material-tests.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:peers": "node scripts/check-peer-ranges.mjs"
+    "check:peers": "node scripts/check-peer-ranges.mjs",
+    "check:published": "node scripts/check-published-resolution.mjs"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

@@ -56,6 +56,16 @@ jobs:
         run: npm publish
         working-directory: dist/ngx-json-render
 
+      # `check:peers` above compares this commit's manifests, which are bumped
+      # together and therefore always agree. This compares the commit against
+      # what npm now serves, which is the only place a stale published peer
+      # range shows up — and it downgrades the pair silently rather than
+      # erroring. The renderer is the depended-upon half, so an incoherent
+      # pair here is the expected middle of the lockstep and only warns; the
+      # catalog release is what has to make it coherent again.
+      - name: Verify the published package installs as itself
+        run: npm run check:published -- ngx-json-render
+
   github-release:
     runs-on: ubuntu-latest
     needs: publish

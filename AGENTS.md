@@ -83,6 +83,22 @@ bump has to move that range in the same commit**, and the catalog then needs
 its own patch release — publish the renderer first, the catalog after. A red
 `check:peers` on a release is that rule firing, not a flake.
 
+What `check:peers` cannot see: it reads the manifests in this workspace, which
+are bumped together and therefore always agree. The gap that bites is between
+this commit and what npm is serving. `npm run check:published -- <package>`
+(`scripts/check-published-resolution.mjs`) closes it by installing the
+packages from the public registry the way a new user would and reporting what
+actually resolved; both release workflows run it after their publish step. It
+exists because publishing `ngx-json-render@0.2.1` while the catalog on npm was
+still 0.2.0 — carrying the old `^0.1.0` peer — made a clean install of the
+pair resolve the renderer **down** to 0.1.4. No ERESOLVE: npm satisfied the
+stale peer by choosing an older version, so the install looked fine and simply
+omitted the release. Its severity is asymmetric on purpose. The released
+package failing to resolve to itself is always fatal; an out-of-date sibling
+is fatal only on the catalog's release, because releasing the renderer first
+_necessarily_ leaves the pair incoherent until the catalog follows — there it
+warns and names the follow-up instead.
+
 Known caveat, handled by the runner script: `ng test ngx-json-render-material`
 passes but the runner process does not exit (see
 `projects/ngx-json-render-material/README.md` for what has been ruled out).
