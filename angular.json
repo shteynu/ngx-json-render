@@ -32,10 +32,10 @@
               "projects/ngx-json-render/src/**"
             ],
             "coverageThresholds": {
-              "statements": 93,
+              "statements": 94,
               "branches": 88,
               "functions": 92,
-              "lines": 95
+              "lines": 96
             }
           }
         }

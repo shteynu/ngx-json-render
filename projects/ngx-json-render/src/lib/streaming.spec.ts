@@ -622,7 +622,7 @@ describe('applyPatch operations and paths', () => {
     expect(after.elements['clone']).toEqual(after.elements['leaf']);
   });
 
-  it('copies a whole state branch', () => {
+  it('copies a whole state branch as a snapshot rather than an alias', () => {
     const after = applyPatch(seed(), {
       op: 'copy',
       from: '/state',
@@ -632,6 +632,14 @@ describe('applyPatch operations and paths', () => {
     expect(after.state).toMatchObject({
       snapshot: { count: 1, user: { name: 'Ada' } },
     });
+
+    // Handing over the live reference would make the spec self-referential,
+    // and `toMatchObject` alone would not notice: it only walks the shape it
+    // was given. The next request is where it surfaces, as a stringify that
+    // throws while building the body.
+    const state = after.state as Record<string, unknown>;
+    expect(state['snapshot']).not.toBe(state);
+    expect(() => JSON.stringify(after)).not.toThrow();
   });
 
   it('does nothing for a copy with no from', () => {
@@ -874,7 +882,7 @@ describe('injectUIStream line parsing', () => {
     });
   });
 
-  it('continues from a previous spec passed in the context', async () => {
+  it('continues from a previous spec handed to send', async () => {
     const ui = setupStream([
       '{"op":"add","path":"/elements/added","value":{"type":"Text","props":{}}}\n',
     ]);
@@ -1277,8 +1285,8 @@ describe('injectChatUI errors and lifecycle', () => {
     await chat.send('two');
 
     expect(bodies[0]).toEqual({ messages: [{ role: 'user', content: 'one' }] });
-    // The second turn carries the first exchange, and the new turn appears
-    // once rather than twice — the placeholder pair is filtered out first.
+    // The second turn carries the first exchange. History is built before the
+    // new pair is appended, so the new turn appears once rather than twice.
     expect(bodies[1]).toEqual({
       messages: [
         { role: 'user', content: 'one' },
@@ -1430,5 +1438,411 @@ describe('injectUIStream error responses', () => {
     expect(ui.spec()?.root).toBe('main');
     expect(Object.keys(ui.spec()?.elements ?? {})).toEqual(['main']);
     expect(ui.rawLines().length).toBe(2);
+  });
+});
+
+describe('one patch engine', () => {
+  /** A spec whose root element has a children array to insert into. */
+  function seed(): Spec {
+    return {
+      root: 'main',
+      state: { count: 1 },
+      elements: {
+        main: { type: 'Card', props: {}, children: ['a', 'b'] },
+      },
+    } as unknown as Spec;
+  }
+
+  it('inserts into an array for add and overwrites for replace', () => {
+    // RFC 6902 and the write primitives in `@json-render/core` differ on
+    // arrays exactly here, and a model adding a child to a container hits it:
+    // overwriting would silently drop the child that was already there.
+    const added = applyPatch(seed(), {
+      op: 'add',
+      path: '/elements/main/children/0',
+      value: 'new',
+    });
+    expect(added.elements['main'].children).toEqual(['new', 'a', 'b']);
+
+    const replaced = applyPatch(seed(), {
+      op: 'replace',
+      path: '/elements/main/children/0',
+      value: 'new',
+    });
+    expect(replaced.elements['main'].children).toEqual(['new', 'b']);
+  });
+
+  it('appends to an array for the - segment', () => {
+    const after = applyPatch(seed(), {
+      op: 'add',
+      path: '/elements/main/children/-',
+      value: 'last',
+    });
+
+    expect(after.elements['main'].children).toEqual(['a', 'b', 'last']);
+  });
+
+  it('applies a patch to a top-level path it does not recognise', () => {
+    // The spec grammar belongs to upstream and grows without this renderer,
+    // so an unrecognised field is passed through rather than dropped.
+    const after = applyPatch(seed(), {
+      op: 'add',
+      path: '/meta',
+      value: { title: 'Report' },
+    });
+
+    expect((after as unknown as Record<string, unknown>)['meta']).toEqual({
+      title: 'Report',
+    });
+    expect(after.root).toBe('main');
+  });
+
+  it('gives buildSpecFromParts the same result as a streamed patch', async () => {
+    // The two entry points used to run different engines, so the same stream
+    // rendered differently depending on which one an app reached for.
+    const patches = [
+      { op: 'add' as const, path: '/root', value: 'main' },
+      {
+        op: 'add' as const,
+        path: '/elements/main',
+        value: { type: 'Card', props: {}, children: ['a'] },
+      },
+      { op: 'add' as const, path: '/elements/main/children/0', value: 'first' },
+    ];
+
+    const built = buildSpecFromParts(
+      patches.map((patch) => ({
+        type: 'data-spec',
+        data: { type: 'patch', patch },
+      })),
+    );
+
+    const streamed = patches.reduce<Spec>(
+      (spec, patch) => applyPatch(spec, patch),
+      { root: '', elements: {} } as Spec,
+    );
+
+    expect(built).toEqual(streamed);
+    expect(built?.elements['main'].children).toEqual(['first', 'a']);
+  });
+});
+
+describe('a superseded request cannot reach the signals', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('ignores a chunk that arrives after a second send replaced it', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    // The transport leaves its body open when the signal aborts, which is what
+    // a real read whose promise already settled amounts to: the chunk is
+    // delivered after the request that replaced this one reset the signals.
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      ++call === 1 ? first.response : second.response,
+    );
+
+    const onComplete = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate', onComplete }),
+    );
+
+    const firstSend = ui.send('first');
+    await tick();
+    const secondSend = ui.send('second');
+    await tick();
+    second.push('{"op":"add","path":"/root","value":"fresh"}\n');
+    await tick();
+
+    // The superseded request delivers a patch and then finishes.
+    first.push('{"op":"add","path":"/root","value":"stale"}\n');
+    first.close();
+    await tick();
+
+    expect(ui.spec()?.root).toBe('fresh');
+    expect(ui.rawLines()).toEqual([
+      '{"op":"add","path":"/root","value":"fresh"}',
+    ]);
+    // onComplete persists the spec in most apps, so firing it for a generation
+    // the user superseded would write the stale one back.
+    expect(onComplete).not.toHaveBeenCalled();
+
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete.mock.calls[0][0].root).toBe('fresh');
+  });
+
+  it('drops the empty placeholder of a superseded turn and keeps it out of history', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const bodies: unknown[] = [];
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      bodies.push(JSON.parse(String((init as RequestInit).body)));
+      const target = ++call === 1 ? first : second;
+      (init as RequestInit).signal?.addEventListener('abort', target.abort);
+      return target.response;
+    });
+
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat' }),
+    );
+
+    const firstSend = chat.send('one');
+    await tick();
+    // Supersede before a single line streamed, so the first turn's assistant
+    // bubble is still empty.
+    const secondSend = chat.send('two');
+    await tick();
+    second.push('Answer\n');
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    // The user's first turn stays — they typed it — but the bubble that never
+    // got any content goes with the request that was replaced.
+    expect(
+      chat.messages().map((message) => `${message.role}:${message.text}`),
+    ).toEqual(['user:one', 'user:two', 'assistant:Answer']);
+
+    // An empty assistant turn says nothing to the model and some providers
+    // reject it outright, so it never reaches the request either.
+    expect(bodies[1]).toEqual({
+      messages: [
+        { role: 'user', content: 'one' },
+        { role: 'user', content: 'two' },
+      ],
+    });
+  });
+});
+
+describe('stopping a stream', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** A transport whose body aborts with its signal, as a real fetch does. */
+  function abortableStream() {
+    const open = openStream();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      (init as RequestInit).signal?.addEventListener('abort', open.abort);
+      return open.response;
+    });
+    return open;
+  }
+
+  it('stop() ends the generation and keeps what has rendered', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    const open = abortableStream();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    const sent = ui.send('go');
+    await tick();
+    open.push('{"op":"add","path":"/root","value":"partial"}\n');
+    await tick();
+    expect(ui.isStreaming()).toBe(true);
+
+    ui.stop();
+    await sent;
+    await tick();
+
+    // Stopping is the user's own decision, not a failure, and what was
+    // generated up to that point stays on screen.
+    expect(ui.isStreaming()).toBe(false);
+    expect(ui.spec()?.root).toBe('partial');
+    expect(ui.error()).toBeNull();
+  });
+
+  it('stop() on an idle stream does nothing', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      streamResponse(['{"op":"add","path":"/root","value":"main"}\n']),
+    );
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    await ui.send('go');
+    ui.stop();
+
+    expect(ui.spec()?.root).toBe('main');
+    expect(ui.isStreaming()).toBe(false);
+  });
+
+  it('clear() stops the request instead of letting it repopulate the spec', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    // Left open on abort on purpose: the point is that even a request still
+    // producing lines cannot undo the clear.
+    const open = openStream();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(open.response);
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    const sent = ui.send('go');
+    await tick();
+    open.push('{"op":"add","path":"/root","value":"a"}\n');
+    open.push('{"__meta":"usage","totalTokens":7}\n');
+    await tick();
+    expect(ui.spec()?.root).toBe('a');
+    expect(ui.usage()?.totalTokens).toBe(7);
+
+    ui.clear();
+
+    expect(ui.spec()).toBeNull();
+    expect(ui.rawLines()).toEqual([]);
+    expect(ui.usage()).toBeNull();
+    expect(ui.isStreaming()).toBe(false);
+
+    open.push('{"op":"add","path":"/root","value":"b"}\n');
+    open.close();
+    await sent;
+    await tick();
+
+    expect(ui.spec()).toBeNull();
+    expect(ui.isStreaming()).toBe(false);
+  });
+
+  it('chat stop() ends the reply and keeps what was said', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    const open = abortableStream();
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat' }),
+    );
+
+    const sent = chat.send('hello');
+    await tick();
+    open.push('Half an answer\n');
+    await tick();
+
+    chat.stop();
+    await sent;
+    await tick();
+
+    expect(chat.isStreaming()).toBe(false);
+    expect(chat.messages().at(-1)?.text).toBe('Half an answer');
+    expect(chat.error()).toBeNull();
+  });
+});
+
+describe('line parsing rejects what is not a patch', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('drops a parseable line that carries no op and path', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      streamResponse([
+        '{"hello":"world"}\n',
+        '{"op":"add","path":"/root","value":"main"}\n',
+      ]),
+    );
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    await ui.send('go');
+
+    // Being valid JSON is not being a patch: recording one as a raw line
+    // reports work that never happened.
+    expect(ui.rawLines()).toEqual([
+      '{"op":"add","path":"/root","value":"main"}',
+    ]);
+    expect(ui.spec()?.root).toBe('main');
+  });
+
+  it('keeps a multi-byte character split across the last two chunks', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    const line = '{"op":"add","path":"/state/label","value":"héé"}\n';
+    const bytes = new TextEncoder().encode(line);
+    // Split inside the final two-byte character, with no trailing chunk to
+    // carry it: only the decoder's closing flush can complete it.
+    const split = bytes.length - 2;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, split));
+        controller.enqueue(bytes.slice(split));
+        controller.close();
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(stream, { status: 200 }),
+    );
+
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({ api: '/api/generate' }),
+    );
+
+    await ui.send('go');
+
+    expect(ui.spec()?.state).toEqual({ label: 'héé' });
+  });
+});
+
+describe('a superseded chat turn that fails on its own', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('still takes its empty placeholder with it', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideZonelessChangeDetection()],
+    });
+
+    // The transport leaves the superseded body open, so the first turn unwinds
+    // through a real failure rather than through the abort.
+    const first = openStream();
+    const second = openStream();
+    let call = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      ++call === 1 ? first.response : second.response,
+    );
+
+    const chat = TestBed.runInInjectionContext(() =>
+      injectChatUI({ api: '/api/chat' }),
+    );
+
+    const firstSend = chat.send('one');
+    await tick();
+    const secondSend = chat.send('two');
+    await tick();
+
+    first.fail(new Error('connection reset'));
+    second.push('Answer\n');
+    second.close();
+    await Promise.all([firstSend, secondSend]);
+
+    expect(
+      chat.messages().map((message) => `${message.role}:${message.text}`),
+    ).toEqual(['user:one', 'user:two', 'assistant:Answer']);
+    // The failure belonged to a request nobody is waiting for any more.
+    expect(chat.error()).toBeNull();
   });
 });

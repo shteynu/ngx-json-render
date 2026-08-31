@@ -82,6 +82,7 @@ export {
   type TokenUsage,
   type UIStreamOptions,
   type UIStreamReturn,
+  type UIStreamSendOptions,
 } from './lib/streaming';
 
 // Schema (spec format + prompt rules)

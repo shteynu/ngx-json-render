@@ -135,6 +135,9 @@ import { injectUIStream } from 'ngx-json-render';
   template: `
     <json-render [spec]="ui.spec()" [registry]="registry" [loading]="ui.isStreaming()" />
     <button (click)="ui.send('A dashboard for weekly sales')">Generate</button>
+    @if (ui.isStreaming()) {
+      <button (click)="ui.stop()">Stop</button>
+    }
   `,
   imports: [JsonRenderer],
 })
@@ -193,10 +196,30 @@ readonly ui = injectUIStream({
 
 `injectChatUI` takes the same option.
 
+### Stopping, clearing and refining
+
+`stop()` ends the generation in flight and keeps what has already rendered —
+the user changed their mind, so it is not an error and `error` stays null.
+`clear()` stops it too and then resets `spec`, `error`, `usage` and `rawLines`;
+without the stop the request still running would put its spec back on its very
+next patch. Both are no-ops when nothing is streaming, and `injectChatUI` has
+the same pair.
+
+To refine a generated UI instead of starting over, hand `send` the spec to
+build on. It is sent to the endpoint as `currentSpec` and the streamed patches
+apply on top of it:
+
+```ts
+ui.send('make the chart a bar chart', { previousSpec: ui.spec()! });
+```
+
+The second argument also carries `context`, forwarded to the endpoint as-is:
+`ui.send(prompt, { context: { locale }, previousSpec })`.
+
 Also available:
 
 - `injectChatUI({ api, fetch? })` — chat + GenUI: the endpoint takes `{ messages }` and streams prose mixed with ` ```spec ` fenced JSONL; each assistant message carries `text` and/or a `spec`.
-- `applyPatch(spec, patch)` — immutably apply one RFC 6902 patch to a spec.
+- `applyPatch(spec, patch)` — immutably apply one RFC 6902 patch to a spec, sharing every subtree the patch did not touch. Both hooks and `buildSpecFromParts` apply through it, so the same stream produces the same spec whichever one you reach for. One deliberate deviation from the RFC: a failing `test` op is a no-op rather than an abort, because these patches come off a model's output and dropping a bad line beats killing the generation.
 - `buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` — derive specs from AI SDK `message.parts`.
 - `catalog.prompt()` / `buildUserPrompt` (from `@json-render/core`) — generate the system/user prompts for your catalog.
 
