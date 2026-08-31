@@ -3,6 +3,7 @@ import {
   Component,
   type Type,
   computed,
+  effect,
   inject,
   input,
   output,
@@ -21,6 +22,11 @@ import { JsonRenderActionsService } from './actions.service';
 import { JrConfirmDialog } from './confirm-dialog.component';
 import { JrElement } from './element.component';
 import { JsonRenderRootContext } from './root-context';
+import {
+  type SpecValidationMode,
+  checkSpec,
+  reportSpecCheck,
+} from './spec-validation';
 import { JsonRenderStateService } from './state.service';
 import type { ComponentRegistry, RegistryEntry, StateChange } from './types';
 import { JsonRenderValidationService } from './validation.service';
@@ -77,6 +83,19 @@ export class JsonRenderer {
   readonly loading = input(false);
   /** Fallback component for unknown types. */
   readonly fallback = input<Type<unknown> | RegistryEntry | null>(null);
+  /**
+   * Whether to check the spec's structure before rendering it, and what to do
+   * about what turns up. Off by default.
+   *
+   * `'warn'` reports the issues and renders anyway; `'strict'` renders nothing
+   * when the spec has errors. Both first apply the lossless fixes — `visible`,
+   * `on` and `repeat` misplaced inside `props` are moved back to the element,
+   * where they take effect instead of being ignored.
+   *
+   * The check is skipped while `loading` is true: a spec that is still
+   * arriving is expected to reference children that have not streamed in yet.
+   */
+  readonly validate = input<SpecValidationMode>('off');
 
   /**
    * Initial state model (uncontrolled mode). Defaults to `spec.state`.
@@ -116,9 +135,20 @@ export class JsonRenderer {
   /** The action dispatcher of this renderer. */
   protected readonly actions: JsonRenderActionsService;
 
+  /**
+   * The spec as checked, and what the check found. While `loading`, the mode
+   * is forced off: the spec is still arriving, and the missing children it
+   * refers to are the normal state of a stream, not a defect.
+   */
+  private readonly checked = computed(() =>
+    checkSpec(this.spec(), this.loading() ? 'off' : this.validate()),
+  );
+
   constructor() {
     const root = inject(JsonRenderRootContext);
-    root.spec = this.spec;
+    // The fixed spec, not the input: a `visible` the check moved out of
+    // `props` has to be the one the tree renders, or the fix is cosmetic.
+    root.spec = computed(() => this.checked().spec);
     root.registry = this.registry;
     root.loading = this.loading;
     root.fallback = this.fallback;
@@ -141,10 +171,19 @@ export class JsonRenderer {
     this.stateStore = inject(JsonRenderStateService);
     inject(JsonRenderValidationService);
     this.actions = inject(JsonRenderActionsService);
+
+    // Reports once per distinct check rather than once per render: `checked`
+    // only recomputes when the spec, the mode or the loading flag change.
+    effect(() => reportSpecCheck(this.checked(), this.validate()));
   }
 
   protected readonly rootKey = computed(() => {
-    const spec = this.spec();
+    const checked = this.checked();
+    // A spec whose errors survived the fixes does not render under `strict`.
+    // Reporting it and drawing half of it anyway is the behaviour the mode
+    // exists to refuse.
+    if (this.validate() === 'strict' && checked.hasErrors) return null;
+    const spec = checked.spec;
     return spec?.root && spec.elements?.[spec.root] ? spec.root : null;
   });
 

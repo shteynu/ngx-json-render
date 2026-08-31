@@ -305,6 +305,37 @@ Also available:
 - `buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` — derive specs from AI SDK `message.parts`.
 - `catalog.prompt()` / `buildUserPrompt` (from `@json-render/core`) — generate the system/user prompts for your catalog.
 
+### Checking what the model produced
+
+A generation can end malformed — a child that never arrived, a `visible` the
+model wrote inside `props` where nothing reads it. Opt into a structural check
+with `validate`, on the renderer or on either hook:
+
+```html
+<json-render [spec]="ui.spec()" [registry]="registry" [loading]="ui.isStreaming()" validate="warn" />
+```
+
+```ts
+readonly ui = injectUIStream({ api: '/api/generate', validate: 'strict' });
+// ui.issues() — what was wrong with the finished spec
+```
+
+- `'off'` (the default) — render whatever arrives, as before.
+- `'warn'` — report what is wrong and render anyway.
+- `'strict'` — a spec with errors does not render, and a generation that ends
+  with one fails instead of completing, so it never reaches the `onComplete`
+  where apps persist it.
+
+Both modes first apply the lossless fixes `autoFixSpec` provides: `visible`,
+`on` and `repeat` misplaced inside `props` move back onto the element, where
+they take effect instead of being ignored. Content is never pruned — the lossy
+fixes are left out on purpose, because re-prompting beats a renderer that
+silently deletes elements.
+
+The check waits for the spec to settle. While `loading` is true a missing child
+is a patch that has not arrived yet, not a defect, so nothing is reported and
+`strict` keeps rendering; the hooks check once, when the generation completes.
+
 ## Spec features supported
 
 Full parity with the baseline json-render contract:
@@ -396,7 +427,7 @@ handler, on the server.
 
 Components: `JsonRenderer` (`<json-render>`), `JrChildren`, `JrConfirmDialog`, `JrElement`, `JrRepeatScope`.
 
-Injectables/helpers: `injectRenderContext`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`.
+Injectables/helpers: `injectRenderContext`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`, `checkSpec`.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`.
 
@@ -410,6 +441,7 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 | `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                       |
 | `loading`             | `boolean`                            | Suppress missing-element warnings while streaming      |
 | `fallback`            | `Type<unknown>`                      | Component for unknown types                            |
+| `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)   |
 | `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`) |
 | `store`               | `StateStore`                         | External store (controlled mode)                       |
 | `handlers`            | `Record<string, ActionHandler>`      | Action handlers                                        |

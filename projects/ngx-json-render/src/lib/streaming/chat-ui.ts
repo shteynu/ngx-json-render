@@ -1,6 +1,11 @@
 import { DestroyRef, type Signal, inject, signal } from '@angular/core';
-import type { Spec } from '@json-render/core';
-import { createMixedStreamParser } from '@json-render/core';
+import type { Spec, SpecIssue } from '@json-render/core';
+import { createMixedStreamParser, formatSpecIssues } from '@json-render/core';
+import {
+  type SpecValidationMode,
+  checkSpec,
+  reportSpecCheck,
+} from '../spec-validation';
 import { applyPatch } from './patch';
 import { createStreamSession, isAbortError, streamRequest } from './transport';
 
@@ -36,6 +41,12 @@ export interface ChatUIOptions {
    * `Response` whose `body` streams the reply.
    */
   fetch?: typeof globalThis.fetch;
+  /**
+   * Whether to check the spec a reply built, and what a problem means. Off by
+   * default; same contract as `UIStreamOptions.validate`, applied once per
+   * reply that produced a spec.
+   */
+  validate?: SpecValidationMode;
 }
 
 /**
@@ -48,6 +59,11 @@ export interface ChatUIReturn {
   readonly isStreaming: Signal<boolean>;
   /** Error from the last request, if any */
   readonly error: Signal<Error | null>;
+  /**
+   * Structural issues in the spec of the last completed reply. Empty until a
+   * reply completes, and always empty while `validate` is off.
+   */
+  readonly issues: Signal<readonly SpecIssue[]>;
   /** Send a user message */
   send: (text: string) => Promise<void>;
   /**
@@ -83,6 +99,8 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
   const messages = signal<ChatMessage[]>([]);
   const isStreaming = signal(false);
   const error = signal<Error | null>(null);
+  const issues = signal<readonly SpecIssue[]>([]);
+  const validate = options.validate ?? 'off';
   const session = createStreamSession();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
@@ -96,6 +114,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
     stop();
     messages.set([]);
     error.set(null);
+    issues.set([]);
   };
 
   const send = async (text: string) => {
@@ -196,13 +215,38 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
         parser,
       );
 
-      const finalMessage: ChatMessage = {
-        id: assistantId,
-        role: 'assistant',
-        text: accumulatedText,
-        spec: hasSpec ? currentSpec : null,
-      };
-      gate.commit(() => options.onComplete?.(finalMessage));
+      gate.commit(() => {
+        // A reply that only talked has no spec to check, and reporting
+        // "missing root" for a sentence would be nonsense.
+        const check = checkSpec(hasSpec ? currentSpec : null, validate);
+        if (hasSpec) {
+          reportSpecCheck(check, validate);
+          if (check.spec) currentSpec = check.spec;
+        }
+        issues.set(check.issues);
+
+        const finalMessage: ChatMessage = {
+          id: assistantId,
+          role: 'assistant',
+          text: accumulatedText,
+          spec: hasSpec ? currentSpec : null,
+        };
+        // The reply keeps the fixed spec, so what renders in the bubble is
+        // what was checked.
+        messages.update((prev) =>
+          prev.map((m) => (m.id === assistantId ? finalMessage : m)),
+        );
+
+        if (validate === 'strict' && check.hasErrors) {
+          const invalid = new Error(
+            `Generated spec failed validation:\n${formatSpecIssues([...check.issues])}`,
+          );
+          error.set(invalid);
+          options.onError?.(invalid);
+          return;
+        }
+        options.onComplete?.(finalMessage);
+      });
     } catch (err) {
       // Unconditional: however this turn ended, its own bubble goes with it if
       // nothing was ever said into it. A superseded request usually unwinds by
@@ -224,6 +268,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
     messages: messages.asReadonly(),
     isStreaming: isStreaming.asReadonly(),
     error: error.asReadonly(),
+    issues: issues.asReadonly(),
     send,
     stop,
     clear,
