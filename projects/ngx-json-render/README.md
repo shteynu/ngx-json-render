@@ -431,6 +431,34 @@ Full parity with the baseline json-render contract:
 | Confirm dialogs       | built-in `<jr-confirm-dialog>` (auto-rendered)                                                                |
 | Devtools hooks        | action observer + `data-jr-key` picker attributes                                                             |
 
+### Ready-made directives
+
+`@json-render/directives` is written against the core, not against any one
+renderer, so its `$format`, `$math`, `$concat`, `$count`, `$truncate`,
+`$pluralize`, `$join` and `$t` work here as they are:
+
+```ts
+import { createI18nDirective, standardDirectives } from '@json-render/directives';
+
+readonly directives = [
+  ...standardDirectives,
+  createI18nDirective({ locale, messages }),
+];
+```
+
+```html
+<json-render [spec]="spec()" [registry]="registry" [directives]="directives" />
+```
+
+```json
+{ "content": { "$format": "currency", "value": { "$state": "/price" }, "currency": "USD" } }
+```
+
+A directive reads state through the same resolution as any other prop, so a
+value it derives updates when that state does.
+`projects/ngx-json-render/src/lib/directives.spec.ts` renders every one of
+them through the renderer, which is what keeps this paragraph honest.
+
 ## State
 
 Each `<json-render>` owns a state store (JSON Pointer addressed). Seeding order: `store` input (controlled) → `state` input → `spec.state`.
