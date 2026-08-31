@@ -4,7 +4,7 @@
 
 Angular renderer for [json-render](https://github.com/vercel-labs/json-render) — give an LLM a catalog of your components, stream back a JSON spec, and render it as real Angular components. No `innerHTML`, no `eval`, no framework lock-in on the wire format.
 
-Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, zoneless-friendly, `OnPush` everywhere.
+Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, `OnPush` everywhere, and zoneless — no `NgZone`, no Zone.js.
 
 This is an Angular **adapter over the official core**, not a second implementation of it — `@json-render/core` is a peer dependency, and the spec your model emits is the same one the React, Vue, Solid and Svelte renderers consume. A catalog and a spec written here move to another framework unchanged.
 
@@ -19,6 +19,13 @@ npm install ngx-json-render @json-render/core zod
 ```
 
 Requires Angular ≥ 20.
+
+**Zoneless, and checked as such.** Zone.js appears in no manifest here, `NgZone`
+in no source file, and neither in the published bundles; every suite runs under
+`provideZonelessChangeDetection()`. CI asserts all four on each commit
+(`npm run check:zoneless`), so this is a tested property rather than a
+statement of intent — which matters because zoneless is the default for new
+applications from Angular 21 on.
 
 ## The shortest path: a ready-made catalog
 
