@@ -18,7 +18,9 @@ This is an Angular **adapter over the official core**, not a second implementati
 npm install ngx-json-render @json-render/core zod
 ```
 
-Requires Angular ≥ 20.
+Requires Angular ≥ 20. CI proves both ends of that range on every push: the
+library builds and its suite passes on Angular 20 (the floor) and on Angular
+22 (the current release), as well as on the 21 the workspace itself pins.
 
 ## The shortest path: a ready-made catalog
 

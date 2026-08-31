@@ -107,15 +107,20 @@ Always invoke it as `npm run test:material`, which goes through
 the raw `ng test` for that project — it will hang — and do not chase the
 underlying runner defect as a side quest.
 
-The `angular-compat` CI job proves the library still builds and passes on
-Angular 20, the floor of the `>=20` peer range. `scripts/angular-compat.mjs`
-rewrites `package.json` and `angular.json` to that line, so anything
-version-coupled has to be mirrored there or the job breaks on a change that
-looks unrelated to Angular. Two kinds have bitten:
+The `angular-compat` CI job proves the `>=20` peer range at both ends: the
+library builds and passes on Angular 20, the floor it promises, and on Angular
+22, the newest line a consumer can be on. (The workspace itself pins 21, which
+the main job covers.) `scripts/angular-compat.mjs` rewrites `package.json` and
+`angular.json` to the target line, so anything version-coupled has to be
+mirrored there or the job breaks on a change that looks unrelated to Angular.
+Three kinds have bitten:
 
 - a dev dependency whose major is tied to another's — `@vitest/coverage-v8`
   peers on its own `vitest` major, so pinning one and not the other turns
   one ERESOLVE into the next;
+- a peer on an exact TypeScript minor — Angular 22 wants `>=6.0 <6.1`, so the
+  workspace's own `~5.9` pin ERESOLVEs before a single file is compiled; each
+  target line gets its own `typescript` pin in the script;
 - a builder option that only exists in v21 — the v20 schema rejects unknown
   keys outright rather than ignoring them, which is why the script deletes
   the `coverage*` options it finds in `test.options`.
@@ -127,6 +132,9 @@ the workspace, so never run it in the user's working tree:
     node scripts/angular-compat.mjs 20 && npm install --no-audit --no-fund
     npx ng build ngx-json-render && npx ng test ngx-json-render
     npx ng build ngx-json-render-material
+
+Repeat with `22` in a second checkout; the matrix runs both and a change can
+break one line without touching the other.
 
 Run all of it, not just the install: the job stops at the first failing step,
 so a later break stays invisible until the earlier one is fixed. The job
