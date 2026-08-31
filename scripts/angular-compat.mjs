@@ -1,9 +1,11 @@
 /**
- * Prepares the workspace to build and test the library against an older
- * Angular line than the one `package.json` pins, so CI can prove the
- * `>=20` peer range in `projects/ngx-json-render/package.json` still holds.
+ * Prepares the workspace to build and test the library against an Angular
+ * line other than the one `package.json` pins, so CI can prove the `>=20`
+ * peer range in `projects/ngx-json-render/package.json` still holds at both
+ * ends: the floor it promises, and the newest line a consumer can be on.
  *
  * Usage: node scripts/angular-compat.mjs 20
+ *        node scripts/angular-compat.mjs 22
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -24,6 +26,11 @@ for (const name of Object.keys(pkg.devDependencies)) {
   if (name.startsWith('@angular/') || name === 'ng-packagr') {
     pkg.devDependencies[name] = `^${major}.0.0`;
   }
+}
+if (major === '22') {
+  // Angular 22 peers on TypeScript 6.0 exactly (`>=6.0 <6.1`), so the
+  // workspace's ~5.9 pin ERESOLVEs before anything gets a chance to compile.
+  pkg.devDependencies.typescript = '~6.0.0';
 }
 if (major === '20') {
   // @angular/build@20 declares a peer of vitest ^3.1.1; vitest 4 fails ERESOLVE.
