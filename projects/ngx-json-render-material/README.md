@@ -63,7 +63,7 @@ Two-way binding works as it does everywhere else in `ngx-json-render`: bind `val
 { "type": "Input", "props": { "label": "Name", "value": { "$bindState": "/name" } }, "children": [] }
 ```
 
-The catalog declares no custom actions — the built-in `setState`, `pushState`, `removeState` and `validateForm` cover it — so `materialRegistry` renders a spec with nothing else wired up.
+The catalog declares no custom actions — the built-in `setState`, `pushState`, `removeState`, `validateForm` and `submitForm` cover it — so `materialRegistry` renders a spec with nothing else wired up.
 
 ## Validation
 
@@ -117,6 +117,16 @@ regardless of `validateOn`, and writes the outcome to `/formValidation` (or the
 ```jsonc
 // /formValidation after a failed submit
 { "valid": false, "errors": { "/email": ["Email is required"] } }
+```
+
+`submitForm` does the same check and then dispatches your own action, but only
+if every field passed — one binding instead of a validation the button cannot
+act on:
+
+```json
+{ "type": "Button", "props": { "label": "Save" },
+  "on": { "press": { "action": "submitForm", "params": { "action": "saveUser" } } },
+  "children": [] }
 ```
 
 Errors appear in the Material form field's subscript (`<mat-error>`) for

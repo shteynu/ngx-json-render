@@ -94,9 +94,9 @@ export function isActionCancelled(error: unknown): boolean {
  * Action dispatcher of a `<json-render>` subtree.
  *
  * Executes {@link ActionBinding}s: built-in actions (`setState`, `pushState`,
- * `removeState`, `push`, `pop`, `validateForm`) are handled internally;
- * everything else is routed to the host-provided `handlers` (or the
- * `onAction` catch-all), honoring `confirm`, `onSuccess`, and `onError`.
+ * `removeState`, `push`, `pop`, `validateForm`, `submitForm`) are handled
+ * internally; everything else is routed to the host-provided `handlers` (or
+ * the `onAction` catch-all), honoring `confirm`, `onSuccess`, and `onError`.
  */
 @Injectable()
 export class JsonRenderActionsService {
@@ -223,24 +223,45 @@ export class JsonRenderActionsService {
       }
 
       if (resolved.action === 'validateForm') {
-        if (!this.validation) {
+        if (this.checkForm(resolved) === null) {
           console.warn(
             'validateForm action was dispatched but no JsonRenderValidationService is available.',
           );
+        }
+        return;
+      }
+
+      if (resolved.action === 'submitForm') {
+        const valid = this.checkForm(resolved);
+        if (valid === null) {
+          console.warn(
+            'submitForm action was dispatched but no JsonRenderValidationService is available; nothing was submitted.',
+          );
           return;
         }
-        const valid = this.validation.validateAll();
-        const errors: Record<string, string[]> = {};
-        for (const [path, fs] of Object.entries(
-          untracked(this.validation.fieldStates),
-        )) {
-          if (fs.result && !fs.result.valid) {
-            errors[path] = fs.result.errors;
-          }
+        // An invalid form stops here, with the errors already written to
+        // state and every field marked validated, so they are on screen.
+        if (!valid) return;
+
+        const target = resolved.params?.['action'];
+        if (typeof target !== 'string' || !target) {
+          console.warn(
+            'submitForm needs the action to submit to: { "action": "submitForm", "params": { "action": "saveUser" } }.',
+          );
+          return;
         }
-        const statePath =
-          (resolved.params?.['statePath'] as string) || '/formValidation';
-        set(statePath, { valid, errors });
+
+        // Dispatched, not called directly, so the submitted action goes
+        // through the same lookup, confirmation, loading state and observers
+        // as any other — submitForm gates it, it does not replace it.
+        await this.execute({
+          action: target,
+          params: deepResolveValue(resolved.params?.['params'], get) as
+            Record<string, unknown> | undefined,
+          confirm: resolved.confirm,
+          onSuccess: resolved.onSuccess,
+          onError: resolved.onError,
+        });
         return;
       }
 
@@ -296,6 +317,32 @@ export class JsonRenderActionsService {
   /** Cancel the pending confirmation dialog. */
   cancel(): void {
     untracked(this._pendingConfirmation)?.reject();
+  }
+
+  /**
+   * Validate every registered field and write `{ valid, errors }` to the
+   * action's `statePath` (default `/formValidation`). Returns null when there
+   * is no validation service to ask.
+   *
+   * Shared by `validateForm` and `submitForm`: the two must report the same
+   * thing about the same form, and one implementation is how that stays true.
+   */
+  private checkForm(resolved: ResolvedAction): boolean | null {
+    if (!this.validation) return null;
+
+    const valid = this.validation.validateAll();
+    const errors: Record<string, string[]> = {};
+    for (const [path, fieldState] of Object.entries(
+      untracked(this.validation.fieldStates),
+    )) {
+      if (fieldState.result && !fieldState.result.valid) {
+        errors[path] = fieldState.result.errors;
+      }
+    }
+    const statePath =
+      (resolved.params?.['statePath'] as string) || '/formValidation';
+    this.state.set(statePath, { valid, errors });
+    return valid;
   }
 
   private lookupHandler(name: string): ActionHandler | undefined {

@@ -11,7 +11,8 @@ const themeColor = z.enum(['primary', 'accent', 'warn']);
  * The checks run against the state path the field's value prop is bound to,
  * so validation only applies to a field bound with `$bindState` / `$bindItem`.
  * The `validateForm` action validates every such field at once and writes
- * `{ valid, errors }` to state.
+ * `{ valid, errors }` to state; `submitForm` does that and then dispatches a
+ * submit action, but only when every field passed.
  */
 const validation = ValidationConfigSchema.optional();
 
@@ -20,7 +21,7 @@ const VALIDATION_HINT =
   'Validate it with `validation`: {"checks":[{"type":"required","message":"..."}],"validateOn":"blur"}. ' +
   'Check types: required, requiredIf, email, url, numeric, minLength, maxLength, pattern, min, max, matches, equalTo, lessThan, greaterThan. ' +
   'Args go in `args` (e.g. {"type":"minLength","args":{"min":8},"message":"..."}). ' +
-  'Validation needs a bound value, and the built-in validateForm action checks every bound field at once.';
+  'Validation needs a bound value. The built-in validateForm action checks every bound field at once, and submitForm checks them and then dispatches your submit action only if they all pass.';
 
 /**
  * The Angular Material catalog: the vocabulary of components a spec — or an
@@ -337,7 +338,7 @@ export const materialCatalog = schema.createCatalog({
     },
   },
   // No custom actions: the built-in setState / pushState / removeState /
-  // validateForm cover everything this catalog needs.
+  // validateForm / submitForm cover everything this catalog needs.
   actions: {},
 });
 
