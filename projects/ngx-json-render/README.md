@@ -318,11 +318,11 @@ Full parity with the baseline json-render contract:
 | Computed / directives | `{ "$computed": "fmtDate", "args": {...} }`, custom `$`-directives                                            |
 | Visibility            | `"visible": { "$state": "/count", "gte": 5 }` (incl. `$and`/`$or`, `$item`, `$index`)                         |
 | Events → actions      | `"on": { "press": { "action": "...", "params": {...}, "confirm": {...}, "onSuccess": ..., "onError": ... } }` |
-| Built-in actions      | `setState`, `pushState` (with `$id`), `removeState`, `push`/`pop`, `validateForm`                             |
+| Built-in actions      | `setState`, `pushState` (with `$id`), `removeState`, `push`/`pop`, `validateForm`, `submitForm`               |
 | Repeat                | `"repeat": { "statePath": "/todos", "key": "id" }`, nested via `{ "$item": "..." }`                           |
 | Watch                 | `"watch": { "/country": { "action": "loadCities" } }`                                                         |
 | Slots                 | `"slots": { "header": ["title-el"] }` + `<jr-children slot="header" />`                                       |
-| Validation            | field checks via `ValidationConfig`, `validateForm`, `injectFieldValidation`                                  |
+| Validation            | field checks via `ValidationConfig`, `validateForm` / `submitForm`, `injectFieldValidation`                   |
 | Confirm dialogs       | built-in `<jr-confirm-dialog>` (auto-rendered)                                                                |
 | Devtools hooks        | action observer + `data-jr-key` picker attributes                                                             |
 
@@ -344,6 +344,42 @@ Share one store across renderers (or drive it from your own state management) by
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.
 
+## Submitting a form
+
+`validateForm` validates every bound field at once and writes
+`{ valid, errors }` to `/formValidation` (or the `statePath` you pass). What it
+cannot do is act on the answer: a model writing a submit button had to emit one
+binding for the validation and hope the app's own handler re-checked the form.
+
+`submitForm` is both halves in one binding — validate everything, and dispatch
+the submit only if it all passes:
+
+```json
+{
+  "type": "Button",
+  "props": { "label": "Save" },
+  "on": {
+    "press": {
+      "action": "submitForm",
+      "params": {
+        "action": "saveUser",
+        "params": { "email": { "$state": "/email" } }
+      },
+      "onSuccess": { "navigate": "/thanks" }
+    }
+  },
+  "children": []
+}
+```
+
+An invalid form stops there, with the errors written to state and every field
+marked validated so its message is on screen. A valid one dispatches
+`saveUser` as an ordinary action: the same handler lookup, the same `confirm`
+(asked after validation — there is no point asking about a form that cannot be
+submitted), the same `onSuccess` / `onError`, the same loading state. `params`
+resolves `{ "$state": "/path" }` one level down, the way `pushState`'s `value`
+does.
+
 ## Security
 
 Specs are attacker-shaped input: whatever produced one — a model, a prompt, a
@@ -360,9 +396,12 @@ text reaches the DOM through Angular interpolation. Script injection through a
 spec is not a thing you have to defend against.
 
 **A spec can only name actions you registered.** Built-ins (`setState`,
-`pushState`, `removeState`, `push`, `pop`, `validateForm`) are handled inside
-the renderer; every other action name is looked up in the `handlers` you pass.
-An unrecognised name logs a warning and does nothing.
+`pushState`, `removeState`, `push`, `pop`, `validateForm`, `submitForm`) are
+handled inside the renderer; every other action name is looked up in the
+`handlers` you pass. An unrecognised name logs a warning and does nothing.
+`submitForm` is no exception to this: the action it is told to submit goes
+through the same lookup, so it gates a handler you registered rather than
+reaching one you did not.
 
 The exception is `onAction`, which is a deliberate catch-all: when you pass it,
 **every** action name in the spec reaches it, including ones you never put in

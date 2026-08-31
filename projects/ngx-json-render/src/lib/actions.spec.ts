@@ -168,6 +168,124 @@ describe('built-in actions', () => {
     expect(state.get('/signup/validity')).toEqual({ valid: true, errors: {} });
     expect(state.get('/formValidation')).toBeUndefined();
   });
+
+  it('submitForm submits once every field passes', async () => {
+    const submitted: unknown[] = [];
+    const { state, validation, actions } = setup({
+      state: { email: 'ada@example.com', draft: 'hello' },
+      handlers: {
+        saveUser: (params) => {
+          submitted.push(params);
+        },
+      },
+    });
+    validation.registerField('/email', {
+      checks: [{ type: 'email', message: 'Not an email' }],
+    });
+
+    await actions.execute({
+      action: 'submitForm',
+      params: {
+        action: 'saveUser',
+        // Nested one level down, so it needs the same deep resolution
+        // pushState does — `resolveAction` only reaches the top level.
+        params: { email: { $state: '/email' }, note: { $state: '/draft' } },
+      },
+    });
+
+    expect(submitted).toEqual([{ email: 'ada@example.com', note: 'hello' }]);
+    expect(state.get('/formValidation')).toEqual({ valid: true, errors: {} });
+  });
+
+  it('submitForm submits nothing when a field fails, and says why', async () => {
+    const submitted: unknown[] = [];
+    const { state, validation, actions } = setup({
+      state: { email: '' },
+      handlers: {
+        saveUser: () => {
+          submitted.push('called');
+        },
+      },
+    });
+    validation.registerField('/email', {
+      checks: [{ type: 'required', message: 'Email is required' }],
+    });
+
+    await actions.execute({
+      action: 'submitForm',
+      params: { action: 'saveUser', statePath: '/signup/validity' },
+    });
+
+    expect(submitted).toEqual([]);
+    expect(state.get('/signup/validity')).toEqual({
+      valid: false,
+      errors: { '/email': ['Email is required'] },
+    });
+    // The field is marked validated, so its message is on screen rather than
+    // waiting for a blur the user has already done.
+    expect(validation.fieldStates()['/email']?.validated).toBe(true);
+  });
+
+  it('submitForm asks first when the binding carries a confirm', async () => {
+    const submitted: unknown[] = [];
+    const { actions } = setup({
+      handlers: {
+        saveUser: () => {
+          submitted.push('called');
+        },
+      },
+    });
+
+    const cancelled = actions.execute({
+      action: 'submitForm',
+      params: { action: 'saveUser' },
+      confirm: { title: 'Send it?', message: 'This emails the customer.' },
+    });
+    // Validation runs before the question: no point asking about a form that
+    // cannot be submitted.
+    expect(actions.pendingConfirmation()?.action.action).toBe('saveUser');
+    actions.cancel();
+    await expect(cancelled).rejects.toThrowError('Action cancelled');
+    expect(submitted).toEqual([]);
+
+    const confirmed = actions.execute({
+      action: 'submitForm',
+      params: { action: 'saveUser' },
+      confirm: { title: 'Send it?', message: 'This emails the customer.' },
+    });
+    actions.confirm();
+    await confirmed;
+    expect(submitted).toEqual(['called']);
+  });
+
+  it('submitForm hands onSuccess to the action it submitted', async () => {
+    const routes: string[] = [];
+    const { state, actions } = setup({
+      handlers: { saveUser: () => undefined },
+      navigate: (path) => routes.push(path),
+    });
+
+    await actions.execute({
+      action: 'submitForm',
+      params: { action: 'saveUser' },
+      onSuccess: { navigate: '/thanks' },
+    });
+
+    expect(routes).toEqual(['/thanks']);
+    expect(state.get('/formValidation')).toEqual({ valid: true, errors: {} });
+  });
+
+  it('submitForm warns when it is not told what to submit', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { actions } = setup();
+
+    await actions.execute({ action: 'submitForm' });
+
+    expect(warn).toHaveBeenCalledWith(
+      'submitForm needs the action to submit to: { "action": "submitForm", "params": { "action": "saveUser" } }.',
+    );
+    warn.mockRestore();
+  });
 });
 
 describe('action dispatch', () => {

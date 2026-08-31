@@ -77,6 +77,11 @@ export const schema = defineSchema(
         description:
           'Validate all registered form fields and write the result to state. Params: { statePath?: string }. Defaults to /formValidation. Result: { valid: boolean, errors: Record<string, string[]> }.',
       },
+      {
+        name: 'submitForm',
+        description:
+          "Validate all registered form fields and, only if every one passes, dispatch another action. Params: { action: string, params?: object, statePath?: string }. Writes the same { valid, errors } result as validateForm. Use this on a form's submit button: it is validateForm and the submit in one binding, and the submit is skipped when the form is invalid.",
+      },
     ],
     defaultRules: [
       // Element integrity
