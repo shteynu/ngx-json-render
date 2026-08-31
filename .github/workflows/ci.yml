@@ -23,6 +23,12 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      # Nothing else in the workspace resolves peer ranges: tsconfig maps both
+      # package names to dist/, so npm's view of the manifests is only ever
+      # exercised by an install of the published pair.
+      - name: Check peer ranges between workspace packages
+        run: npm run check:peers
+
       - name: Build library
         run: npm run build:lib
 

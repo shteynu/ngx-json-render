@@ -70,6 +70,19 @@ purpose: Prettier otherwise reformats inline `template:` and `styles:`
 blocks, and splitting a `mat-icon` interpolation across lines changes the
 ligature text the icon renders.
 
+Peer ranges: `npm run check:peers` (`scripts/check-peer-ranges.mjs`) asserts
+that each published package's peer range on a sibling published package admits
+that sibling's current version. CI and both release workflows run it. It exists
+because `tsconfig.json` maps both package names to `dist/`, so npm's view of
+the manifests is exercised nowhere in this workspace — which is how
+`ngx-json-render-material@0.2.0` shipped a peer of `ngx-json-render: ^0.1.0`
+(a 0.x caret stops below the next minor) and ERESOLVEd for anyone following
+the catalog's own install line. The operational consequence: the catalog's
+peer range is pinned to the renderer's current minor, so **a renderer minor
+bump has to move that range in the same commit**, and the catalog then needs
+its own patch release — publish the renderer first, the catalog after. A red
+`check:peers` on a release is that rule firing, not a flake.
+
 Known caveat, handled by the runner script: `ng test ngx-json-render-material`
 passes but the runner process does not exit (see
 `projects/ngx-json-render-material/README.md` for what has been ruled out).

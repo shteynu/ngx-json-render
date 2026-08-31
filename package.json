@@ -11,7 +11,8 @@
     "build:material": "ng build ngx-json-render-material",
     "test:material": "node scripts/run-material-tests.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:peers": "node scripts/check-peer-ranges.mjs"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

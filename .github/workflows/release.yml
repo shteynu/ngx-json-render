@@ -33,6 +33,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # A renderer minor lands on npm as `latest` immediately, so the Material
+      # catalog's peer range has to admit this version before it ships — the
+      # pair is installed together and both resolve to latest. Runs after the
+      # install because it reads semver out of node_modules.
+      - name: Check peer ranges between workspace packages
+        run: npm run check:peers
+
       - name: Build library
         run: npm run build:lib
 

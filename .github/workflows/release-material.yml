@@ -35,6 +35,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The catalog declares a peer range on the renderer; publishing one that
+      # excludes the renderer version users get from `latest` is an ERESOLVE
+      # for everyone who follows the README. Runs after the install because it
+      # reads semver out of node_modules.
+      - name: Check peer ranges between workspace packages
+        run: npm run check:peers
+
       # The catalog compiles against the renderer's build output.
       - name: Build renderer
         run: npm run build:lib
