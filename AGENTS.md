@@ -70,6 +70,15 @@ purpose: Prettier otherwise reformats inline `template:` and `styles:`
 blocks, and splitting a `mat-icon` interpolation across lines changes the
 ligature text the icon renders.
 
+Zoneless: `npm run check:zoneless` (`scripts/check-zoneless.mjs`) asserts the
+property both READMEs now claim outright — no `zone.js` in any manifest, no
+`NgZone` in any source, every TestBed suite explicitly under
+`provideZonelessChangeDetection()`, and neither reference in the built
+bundles. Nothing else fails on an `NgZone` import, and a suite that forgets
+the provider still passes, so the guarantee could otherwise erode with every
+check green. Run it after the library builds — the bundle half is skipped
+(with a note) when `dist/` is empty, which is why CI places it after both.
+
 Peer ranges: `npm run check:peers` (`scripts/check-peer-ranges.mjs`) asserts
 that each published package's peer range on a sibling published package admits
 that sibling's current version. CI and both release workflows run it. It exists

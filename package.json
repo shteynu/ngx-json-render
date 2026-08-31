@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:peers": "node scripts/check-peer-ranges.mjs",
+    "check:zoneless": "node scripts/check-zoneless.mjs",
     "check:published": "node scripts/check-published-resolution.mjs",
     "capture:gif": "node scripts/capture-streaming-gif.mjs"
   },

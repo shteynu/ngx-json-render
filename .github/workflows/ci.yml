@@ -42,6 +42,13 @@ jobs:
       - name: Build Material catalog
         run: npm run build:material
 
+      # Runs after both builds so it can read the bundles that actually ship,
+      # not only the sources. Nothing else fails on an NgZone import, and a
+      # suite that forgot provideZonelessChangeDetection() would still be
+      # green — so the zoneless claim needs its own check.
+      - name: Check the zoneless guarantee
+        run: npm run check:zoneless
+
       # The catalog's runner reports its results and then never exits (see
       # projects/ngx-json-render-material/README.md), so this goes through a
       # script that waits for the report rather than for the process. The
