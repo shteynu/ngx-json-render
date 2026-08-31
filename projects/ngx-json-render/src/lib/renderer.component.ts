@@ -1,6 +1,8 @@
+import { NgComponentOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  Injector,
   type Type,
   computed,
   effect,
@@ -20,6 +22,11 @@ import type {
 import { createDirectiveRegistry } from '@json-render/core';
 import { JsonRenderActionsService } from './actions.service';
 import { JrConfirmDialog } from './confirm-dialog.component';
+import {
+  CONFIRM_CONTEXT,
+  type ConfirmContext,
+  JR_CONFIRM_DIALOG,
+} from './confirm-tokens';
 import { JrElement } from './element.component';
 import { JsonRenderRootContext } from './root-context';
 import {
@@ -53,7 +60,7 @@ import { JsonRenderValidationService } from './validation.service';
 @Component({
   selector: 'json-render',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [JrElement, JrConfirmDialog],
+  imports: [JrElement, JrConfirmDialog, NgComponentOutlet],
   providers: [
     JsonRenderRootContext,
     JsonRenderStateService,
@@ -66,11 +73,17 @@ import { JsonRenderValidationService } from './validation.service';
       <jr-element [elementKey]="key" />
     }
     @if (pendingConfirm(); as confirm) {
-      <jr-confirm-dialog
-        [config]="confirm"
-        (confirmed)="actions.confirm()"
-        (cancelled)="actions.cancel()"
-      />
+      @if (customDialog; as dialog) {
+        <ng-container
+          *ngComponentOutlet="dialog; injector: confirmInjector() ?? undefined"
+        />
+      } @else {
+        <jr-confirm-dialog
+          [config]="confirm"
+          (confirmed)="actions.confirm()"
+          (cancelled)="actions.cancel()"
+        />
+      }
     }
   `,
 })
@@ -190,4 +203,34 @@ export class JsonRenderer {
   protected readonly pendingConfirm = computed(
     () => this.actions.pendingConfirmation()?.action.confirm ?? null,
   );
+
+  /**
+   * The app's own dialog, if it provided one. Read once: which component
+   * answers a confirmation is an application decision, not something that
+   * changes between two confirmations.
+   */
+  protected readonly customDialog = inject(JR_CONFIRM_DIALOG, {
+    optional: true,
+  });
+  private readonly injector = inject(Injector);
+
+  /**
+   * A replacement dialog takes no inputs and emits no outputs — it injects
+   * everything it needs, the way catalog components do. That keeps the seam
+   * one token wide instead of a component contract the renderer would have to
+   * bind to.
+   */
+  protected readonly confirmInjector = computed(() => {
+    const config = this.pendingConfirm();
+    if (!config) return null;
+    const context: ConfirmContext = {
+      config,
+      confirm: () => this.actions.confirm(),
+      cancel: () => this.actions.cancel(),
+    };
+    return Injector.create({
+      providers: [{ provide: CONFIRM_CONTEXT, useValue: context }],
+      parent: this.injector,
+    });
+  });
 }

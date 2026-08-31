@@ -8,6 +8,14 @@ export { JrChildren } from './lib/children.component';
 export { JrElement } from './lib/element.component';
 export { JrRepeatScope } from './lib/repeat-scope.component';
 export { JrConfirmDialog } from './lib/confirm-dialog.component';
+export {
+  CONFIRM_CONTEXT,
+  JR_CONFIRM_DIALOG,
+  JR_CONFIRM_LABELS,
+  injectConfirmContext,
+  type ConfirmContext,
+  type ConfirmLabels,
+} from './lib/confirm-tokens';
 
 // Render context / DI
 export {

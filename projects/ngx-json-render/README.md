@@ -384,6 +384,42 @@ Share one store across renderers (or drive it from your own state management) by
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.
 
+## Confirmation dialogs
+
+An action binding with a `confirm` field routes through a dialog before its
+handler runs. The packaged one is a real modal — `role="dialog"` with
+`aria-modal`, labelled by its title and described by its message, focus moved
+onto _Cancel_ on open and returned to the trigger on close, Tab kept inside and
+Escape cancelling.
+
+Three levels of control, in the order you are likely to need them:
+
+```ts
+// 1. Its two words, when the spec does not supply confirmLabel / cancelLabel.
+{ provide: JR_CONFIRM_LABELS, useValue: { confirm: 'Подтвердить', cancel: 'Отмена' } }
+```
+
+```css
+/* 2. Its colours. Light and dark defaults ship; these override both. */
+json-render { --jr-confirm-surface: #101418; --jr-confirm-accent: #4f9cf9; }
+```
+
+Also `--jr-confirm-ink`, `--jr-confirm-muted`, `--jr-confirm-border`,
+`--jr-confirm-scrim`, `--jr-confirm-danger`, `--jr-confirm-on-accent` and
+`--jr-confirm-radius`.
+
+```ts
+// 3. The whole dialog. Your component injects the context instead of taking
+//    inputs, the same way catalog components do.
+@Component({
+  template: `<my-modal [title]="ctx.config.title" (ok)="ctx.confirm()" (dismiss)="ctx.cancel()" />`,
+})
+export class AppConfirm {
+  readonly ctx = injectConfirmContext();
+}
+// providers: [{ provide: JR_CONFIRM_DIALOG, useValue: AppConfirm }]
+```
+
 ## Security
 
 Specs are attacker-shaped input: whatever produced one — a model, a prompt, a
@@ -436,7 +472,9 @@ handler, on the server.
 
 Components: `JsonRenderer` (`<json-render>`), `JrChildren`, `JrConfirmDialog`, `JrElement`, `JrRepeatScope`.
 
-Injectables/helpers: `injectRenderContext`, `injectElementKey`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`, `isActionCancelled`, `checkSpec`.
+Injectables/helpers: `injectRenderContext`, `injectElementKey`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `injectConfirmContext`, `jsonRenderMessage`, `isActionCancelled`, `checkSpec`.
+
+Tokens: `JR_CONFIRM_DIALOG` (replace the confirmation dialog), `JR_CONFIRM_LABELS` (its two words), `CONFIRM_CONTEXT`, `RENDER_CONTEXT`, `REPEAT_SCOPE`.
 
 `injectActions().execute()` rejects when the user dismisses a `confirm`
 dialog, which is a normal gesture rather than a failure — `isActionCancelled(error)`

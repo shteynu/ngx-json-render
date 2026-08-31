@@ -1,9 +1,14 @@
-import { Component, signal } from '@angular/core';
+import { Component, type Provider, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import type { ActionHandler, ActionSettleInfo, Spec } from '@json-render/core';
 import { registerActionObserver } from '@json-render/core';
 import { JrChildren } from './children.component';
+import {
+  JR_CONFIRM_DIALOG,
+  JR_CONFIRM_LABELS,
+  injectConfirmContext,
+} from './confirm-tokens';
 import { JsonRenderer } from './renderer.component';
 import type { SpecValidationMode } from './spec-validation';
 import { injectRenderContext } from './tokens';
@@ -74,6 +79,21 @@ class TInput {
 })
 class TFallback {}
 
+/** An app's own confirmation dialog, wired through the injected context. */
+@Component({
+  selector: 'app-confirm',
+  template: `
+    <div class="app-confirm">
+      <p>{{ ctx.config.title }}</p>
+      <button class="app-confirm-ok" (click)="ctx.confirm()">ok</button>
+      <button class="app-confirm-no" (click)="ctx.cancel()">no</button>
+    </div>
+  `,
+})
+class AppConfirm {
+  readonly ctx = injectConfirmContext();
+}
+
 const REGISTRY: ComponentRegistry = {
   Text: TText,
   Box: TBox,
@@ -112,9 +132,13 @@ class Host {
   readonly changes: StateChange[][] = [];
 }
 
-async function setup(spec: Spec | null, configure?: (host: Host) => void) {
+async function setup(
+  spec: Spec | null,
+  configure?: (host: Host) => void,
+  providers: Provider[] = [],
+) {
   TestBed.configureTestingModule({
-    providers: [provideZonelessChangeDetection()],
+    providers: [provideZonelessChangeDetection(), ...providers],
   });
   const fixture = TestBed.createComponent(Host);
   configure?.(fixture.componentInstance);
@@ -819,5 +843,153 @@ describe('spec validation', () => {
       error.mock.calls.some((call) => String(call[0]).includes('ghost')),
     ).toBe(true);
     error.mockRestore();
+  });
+});
+
+describe('the confirmation dialog', () => {
+  /** Open the dialog of CONFIRM_SPEC and return the host element. */
+  async function openDialog(
+    providers: Provider[] = [],
+  ): Promise<{ fixture: ComponentFixture<Host>; host: HTMLElement }> {
+    const fixture = await setup(
+      CONFIRM_SPEC,
+      (h) => {
+        h.handlers = { destroy: () => {} };
+      },
+      providers,
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    host.querySelector<HTMLButtonElement>('.t-btn')!.click();
+    await settle(fixture);
+    return { fixture, host };
+  }
+
+  it('is a dialog to a screen reader, labelled by its own text', async () => {
+    const { host } = await openDialog();
+
+    const panel = host.querySelector('[role="dialog"]');
+    expect(panel).toBeTruthy();
+    expect(panel!.getAttribute('aria-modal')).toBe('true');
+
+    // The label and description have to resolve to the title and the message,
+    // or the dialog announces itself as an unnamed group.
+    const titleId = panel!.getAttribute('aria-labelledby')!;
+    const messageId = panel!.getAttribute('aria-describedby')!;
+    expect(host.querySelector(`#${titleId}`)?.textContent?.trim()).toBe(
+      'Sure?',
+    );
+    expect(host.querySelector(`#${messageId}`)?.textContent?.trim()).toBe(
+      'Really delete?',
+    );
+  });
+
+  it('opens with focus on cancel, not on the destructive answer', async () => {
+    const { host } = await openDialog();
+
+    const cancel = host.querySelectorAll<HTMLButtonElement>(
+      'jr-confirm-dialog button',
+    )[0];
+    expect(document.activeElement).toBe(cancel);
+  });
+
+  it('returns focus to whatever opened it', async () => {
+    const fixture = await setup(CONFIRM_SPEC, (h) => {
+      h.handlers = { destroy: () => {} };
+    });
+    const host = fixture.nativeElement as HTMLElement;
+    const trigger = host.querySelector<HTMLButtonElement>('.t-btn')!;
+
+    trigger.focus();
+    trigger.click();
+    await settle(fixture);
+    expect(document.activeElement).not.toBe(trigger);
+
+    host
+      .querySelectorAll<HTMLButtonElement>('jr-confirm-dialog button')[0]
+      .click();
+    await settle(fixture);
+
+    // Without this a keyboard user is dropped at the top of the document
+    // every time they dismiss a confirmation.
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('cancels on Escape', async () => {
+    const { fixture, host } = await openDialog();
+
+    host
+      .querySelector('jr-confirm-dialog')!
+      .dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+    await settle(fixture);
+
+    expect(host.querySelector('jr-confirm-dialog')).toBeNull();
+  });
+
+  it('keeps Tab inside itself', async () => {
+    const { host } = await openDialog();
+
+    const [cancel, confirm] = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('jr-confirm-dialog button'),
+    );
+    // Tab off the last control wraps to the first instead of walking into the
+    // page behind the modal.
+    confirm.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
+    );
+    expect(document.activeElement).toBe(cancel);
+
+    cancel.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(document.activeElement).toBe(confirm);
+  });
+
+  it('takes its button labels from a token, and the spec still wins', async () => {
+    const { host } = await openDialog([
+      {
+        provide: JR_CONFIRM_LABELS,
+        useValue: { confirm: 'Да', cancel: 'Нет' },
+      },
+    ]);
+
+    expect(
+      Array.from(
+        host.querySelectorAll<HTMLButtonElement>('jr-confirm-dialog button'),
+      ).map((b) => b.textContent?.trim()),
+    ).toEqual(['Нет', 'Да']);
+  });
+
+  it('is replaceable through a token', async () => {
+    let executed = 0;
+    const fixture = await setup(
+      CONFIRM_SPEC,
+      (h) => {
+        h.handlers = {
+          destroy: () => {
+            executed += 1;
+          },
+        };
+      },
+      [{ provide: JR_CONFIRM_DIALOG, useValue: AppConfirm }],
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    host.querySelector<HTMLButtonElement>('.t-btn')!.click();
+    await settle(fixture);
+
+    // The app's own dialog, not the packaged one — and it received the config.
+    expect(host.querySelector('jr-confirm-dialog')).toBeNull();
+    expect(host.querySelector('.app-confirm')?.textContent).toContain('Sure?');
+
+    host.querySelector<HTMLButtonElement>('.app-confirm-ok')!.click();
+    await settle(fixture);
+
+    expect(executed).toBe(1);
+    expect(host.querySelector('.app-confirm')).toBeNull();
   });
 });
