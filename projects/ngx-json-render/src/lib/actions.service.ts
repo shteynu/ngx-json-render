@@ -76,7 +76,7 @@ export interface PendingConfirmation {
  * Carries a stable `name` so callers can tell a cancellation apart from a
  * handler failure without matching on the message.
  *
- * @internal Not part of the public API; check `error.name` instead.
+ * @internal Not part of the public API; use {@link isActionCancelled}.
  */
 export class ActionCancelledError extends Error {
   constructor() {

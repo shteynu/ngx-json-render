@@ -396,7 +396,11 @@ handler, on the server.
 
 Components: `JsonRenderer` (`<json-render>`), `JrChildren`, `JrConfirmDialog`, `JrElement`, `JrRepeatScope`.
 
-Injectables/helpers: `injectRenderContext`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`.
+Injectables/helpers: `injectRenderContext`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `jsonRenderMessage`, `isActionCancelled`.
+
+`injectActions().execute()` rejects when the user dismisses a `confirm`
+dialog, which is a normal gesture rather than a failure — `isActionCancelled(error)`
+is how you tell the two apart.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`.
 

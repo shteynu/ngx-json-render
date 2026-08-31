@@ -25,7 +25,7 @@ npm test             # vitest: renderer + Material catalog + demo
 npm run build        # build renderer + Material catalog + demo
 ```
 
-The demo consumes the _built_ package (`dist/ngx-json-render`) via a `tsconfig` path mapping — `npm start` builds it first; keep `npm run watch:lib` running alongside if you're editing the library itself. This also makes the repo boot unmodified on StackBlitz, which always runs `npm install && npm start`.
+The demo consumes both _built_ packages (`dist/ngx-json-render` and `dist/ngx-json-render-material`, which its playground renders) via `tsconfig` path mappings — `npm start` and `npm test` build them first, so a fresh clone needs no other step. This also makes the repo boot unmodified on StackBlitz, which always runs `npm install && npm start`. Keep `npm run watch:lib` running alongside if you're editing the library itself.
 
 ## Releasing
 
