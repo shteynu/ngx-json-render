@@ -5,11 +5,9 @@
 - Branch: `fix/mutating-spec-lifecycle`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `fix/mutating-spec-lifecycle`, one commit on top of
-  `9f2ea0d`; worktree clean, nothing pushed, so the work is visible only in
-  this clone
-- Status: implemented, verified and committed; awaiting a push decision
-- Last updated: 2026-08-31
+- Current HEAD: `bfc0f28` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
+- Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
 ## Objective
@@ -129,6 +127,6 @@ None outstanding beyond the two above.
 
 ## Next concrete step
 
-Decide whether the remaining audit one-liners (export
-`isActionCancelled`, drop the dead `allowedNonPeerDependencies`, add
-`build:material` to `npm start`) ride along on this branch or get their own.
+None. The branch is merged into `main`. The audit one-liners it asked about
+went onto their own branch (`chore/audit-one-liners`, a2883d0), which is
+merged too.

@@ -5,9 +5,9 @@
 - Branch: `feat/submit-form`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `feat/submit-form`, one commit on top of `9f2ea0d`
-- Status: done, verified, committed, unpushed
-- Last updated: 2026-08-31
+- Current HEAD: `a2a78d5` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
+- Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
 ## Objective
@@ -69,4 +69,4 @@ but not what to submit.
 
 ## Next concrete step
 
-Nothing outstanding. Committed and unpushed — pushing is the user's call.
+None. The branch is merged into `main`.

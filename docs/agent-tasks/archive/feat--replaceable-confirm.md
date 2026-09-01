@@ -5,9 +5,9 @@
 - Branch: `feat/replaceable-confirm`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `feat/replaceable-confirm`, one commit on top of `9f2ea0d`
-- Status: done, verified, committed, unpushed
-- Last updated: 2026-08-31
+- Current HEAD: `a6c5b6d` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
+- Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
 ## Objective
@@ -69,5 +69,4 @@ the Tab wrap, `JR_CONFIRM_LABELS`, and a replacement through
 
 ## Next concrete step
 
-Nothing outstanding on this branch. It is committed and unpushed — pushing is
-the user's call.
+None. The branch is merged into `main`.

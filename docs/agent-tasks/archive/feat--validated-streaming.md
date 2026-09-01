@@ -5,10 +5,9 @@
 - Branch: `feat/validated-streaming`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `feat/validated-streaming`, one commit on top of
-  `9f2ea0d`; worktree clean, nothing pushed
-- Status: implemented and verified
-- Last updated: 2026-08-31
+- Current HEAD: `12d788c` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
+- Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
 ## Objective
@@ -114,5 +113,6 @@ on.
 
 ## Next concrete step
 
-Decide whether the demo should expose the new mode anywhere, or keep its own
-`SpecCheck` panel as the only visible surface (current decision: keep it).
+None. The branch is merged into `main`. The one question it left open — whether
+the demo should expose the new mode anywhere — was answered by keeping its own
+`SpecCheck` panel as the only visible surface.

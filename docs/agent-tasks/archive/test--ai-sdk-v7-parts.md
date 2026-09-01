@@ -5,8 +5,8 @@
 - Branch: `test/ai-sdk-v7-parts`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `test/ai-sdk-v7-parts`, one commit on top of `9f2ea0d`
-- Status: done, verified, committed, unpushed
+- Current HEAD: `a2064bd` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
 - Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
@@ -74,4 +74,6 @@ lands, `ai` should get a 22 run too.
 
 ## Next concrete step
 
-Nothing outstanding. Committed and unpushed — pushing is the user's call.
+None. The branch is merged into `main`. One thing worth remembering: `ai@7` was
+compat-checked against Angular 20 only. Now that the 22 matrix has landed, it
+deserves a run against the top of the range.

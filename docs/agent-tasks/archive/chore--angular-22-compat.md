@@ -5,9 +5,9 @@
 - Branch: `chore/angular-22-compat`
 - Base branch: `main`
 - Base commit: `9f2ea0d`
-- Current HEAD: the tip of `chore/angular-22-compat`, one commit on top of `9f2ea0d`
-- Status: done, verified, committed, unpushed
-- Last updated: 2026-08-31
+- Current HEAD: `f190f5d` on `main` — the branch was merged
+- Status: done, verified, merged into `main`
+- Last updated: 2026-09-01
 - Last agent/tool: Claude Code (Opus 5)
 
 ## Objective
@@ -49,6 +49,4 @@ between the workspace and that line was a dependency pin.
 
 ## Next concrete step
 
-Nothing outstanding. Committed and unpushed — pushing is the user's call.
-The two remaining audit parity items are the `@json-render/directives` test
-and the AI SDK v7 data-parts audit.
+None. The branch is merged into `main`.
