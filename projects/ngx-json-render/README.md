@@ -370,6 +370,7 @@ silently deletes elements.
 The check waits for the spec to settle. While `loading` is true a missing child
 is a patch that has not arrived yet, not a defect, so nothing is reported and
 `strict` keeps rendering; the hooks check once, when the generation completes.
+
 ## Testing
 
 `ngx-json-render/testing` is a separate entry point, so nothing in it can reach

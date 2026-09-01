@@ -95,7 +95,7 @@ generation with errors fails instead of handing the app a broken UI to persist.
 - `npm run build` from an emptied `dist/` — all three projects; the builds are
   this workspace's typecheck and the public API changed.
 - `npx ng test ngx-json-render --coverage` 184/184 (11 new), `npx ng test demo
-  --coverage` 58/58, `npm run test:material` 61/61 at 99.01% statements.
+--coverage` 58/58, `npm run test:material` 61/61 at 99.01% statements.
 - `npm run format:check` (after one `prettier --write` on the spec).
 
 ### What the new tests actually prove
