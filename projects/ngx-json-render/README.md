@@ -270,6 +270,32 @@ export class ChatPage {
 }
 ```
 
+### Reading an AI SDK message
+
+If the UI arrives as AI SDK data parts rather than through these hooks,
+`buildSpecFromParts` / `getTextFromParts` / `jsonRenderMessage` read a
+`UIMessage.parts` array directly — pass it as it is, no cast:
+
+```ts
+readonly msg = jsonRenderMessage(() => this.message().parts);
+// template: {{ msg.text() }} @if (msg.hasSpec()) { <json-render [spec]="msg.spec()" ... /> }
+```
+
+Two things about the parts themselves, both the SDK's semantics rather than
+this package's, and both silent when you get them wrong:
+
+- **Do not give patch parts an `id`.** A data part written with one is
+  _replaced_ by the next part carrying the same id, so a spec streamed as
+  patches under one id arrives as its last patch alone. An id is for a part
+  that is a snapshot of itself — a `flat` or `nested` whole-spec part.
+- **A transient part never reaches `message.parts`.** It goes to `onData` and
+  nowhere else, so a spec written transiently cannot be rebuilt from the
+  message.
+
+`projects/ngx-json-render/src/lib/ai-sdk-parts.spec.ts` runs the real SDK —
+writes the chunks a server route would, reads the message a client would —
+and asserts both of these, so this section cannot quietly go stale.
+
 ### Supplying the transport
 
 By default the request goes through the global `fetch`. Pass your own to add
