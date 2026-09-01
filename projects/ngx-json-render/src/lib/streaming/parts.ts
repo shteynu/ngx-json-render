@@ -53,6 +53,13 @@ export interface DataPart {
   type: string;
   text?: string;
   data?: unknown;
+  /**
+   * The SDK's reconciliation key. A part written with one is *replaced* by the
+   * next part carrying the same id, rather than followed by it — so a spec
+   * streamed as patches must be written without an id, and only a whole-spec
+   * part (`flat` / `nested`), which is a snapshot of itself, can share one.
+   */
+  id?: string;
 }
 
 /**
