@@ -66,14 +66,20 @@ Ran on 2026-09-01 against `ai@7.0.87`, all green:
   required for a new dev dependency: install, build, 177 tests, catalog
   build, exit 0.
 
-## Known gap
+## Known gap — closed
 
-Like `test/directives-package`, the compat run here covers Angular 20 only,
-the matrix this branch inherits from `main`. Once `chore/angular-22-compat`
-lands, `ai` should get a 22 run too.
+Like `test/directives-package`, the compat run on this branch covered Angular
+20 only, the matrix it inherited from `main`. On 2026-09-01, with every branch
+merged, the matrix's top end was run again against the full tree: a throwaway
+copy of `main` retargeted by `scripts/angular-compat.mjs 22`, `npm install`
+(Angular 22.1.4, Material 22.1.4, TypeScript 6.0.3, ng-packagr 22.1.1), `ng
+build ngx-json-render`, `ng test ngx-json-render` — **224 passed** — and `ng
+build ngx-json-render-material`. Beyond the job's own steps: `npm run
+test:material` (65/65, 98.9% statements), `ng test demo` (58 passed) and `npm
+run check:zoneless`, all green. `ai@7.0.87` streams and reconciles its data
+parts on both ends of the peer range.
 
 ## Next concrete step
 
-None. The branch is merged into `main`. One thing worth remembering: `ai@7` was
-compat-checked against Angular 20 only. Now that the 22 matrix has landed, it
-deserves a run against the top of the range.
+None. The branch is merged into `main`, and its dev dependency is now proved
+at 20 and at 22.

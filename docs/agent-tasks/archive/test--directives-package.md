@@ -50,14 +50,20 @@ Ran on 2026-09-01, all green:
   required by AGENTS.md for a new dev dependency: install, build, 178 tests,
   catalog build, exit 0.
 
-## Known gap
+## Known gap — closed
 
-The compat run for this branch covers Angular 20, the matrix this branch
-inherits from `main`. `chore/angular-22-compat` adds 22 to that matrix; once
-both land, the new dev dependency should get a 22 run too.
+The compat run on this branch covered Angular 20 only, the matrix it inherited
+from `main`. `chore/angular-22-compat` added 22 to that matrix. On 2026-09-01,
+with every branch merged, the matrix's top end was run again against the full
+tree: a throwaway copy of `main` retargeted by `scripts/angular-compat.mjs
+22`, `npm install` (Angular 22.1.4, Material 22.1.4, TypeScript 6.0.3,
+ng-packagr 22.1.1), `ng build ngx-json-render`, `ng test ngx-json-render` —
+**224 passed** — and `ng build ngx-json-render-material`. Beyond the job's own
+steps: `npm run test:material` (65/65, 98.9% statements), `ng test demo` (58
+passed) and `npm run check:zoneless`, all green. `@json-render/directives`
+renders all eight of its directives on both ends of the peer range.
 
 ## Next concrete step
 
-None. The branch is merged into `main`. One thing worth remembering:
-`@json-render/directives` was compat-checked against Angular 20 only. Now that
-the 22 matrix has landed, it deserves a run against the top of the range.
+None. The branch is merged into `main`, and its dev dependency is now proved
+at 20 and at 22.

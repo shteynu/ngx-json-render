@@ -46,6 +46,10 @@ between the workspace and that line was a dependency pin.
   `^20.0.0` + `~5.8` + vitest 3 and strips the v21-only builder options; 22
   produces `^22.0.0` + `~6.0` and keeps them.
 - `npm run format:check`, `git diff --check`.
+- Re-run on 2026-09-01 against the merged tip, once the two dev-dependency
+  branches had landed: same steps, 224 library tests, plus 65 catalog tests,
+  58 demo tests and `check:zoneless` — all green on Angular 22.1.4 with
+  TypeScript 6.0.3.
 
 ## Next concrete step
 
