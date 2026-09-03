@@ -12,6 +12,7 @@
     "test:material": "node scripts/run-material-tests.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:scripts": "node --test scripts/lib/*.test.mjs",
     "check:peers": "node scripts/check-peer-ranges.mjs",
     "check:zoneless": "node scripts/check-zoneless.mjs",
     "check:published": "node scripts/check-published-resolution.mjs",

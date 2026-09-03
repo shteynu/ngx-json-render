@@ -29,6 +29,12 @@ jobs:
       - name: Check peer ranges between workspace packages
         run: npm run check:peers
 
+      # The release checks decide whether a publish is broken or merely
+      # mid-lockstep, and got that wrong twice before it was tested. Cheap and
+      # build-free, so it runs beside the other static checks.
+      - name: Test the release scripts
+        run: npm run test:scripts
+
       - name: Build library
         run: npm run build:lib
 

@@ -12,14 +12,28 @@
  * a version without any of the release's contents.
  *
  * Severity is deliberately asymmetric, because the lockstep in AGENTS.md means
- * an incoherent pair is *expected* halfway through it:
+ * an incoherent pair is *expected* halfway through it. Three questions, in
+ * order, because only the first is unconditional:
  *
- *   - the released package must resolve to its own new version — always fatal,
- *     since it means the publish did not take or is not installable;
- *   - the pair must resolve coherently — fatal only when the released package
- *     is the dependent one (the catalog, which declares the peer). Releasing
- *     the renderer first necessarily leaves the pair incoherent until the
- *     catalog follows, so there it is a warning naming the required follow-up.
+ *   - does the released package install as itself *on its own*? Always fatal
+ *     when it does not: the publish did not take, or what landed is not
+ *     installable, and no later release fixes either.
+ *   - does it still install as itself *alongside its siblings*? A downgrade
+ *     here is the 0.2.1 failure — npm satisfying a stale peer by quietly
+ *     choosing an older version — and it is fatal unless this very commit
+ *     already carries the sibling that repairs it. Publishing the renderer
+ *     first *necessarily* produces this state, so calling it fatal there
+ *     painted correct releases red twice running, once in each direction,
+ *     which is how a check stops being believed.
+ *   - are the siblings current? Fatal only when the released package is the
+ *     dependent one (the catalog, which declares the peer), since it ships
+ *     second and is what makes the pair coherent again.
+ *
+ * "This commit repairs it" is not a guess: the sibling's manifest here has to
+ * be ahead of what npm serves *and* declare a peer range admitting the version
+ * just published. When the sibling on disk is as stale as the one on npm,
+ * nothing is pending and the release is broken for good — which is exactly the
+ * case the first check must keep catching.
  *
  * Usage: node scripts/check-published-resolution.mjs <package-name>
  */
@@ -27,6 +41,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { classifyPairResolution } from './lib/resolution-verdict.mjs';
 
 const REGISTRY = 'https://registry.npmjs.org/';
 /** How long to let the registry catch up before calling a publish missing. */
@@ -106,81 +121,128 @@ if (!servedByRegistry) {
   process.exit(1);
 }
 
-// Install the packages the way a new user would: by bare name, together, so
-// npm resolves each to whatever it thinks `latest` should be.
-const work = mkdtempSync(join(tmpdir(), 'ngx-resolution-'));
-let resolved;
-try {
-  npm(['init', '-y'], { cwd: work });
-  npm(
-    [
-      'install',
-      ...expected.keys(),
-      '--ignore-scripts',
-      '--no-audit',
-      '--no-fund',
-    ],
-    { cwd: work },
-  );
-  resolved = new Map(
-    [...expected.keys()].map((name) => {
-      const path = join(work, 'node_modules', name, 'package.json');
-      return [name, existsSync(path) ? read(path).version : null];
-    }),
-  );
-} catch (error) {
-  console.error(
-    `Installing ${[...expected.keys()].join(' ')} from ${REGISTRY} failed:\n` +
-      `${error.stderr || error.message}`,
-  );
-  process.exit(1);
-} finally {
-  rmSync(work, { recursive: true, force: true });
-}
+/**
+ * Install by bare name, the way a new user would, and report what npm chose.
+ * Installing one package alone and the set together answer different
+ * questions: whether the publish is installable at all, and whether a stale
+ * peer elsewhere drags it back down.
+ */
+const installAndResolve = (names) => {
+  const work = mkdtempSync(join(tmpdir(), 'ngx-resolution-'));
+  try {
+    npm(['init', '-y'], { cwd: work });
+    npm(['install', ...names, '--ignore-scripts', '--no-audit', '--no-fund'], {
+      cwd: work,
+    });
+    return new Map(
+      names.map((name) => {
+        const path = join(work, 'node_modules', name, 'package.json');
+        return [name, existsSync(path) ? read(path).version : null];
+      }),
+    );
+  } catch (error) {
+    console.error(
+      `Installing ${names.join(' ')} from ${REGISTRY} failed:\n` +
+        `${error.stderr || error.message}`,
+    );
+    process.exit(1);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+};
 
-const shown = [...resolved]
-  .map(([name, version]) => `${name}@${version ?? 'MISSING'}`)
-  .join(', ');
-console.log(`Installing them together from ${REGISTRY} resolves: ${shown}.`);
-
-// 1. The released package must be what a new user gets. Never negotiable: if
-//    it is not, this release is invisible to everyone installing the pair.
-if (resolved.get(released) !== target) {
+// On its own first. No later release changes this answer, so a wrong one is
+// always fatal — and separating it means a downgrade in the pair below is
+// unambiguously about a sibling rather than about the publish.
+const solo = installAndResolve([released]).get(released);
+if (solo !== target) {
   console.error(
-    `\n${released} was published as ${target}, but installing the packages ` +
-      `together resolves it to ${resolved.get(released) ?? 'nothing'}.\n` +
-      'A stale peer range on npm makes npm satisfy it by choosing an older ' +
-      'version instead of failing, so the install looks clean and silently ' +
-      'omits everything this release contains.',
+    `\n${released} was published as ${target}, but installing it on its own ` +
+      `from ${REGISTRY} gives ${solo ?? 'nothing'}.\n` +
+      'The publish did not take, or what landed is not installable.',
   );
   process.exit(1);
 }
+console.log(`On its own, ${released} resolves to ${solo}.`);
 
-// 2. Every sibling should be current too. Mid-lockstep that is not yet true.
-const stale = [...expected].filter(
-  ([name, version]) => name !== released && resolved.get(name) !== version,
+const resolved = installAndResolve([...expected.keys()]);
+console.log(
+  `Installing them together from ${REGISTRY} resolves: ` +
+    `${[...resolved].map(([n, v]) => `${n}@${v ?? 'MISSING'}`).join(', ')}.`,
 );
 
-if (stale.length > 0) {
-  const detail = stale
-    .map(
-      ([name, version]) =>
-        `  ${name}: npm serves ${resolved.get(name) ?? 'nothing'}, this commit declares ${version}`,
-    )
-    .join('\n');
+const siblings = [...expected]
+  .filter(([name]) => name !== released)
+  .map(([name, declared]) => ({
+    name,
+    declared,
+    onNpm: resolved.get(name),
+    peerOnReleased: manifests.find((m) => m.name === name)?.peerDependencies?.[
+      released
+    ],
+  }));
 
-  if (dependsOnSibling(released)) {
+const verdict = classifyPairResolution({
+  target,
+  resolvedReleased: resolved.get(released),
+  dependent: dependsOnSibling(released),
+  siblings,
+});
+
+const detail = siblings
+  .filter((s) => s.onNpm !== s.declared)
+  .map(
+    (s) =>
+      `  ${s.name}: npm serves ${s.onNpm ?? 'nothing'}, this commit declares ${s.declared}`,
+  )
+  .join('\n');
+
+switch (verdict.reason) {
+  case 'coherent':
+    break;
+
+  case 'lockstep-pending':
+    console.warn(
+      `\n${released}@${target} installs correctly on its own, but installing ` +
+        `the pair resolves it to ${resolved.get(released) ?? 'nothing'}: the ` +
+        `sibling on npm still carries the peer range it had before this ` +
+        `release, and npm satisfies that by choosing an older version rather ` +
+        `than failing.\n${detail}\n\n` +
+        'This is the middle of the lockstep, not a broken release — the ' +
+        'sibling that widens the range is in this commit. Release it now; ' +
+        'until it ships, installing the pair silently omits everything this ' +
+        'release contains.',
+    );
+    break;
+
+  case 'downgraded-unrepaired':
+    console.error(
+      `\n${released} was published as ${target}, but installing the packages ` +
+        `together resolves it to ${resolved.get(released) ?? 'nothing'}.\n` +
+        'A stale peer range on npm makes npm satisfy it by choosing an older ' +
+        'version instead of failing, so the install looks clean and silently ' +
+        'omits everything this release contains.\n' +
+        (detail ? `${detail}\n` : '') +
+        '\nNothing in this commit repairs it: releasing the sibling as it ' +
+        'stands here would leave the pair exactly as it is.',
+    );
+    process.exit(1);
+    break;
+
+  case 'dependent-incoherent':
     console.error(
       `\nThe dependent package was just released, so the pair should be ` +
         `coherent now, and is not:\n${detail}`,
     );
     process.exit(1);
-  }
+    break;
 
-  console.warn(
-    `\nHalfway through the lockstep — expected, but not finished:\n${detail}\n\n` +
-      'Release the dependent package now; until it ships, its published peer ' +
-      'range still points at an older sibling and installing the pair will ' +
-      'quietly downgrade it.',
-  );
+  case 'siblings-behind':
+    console.warn(
+      `\nHalfway through the lockstep — expected, but not finished:\n${detail}\n\n` +
+        'Release the dependent package now; until it ships, its published ' +
+        'peer range still points at an older sibling and installing the pair ' +
+        'will quietly downgrade it.',
+    );
+    break;
 }

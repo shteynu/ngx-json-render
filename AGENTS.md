@@ -112,11 +112,27 @@ exists because publishing `ngx-json-render@0.2.1` while the catalog on npm was
 still 0.2.0 — carrying the old `^0.1.0` peer — made a clean install of the
 pair resolve the renderer **down** to 0.1.4. No ERESOLVE: npm satisfied the
 stale peer by choosing an older version, so the install looked fine and simply
-omitted the release. Its severity is asymmetric on purpose. The released
-package failing to resolve to itself is always fatal; an out-of-date sibling
-is fatal only on the catalog's release, because releasing the renderer first
-_necessarily_ leaves the pair incoherent until the catalog follows — there it
-warns and names the follow-up instead.
+omitted the release.
+
+Its severity is asymmetric on purpose, and the asymmetry is finer than it
+first looks. The package must install as **itself, on its own** — always
+fatal, since no later release repairs a publish that did not take. Installed
+**alongside its siblings** it must still resolve to itself, and a downgrade
+there is fatal _unless this very commit already carries the sibling that
+repairs it_: ahead of what npm serves, and declaring a peer range that admits
+the version just published. Whichever package publishes first necessarily
+sees the incoherent pair, so calling that fatal painted two correct releases
+red — `material-v0.3.0` and then `v0.4.0`, once in each direction — which is
+how a check stops being believed. When the sibling on disk is as stale as the
+one on npm, nothing is pending and the pair is broken for good; that is the
+case the check still has to catch. An out-of-date sibling that did not cause
+a downgrade is fatal only on the catalog's release, since it ships second.
+
+That decision lives in `scripts/lib/resolution-verdict.mjs`, apart from the
+npm calls so it can be tested without a registry, and `npm run test:scripts`
+covers it against the releases this repository has actually performed. CI runs
+it beside `check:peers`. Change the severity rules there, not in the message
+strings.
 
 Known caveat, handled by the runner script: `ng test ngx-json-render-material`
 passes but the runner process does not exit (see
