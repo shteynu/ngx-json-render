@@ -5,7 +5,7 @@ import {
   signal,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import type { Catalog, Spec } from '@json-render/core';
+import type { ActionHandler, Catalog, Spec } from '@json-render/core';
 import { JrChildren } from './children.component';
 import type { RenderLimits, SpecCatalog } from './render-limits';
 import { analyseSpecGraph } from './render-limits';
@@ -47,6 +47,7 @@ const REGISTRY: ComponentRegistry = { Box: LBox, Text: LText };
       [loading]="loading()"
       [renderLimits]="renderLimits()"
       [catalog]="catalog()"
+      [handlers]="handlers"
     />
   `,
 })
@@ -57,6 +58,7 @@ class Host {
   readonly renderLimits = signal<RenderLimits | null>(null);
   readonly catalog = signal<SpecCatalog | null>(null);
   readonly registry = REGISTRY;
+  handlers: Record<string, ActionHandler> | undefined = undefined;
 }
 
 async function setup(
@@ -83,6 +85,17 @@ async function settle(fixture: ComponentFixture<unknown>) {
 function count(fixture: ComponentFixture<unknown>, selector: string): number {
   return (fixture.nativeElement as HTMLElement).querySelectorAll(selector)
     .length;
+}
+
+function stateService(fixture: ComponentFixture<Host>) {
+  return fixture.debugElement.children[0].componentInstance.stateStore as {
+    set(path: string, value: unknown): void;
+  };
+}
+
+/** Let the microtask queue turn — watch handlers dispatch asynchronously. */
+async function drain(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
 }
 
 function text(fixture: ComponentFixture<unknown>, selector: string): string[] {
@@ -687,5 +700,133 @@ describe('checkSpec', () => {
 
     expect(formatted).toContain('[a] loops');
     expect(formatted).toContain('warning');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A refused element does not act either
+// ---------------------------------------------------------------------------
+
+describe('what a refused element still does', () => {
+  /**
+   * `deep` sits one level past a cap of 1, and watches `/country`. `watch` is
+   * the one thing an element does without being on screen.
+   */
+  const WATCHER: Spec = {
+    root: 'root',
+    state: { country: '' },
+    elements: {
+      root: { type: 'Box', props: {}, children: ['deep'] },
+      deep: {
+        type: 'Box',
+        props: {},
+        watch: {
+          '/country': {
+            action: 'loadCities',
+            params: { country: { $state: '/country' } },
+          },
+        },
+      },
+    },
+  } as unknown as Spec;
+
+  it('fires a watch when the element renders', async () => {
+    const received: unknown[] = [];
+    const fixture = await setup(WATCHER, (host) => {
+      host.handlers = {
+        loadCities: (params) => {
+          received.push(params);
+        },
+      };
+    });
+
+    stateService(fixture).set('/country', 'DE');
+    await settle(fixture);
+    await drain();
+
+    // The control: without a cap the watch is wired, so the assertion below
+    // is about the cap rather than about a spec that never worked.
+    expect(received).toEqual([{ country: 'DE' }]);
+  });
+
+  it('does not fire a watch on an element the depth cap refused', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const received: unknown[] = [];
+    const fixture = await setup(WATCHER, (host) => {
+      host.renderLimits.set({ maxDepth: 1 });
+      host.handlers = {
+        loadCities: (params) => {
+          received.push(params);
+        },
+      };
+    });
+
+    stateService(fixture).set('/country', 'DE');
+    await settle(fixture);
+    await drain();
+
+    // Drawing nothing while still dispatching actions would leave the cap
+    // stopping only the half of the element that is visible.
+    expect(received).toEqual([]);
+    expect(count(fixture, '.l-box')).toBe(1);
+    warn.mockRestore();
+  });
+
+  it('does not fire a watch on the element that closes a cycle', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const received: unknown[] = [];
+    const fixture = await setup(
+      {
+        root: 'a',
+        state: { country: '' },
+        elements: {
+          a: {
+            type: 'Box',
+            props: {},
+            children: ['a'],
+            watch: { '/country': { action: 'loadCities' } },
+          },
+        },
+      } as unknown as Spec,
+      (host) => {
+        host.handlers = {
+          loadCities: () => {
+            received.push(true);
+          },
+        };
+      },
+    );
+
+    stateService(fixture).set('/country', 'DE');
+    await settle(fixture);
+    await drain();
+
+    // `a` renders once and watches once. The refused second `a` does neither.
+    expect(received).toEqual([true]);
+    warn.mockRestore();
+  });
+
+  it('wires the watch again if the cap is lifted', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const received: unknown[] = [];
+    const fixture = await setup(WATCHER, (host) => {
+      host.renderLimits.set({ maxDepth: 1 });
+      host.handlers = {
+        loadCities: (params) => {
+          received.push(params);
+        },
+      };
+    });
+
+    fixture.componentInstance.renderLimits.set({ maxDepth: 2 });
+    await settle(fixture);
+    stateService(fixture).set('/country', 'DE');
+    await settle(fixture);
+    await drain();
+
+    // The effect reads `refusal()`, so a refusal that lifts re-wires rather
+    // than leaving the element inert for the rest of its life.
+    expect(received).toEqual([{ country: 'DE' }]);
+    warn.mockRestore();
   });
 });

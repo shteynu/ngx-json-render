@@ -36,6 +36,9 @@ export interface RenderLimits {
    * below the cap does not render, and neither does anything under it; what
    * fits still renders. Reported as an error, so `validate="strict"` refuses
    * the spec outright rather than truncating it.
+   *
+   * A capped element does not act either — its `watch` stays unwired, so it
+   * cannot dispatch actions from behind the cap.
    */
   readonly maxDepth?: number;
   /**

@@ -406,6 +406,12 @@ readonly ui = injectUIStream({
 Every limit is opt-in and unset means unlimited; there are no defaults, so
 upgrading changes nothing about what your app renders today.
 
+An element a cap refuses does not act either. `watch` is the one thing an
+element does without being on screen, and it stays unwired while the element is
+capped — otherwise a spec could keep dispatching actions from behind a limit
+that was supposed to have stopped it. The same holds for the element that
+closes a cycle.
+
 Two things follow from limits being a control rather than a report. They are
 enforced in **every** mode, `validate="off"` included — the app already made
 the decision by setting a number. And they apply while `loading`: a partial

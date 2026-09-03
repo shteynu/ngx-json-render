@@ -297,6 +297,13 @@ export class JrElement {
 
     // Watch effect: fire actions when watched state paths change.
     effect((onCleanup) => {
+      // A refused element does not act, not just draw nothing. `watch` is the
+      // one thing an element does without being on screen, so leaving it wired
+      // would let the element past `maxDepth` — or the one that closes a cycle
+      // — keep dispatching actions from behind a cap that was supposed to have
+      // stopped it. Reading the signal here also unwires it if the refusal
+      // arrives later, when the limits change.
+      if (this.refusal()) return;
       const watchConfig = this.rawElement()?.watch;
       if (!watchConfig) return;
       const paths = Object.keys(watchConfig);

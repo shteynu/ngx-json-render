@@ -5,7 +5,7 @@
 - Branch: `claude/ngx-json-render-security-limits-pdlzee`
 - Base branch: `main`
 - Base commit: `c752213`
-- Current HEAD: `c752213` plus one commit on this branch
+- Current HEAD: `c752213` plus two commits on this branch
 - Status: implemented, verified
 - Last updated: 2026-09-03
 - Last agent/tool: Claude Code
@@ -115,9 +115,14 @@ Survey of the library at `c752213`, before any change:
 - `tokens.ts`, `types.ts` (`RenderPath`), `root-context.ts`, `public-api.ts`.
 - Both streaming hooks — `renderLimits` / `catalog` options, widened `issues()`,
   and a limit failing the generation in any mode.
-- 38 tests in `render-limits.spec.ts`, 2 in `streaming.spec.ts`; README's
+- 42 tests in `render-limits.spec.ts`, 2 in `streaming.spec.ts`; README's
   Security section, a new "Capping what a spec may cost" section, the inputs
   table and the API surface list.
+- Second commit, from the security review: a refused element no longer wires
+  its `watch`. `watch` is the only thing an element does without being on
+  screen, so leaving it live let an element past `maxDepth`, or the one closing
+  a cycle, keep dispatching actions from behind the cap. The effect reads
+  `refusal()`, so lifting a cap re-wires it — pinned by a test.
 
 ## Remaining
 
@@ -142,14 +147,24 @@ Nothing required. Optional follow-ups, none of them blocking:
 - `npm run format:check` — exit 0.
 - `npm run build` — exit 0 (renderer, catalog and demo; the builds are this
   workspace's typecheck).
-- `npm test` — exit 0. 264 renderer, 58 demo, 65 material. Coverage over every
-  declared threshold: renderer 95.74 / 89.41 / 94.86 / 96.94 against 94 / 88 /
+- `npm test` — exit 0. 268 renderer, 58 demo, 65 material. Coverage over every
+  declared threshold: renderer 95.88 / 89.54 / 94.86 / 97.09 against 94 / 88 /
   92 / 96.
 - `npm run check:zoneless` — exit 0; 70 sources, 16 TestBed suites, 3 bundles.
 - `npm run check:peers` — exit 0.
 - `git diff --cached --check` — exit 0.
 - The original crash, pinned as a test: a two-element cycle now renders two
   boxes instead of raising `RangeError`, in `off`, `strict` and mid-stream.
+- `/security-review` over `origin/HEAD...` — no HIGH or MEDIUM findings. It
+  modelled the cycle guard against core's own path resolvers and could not
+  build unbounded recursion: every allowed re-entry must satisfy
+  `inner.startsWith(outer + "/")`, so the scope chain strictly lengthens, and
+  state is JSON and therefore finite. Separator collisions in state keys make
+  the two paths _equal_ rather than prefix-extending, so they add refusals
+  rather than bypasses. Slots increment depth like children; `maxElements`
+  blocks mid-stream because only reporting is suppressed while `loading`.
+  Its one behavioural note — the still-wired `watch` — is fixed in the second
+  commit.
 
 ### Failed
 
@@ -177,10 +192,6 @@ Local, on the session container. Node/npm from the repo's own `npm ci`.
 
 ### Residual risk
 
-- **Independent security review recommended.** The diff is a security control
-  in a package published to npm. Two design flaws were found by adversarial
-  self-review, which is evidence the area rewards a second pass rather than
-  that it is now exhausted. `/security-review` is the repo's tool for it.
 - A spec with no `maxDepth` set and absurd nesting can still overflow core's
   recursive `validateSpec` when `validate` is on. Documented in the README as
   the reason to set `maxDepth` for specs you did not generate; fixing it
@@ -196,5 +207,5 @@ Local, on the session container. Node/npm from the repo's own `npm ci`.
 
 ## Next concrete step
 
-Decide whether to run `/security-review` on this branch before opening a PR.
-Nothing else is required for the work itself.
+Nothing required — the work is implemented, reviewed and verified. Open a PR
+when the change is wanted in `main`.
