@@ -1,9 +1,15 @@
 import { DestroyRef, type Signal, inject, signal } from '@angular/core';
-import type { Spec, SpecIssue } from '@json-render/core';
-import { createMixedStreamParser, formatSpecIssues } from '@json-render/core';
+import type { Spec } from '@json-render/core';
+import { createMixedStreamParser } from '@json-render/core';
+import type {
+  RenderLimits,
+  SpecCatalog,
+  SpecCheckIssue,
+} from '../render-limits';
 import {
   type SpecValidationMode,
   checkSpec,
+  formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
 import { applyPatch } from './patch';
@@ -47,6 +53,18 @@ export interface ChatUIOptions {
    * reply that produced a spec.
    */
   validate?: SpecValidationMode;
+  /**
+   * Caps on what the finished spec may cost the browser. Enforced whatever
+   * `validate` is: a spec over `maxElements` fails the generation rather than
+   * reaching `onComplete`.
+   */
+  renderLimits?: RenderLimits | null;
+  /**
+   * The catalog the spec was generated for. Given one, `validate` also checks
+   * every element `type` against the catalog and the props against its
+   * schema — the half a structural check cannot see.
+   */
+  catalog?: SpecCatalog | null;
 }
 
 /**
@@ -60,10 +78,12 @@ export interface ChatUIReturn {
   /** Error from the last request, if any */
   readonly error: Signal<Error | null>;
   /**
-   * Structural issues in the spec of the last completed reply. Empty until a
-   * reply completes, and always empty while `validate` is off.
+   * What the check found in the last completed reply's spec — structure,
+   * catalog and limits alike. Empty until a reply completes; empty while
+   * `validate` is off unless a `renderLimits` cap was passed, since those are
+   * enforced in every mode.
    */
-  readonly issues: Signal<readonly SpecIssue[]>;
+  readonly issues: Signal<readonly SpecCheckIssue[]>;
   /** Send a user message */
   send: (text: string) => Promise<void>;
   /**
@@ -99,8 +119,12 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
   const messages = signal<ChatMessage[]>([]);
   const isStreaming = signal(false);
   const error = signal<Error | null>(null);
-  const issues = signal<readonly SpecIssue[]>([]);
+  const issues = signal<readonly SpecCheckIssue[]>([]);
   const validate = options.validate ?? 'off';
+  const checkOptions = {
+    limits: options.renderLimits ?? null,
+    catalog: options.catalog ?? null,
+  };
   const session = createStreamSession();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
@@ -218,7 +242,11 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       gate.commit(() => {
         // A reply that only talked has no spec to check, and reporting
         // "missing root" for a sentence would be nonsense.
-        const check = checkSpec(hasSpec ? currentSpec : null, validate);
+        const check = checkSpec(
+          hasSpec ? currentSpec : null,
+          validate,
+          checkOptions,
+        );
         if (hasSpec) {
           reportSpecCheck(check, validate);
           if (check.spec) currentSpec = check.spec;
@@ -237,9 +265,12 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
           prev.map((m) => (m.id === assistantId ? finalMessage : m)),
         );
 
-        if (validate === 'strict' && check.hasErrors) {
+        // A limit the app set fails the generation whatever the mode: the
+        // spec it would hand `onComplete` is one the app already said it did
+        // not want rendered.
+        if (check.blocked || (validate === 'strict' && check.hasErrors)) {
           const invalid = new Error(
-            `Generated spec failed validation:\n${formatSpecIssues([...check.issues])}`,
+            `Generated spec failed validation:\n${formatSpecCheckIssues(check.issues)}`,
           );
           error.set(invalid);
           options.onError?.(invalid);

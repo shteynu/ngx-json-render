@@ -100,7 +100,8 @@ export class JrChildren {
     return resolved;
   });
 
-  protected readonly repeatItems = computed<unknown[]>(() => {
+  /** Every item the repeat's state array holds, before any cap. */
+  private readonly allRepeatItems = computed<unknown[]>(() => {
     const basePath = this.repeatBasePath();
     if (basePath === undefined) return [];
     return (
@@ -108,7 +109,38 @@ export class JrChildren {
     );
   });
 
+  /**
+   * The items this repeat actually renders.
+   *
+   * `repeat` iterates a state array the spec may itself have supplied, which
+   * is the one place a spec sizes the render tree out of data rather than out
+   * of its own structure — so the cap has to be applied here, as it expands,
+   * rather than anywhere a spec can be inspected up front.
+   */
+  protected readonly repeatItems = computed<unknown[]>(() => {
+    const items = this.allRepeatItems();
+    const max = this.root.limits()?.maxRepeatItems;
+    return max !== undefined && items.length > max
+      ? items.slice(0, max)
+      : items;
+  });
+
   constructor() {
+    // Warn (once) when the cap holds items back. Reading the count only after
+    // the two cheap guards keeps the effect from tracking the state array at
+    // all once there is nothing left to say.
+    let warnedRepeatCap = false;
+    effect(() => {
+      const max = this.root.limits()?.maxRepeatItems;
+      if (max === undefined || warnedRepeatCap) return;
+      const total = this.allRepeatItems().length;
+      if (total <= max) return;
+      warnedRepeatCap = true;
+      console.warn(
+        `[ngx-json-render] renderLimits.maxRepeatItems (${max}) reached: "${untracked(this.repeatBasePath)}" holds ${total} items, so ${total - max} of them do not render.`,
+      );
+    });
+
     // Warn (once per key) about children referencing missing elements.
     const warned = new Set<string>();
     effect(() => {

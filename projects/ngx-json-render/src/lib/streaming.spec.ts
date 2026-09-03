@@ -1867,6 +1867,57 @@ describe('validating what the model produced', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(streamResponse(lines));
   }
 
+  /** Three elements, so a cap of two refuses it. */
+  const OVERSIZED_LINES = [
+    '{"op":"add","path":"/root","value":"root"}\n',
+    '{"op":"add","path":"/elements/root","value":{"type":"Box","props":{},"children":["a","b"]}}\n',
+    '{"op":"add","path":"/elements/a","value":{"type":"Text","props":{"content":"a"}}}\n',
+    '{"op":"add","path":"/elements/b","value":{"type":"Text","props":{"content":"b"}}}\n',
+  ];
+
+  it('fails a generation that breaks a limit, whatever validate says', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockStream(OVERSIZED_LINES);
+    const onComplete = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({
+        api: '/api/generate',
+        renderLimits: { maxElements: 2 },
+        onComplete,
+      }),
+    );
+
+    await ui.send('a dashboard');
+
+    // `validate` is off here, and the limit still holds: onComplete is where
+    // apps persist a spec, and this is one the app already said it would not
+    // render.
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(ui.error()?.message).toContain('failed validation');
+    expect(ui.issues().map((issue) => issue.code)).toEqual([
+      'too_many_elements',
+    ]);
+    error.mockRestore();
+  });
+
+  it('completes a generation that stays inside its limits', async () => {
+    mockStream(OVERSIZED_LINES);
+    const onComplete = vi.fn();
+    const ui = TestBed.runInInjectionContext(() =>
+      injectUIStream({
+        api: '/api/generate',
+        renderLimits: { maxElements: 3, maxDepth: 8 },
+        onComplete,
+      }),
+    );
+
+    await ui.send('a dashboard');
+
+    expect(onComplete).toHaveBeenCalled();
+    expect(ui.error()).toBeNull();
+    expect(ui.issues()).toEqual([]);
+  });
+
   it('says nothing about a broken spec while validation is off', async () => {
     mockStream(BROKEN_LINES);
     const ui = TestBed.runInInjectionContext(() =>

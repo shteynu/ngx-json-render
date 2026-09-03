@@ -28,6 +28,7 @@ import {
   JR_CONFIRM_DIALOG,
 } from './confirm-tokens';
 import { JrElement } from './element.component';
+import type { RenderLimits, SpecCatalog } from './render-limits';
 import { JsonRenderRootContext } from './root-context';
 import {
   type SpecValidationMode,
@@ -111,6 +112,29 @@ export class JsonRenderer {
   readonly validate = input<SpecValidationMode>('off');
 
   /**
+   * Caps on what the spec may cost the browser: `maxElements`, `maxDepth` and
+   * `maxRepeatItems`. Unset by default, and each field is independently
+   * optional.
+   *
+   * Unlike `validate`, these are enforced in every mode — a number the app
+   * chose is a control, not a report. A spec over `maxElements` renders
+   * nothing; `maxDepth` and `maxRepeatItems` truncate where they are hit.
+   * They apply while `loading` too: a partial spec is a subset of the
+   * finished one, so a cap can only ever fire early, never falsely.
+   */
+  readonly renderLimits = input<RenderLimits | null>(null);
+
+  /**
+   * The catalog the spec was generated for. Given one, `validate` also checks
+   * what structure alone cannot: that every `type` is a component the catalog
+   * defines, and that the props match its schema.
+   *
+   * Only read when `validate` is on, and — like the rest of the check —
+   * skipped while `loading`.
+   */
+  readonly catalog = input<SpecCatalog | null>(null);
+
+  /**
    * Initial state model (uncontrolled mode). Defaults to `spec.state`.
    * Ignored when `store` is provided.
    */
@@ -154,7 +178,10 @@ export class JsonRenderer {
    * refers to are the normal state of a stream, not a defect.
    */
   private readonly checked = computed(() =>
-    checkSpec(this.spec(), this.loading() ? 'off' : this.validate()),
+    checkSpec(this.spec(), this.loading() ? 'off' : this.validate(), {
+      limits: this.renderLimits(),
+      catalog: this.catalog(),
+    }),
   );
 
   constructor() {
@@ -165,6 +192,7 @@ export class JsonRenderer {
     root.registry = this.registry;
     root.loading = this.loading;
     root.fallback = this.fallback;
+    root.limits = this.renderLimits;
     root.store = this.store;
     root.initialState = computed(
       () => this.state() ?? this.spec()?.state ?? {},
@@ -186,12 +214,22 @@ export class JsonRenderer {
     this.actions = inject(JsonRenderActionsService);
 
     // Reports once per distinct check rather than once per render: `checked`
-    // only recomputes when the spec, the mode or the loading flag change.
-    effect(() => reportSpecCheck(this.checked(), this.validate()));
+    // only recomputes when the spec, the mode, the limits or the loading flag
+    // change. Silent while loading — a limit can fire on a spec that is still
+    // arriving, and reporting it on every patch would bury the one report
+    // that describes the finished spec.
+    effect(() => {
+      if (this.loading()) return;
+      reportSpecCheck(this.checked(), this.validate());
+    });
   }
 
   protected readonly rootKey = computed(() => {
     const checked = this.checked();
+    // A spec over an enforced cap does not render in any mode. Whether to
+    // check was the app's decision; once it has made it, honouring the answer
+    // is not also `validate`'s to decide.
+    if (checked.blocked) return null;
     // A spec whose errors survived the fixes does not render under `strict`.
     // Reporting it and drawing half of it anyway is the behaviour the mode
     // exists to refuse.

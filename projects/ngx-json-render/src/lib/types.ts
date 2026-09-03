@@ -132,6 +132,36 @@ export interface RepeatScope {
 }
 
 // =============================================================================
+// Render path
+// =============================================================================
+
+/**
+ * Where an element sits in the render tree: its own key, how deep it is, and
+ * the chain back to the root.
+ *
+ * A linked chain rather than a set of ancestors per element: the parent link
+ * is shared, so a wide tree costs one small object per element instead of a
+ * copy of its ancestry.
+ *
+ * @internal Used by `<jr-element>` to break cycles and enforce `maxDepth`.
+ */
+export interface RenderPath {
+  /** The spec key of this element. */
+  readonly key: string;
+  /** Depth in the render tree, counting the root element as 1. */
+  readonly depth: number;
+  /**
+   * State path of the repeat item this element renders inside, or `null`
+   * outside any repeat. Together with {@link key} it says what this element is
+   * rendering *against*, which is what distinguishes a spec that recurses
+   * forever from one that walks down a finite tree.
+   */
+  readonly scopePath: string | null;
+  /** The enclosing element, or `null` at the root. */
+  readonly parent: RenderPath | null;
+}
+
+// =============================================================================
 // Action Types
 // =============================================================================
 

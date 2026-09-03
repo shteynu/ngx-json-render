@@ -8,6 +8,7 @@ import type {
   StateStore,
   ValidationFunction,
 } from '@json-render/core';
+import type { RenderLimits } from './render-limits';
 import type { ComponentRegistry, RegistryEntry, StateChange } from './types';
 
 const EMPTY = signal(undefined);
@@ -25,6 +26,11 @@ export class JsonRenderRootContext {
   registry: Signal<ComponentRegistry | undefined> = EMPTY;
   loading: Signal<boolean> = signal(false);
   fallback: Signal<Type<unknown> | RegistryEntry | null | undefined> = EMPTY;
+  /**
+   * Caps on what the spec may cost the browser. Read as the tree renders, so
+   * they apply whatever `validate` is set to.
+   */
+  limits: Signal<RenderLimits | null | undefined> = EMPTY;
 
   /** External store (controlled mode). */
   store: Signal<StateStore | null | undefined> = EMPTY;

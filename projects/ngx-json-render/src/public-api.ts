@@ -57,9 +57,19 @@ export {
 // Spec validation
 export {
   checkSpec,
+  formatSpecCheckIssues,
   type SpecCheck,
+  type SpecCheckOptions,
   type SpecValidationMode,
 } from './lib/spec-validation';
+
+// Render limits
+export {
+  type RenderLimits,
+  type SpecCatalog,
+  type SpecCheckIssue,
+  type SpecCheckIssueCode,
+} from './lib/render-limits';
 
 // Registry
 export {

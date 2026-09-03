@@ -1,5 +1,5 @@
 import { InjectionToken, type Signal, inject } from '@angular/core';
-import type { RenderContext, RepeatScope } from './types';
+import type { RenderContext, RenderPath, RepeatScope } from './types';
 
 /**
  * The render context of the element currently being rendered.
@@ -23,6 +23,19 @@ export const ELEMENT_KEY = new InjectionToken<Signal<string>>(
  */
 export const REPEAT_SCOPE = new InjectionToken<RepeatScope>(
   'ngx-json-render REPEAT_SCOPE',
+);
+
+/**
+ * This element's position in the render tree. Provided by `<jr-element>` for
+ * everything it renders below itself, so each element can see its own depth
+ * and its own ancestry.
+ *
+ * @internal Not part of the public API: it exists so the renderer can refuse
+ * to draw an element that is its own ancestor, and to enforce
+ * `renderLimits.maxDepth`.
+ */
+export const RENDER_PATH = new InjectionToken<Signal<RenderPath>>(
+  'ngx-json-render RENDER_PATH',
 );
 
 /**

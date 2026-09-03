@@ -22,8 +22,13 @@ import { JsonRenderActionsService, isActionCancelled } from './actions.service';
 import { injectDevtoolsActive } from './devtools';
 import { JsonRenderRootContext } from './root-context';
 import { JsonRenderStateService } from './state.service';
-import { ELEMENT_KEY, REPEAT_SCOPE, RENDER_CONTEXT } from './tokens';
-import type { EventHandle, RenderContext } from './types';
+import {
+  ELEMENT_KEY,
+  REPEAT_SCOPE,
+  RENDER_CONTEXT,
+  RENDER_PATH,
+} from './tokens';
+import type { EventHandle, RenderContext, RenderPath } from './types';
 
 const warnedSlots = new Set<string>();
 
@@ -34,6 +39,53 @@ const warnedSlots = new Set<string>();
 function reportActionError(error: unknown): void {
   if (isActionCancelled(error)) return;
   console.error(error);
+}
+
+/**
+ * Whether `inner` reads strictly deeper into state than `outer` — the state
+ * path of one repeat item nested inside another's.
+ *
+ * `null` is the world outside any repeat, so stepping into one is always
+ * progress. Below that it is a prefix test on the resolved path, and the
+ * trailing separator is what keeps `/tree/10` from counting as a step inside
+ * `/tree/1`.
+ */
+function descendsInto(outer: string | null, inner: string | null): boolean {
+  if (inner === null) return false;
+  if (outer === null) return true;
+  return inner.startsWith(`${outer}/`);
+}
+
+/**
+ * Whether this element renders itself again without getting anywhere — the
+ * one arrangement that cannot terminate.
+ *
+ * An element reaching itself is not by itself a defect. It is how a tree gets
+ * drawn — a comment thread, a file browser, a nested menu — where each pass
+ * repeats over a path relative to the item it is already inside and so reads
+ * one level further into the data. That ends when the data does.
+ *
+ * What separates the two is whether the repeat descended. Compare against the
+ * nearest occurrence above: `/tree/0` then `/tree/0/children/1` is a tree
+ * walking down, while `/items/0` then `/items/1` is a spec repeating over a
+ * fixed array inside itself, and `/items/0` twice is one with no repeat
+ * between the passes at all. Only the first can run out.
+ */
+function repeatsItself(path: RenderPath): boolean {
+  for (let step = path.parent; step !== null; step = step.parent) {
+    if (step.key !== path.key) continue;
+    return !descendsInto(step.scopePath, path.scopePath);
+  }
+  return false;
+}
+
+/** The chain from the root down to `path`, as a line a human can follow. */
+function describePath(path: RenderPath): string {
+  const keys: string[] = [];
+  for (let step: RenderPath | null = path; step !== null; step = step.parent) {
+    keys.push(step.key);
+  }
+  return keys.reverse().join(' \u2192 ');
 }
 
 /**
@@ -49,7 +101,7 @@ function reportActionError(error: unknown): void {
   imports: [NgComponentOutlet],
   styles: `:host { display: contents; }`,
   template: `
-    @if (rawElement() && visible() && component()) {
+    @if (!refusal() && rawElement() && visible() && component()) {
       @if (devtoolsKey(); as dk) {
         <span [attr.data-jr-key]="dk" style="display: contents">
           <ng-container *ngComponentOutlet="component(); injector: outletInjector" />
@@ -67,6 +119,7 @@ export class JrElement {
   private readonly state = inject(JsonRenderStateService);
   private readonly actions = inject(JsonRenderActionsService);
   private readonly repeatScope = inject(REPEAT_SCOPE, { optional: true });
+  private readonly parentPath = inject(RENDER_PATH, { optional: true });
   private readonly devtoolsActive = injectDevtoolsActive();
 
   /** The raw (unresolved) element from the spec. */
@@ -128,6 +181,39 @@ export class JrElement {
     this.devtoolsActive() ? this.elementKey() : null,
   );
 
+  /**
+   * Where this element sits in the tree. Passed down to everything it renders
+   * below itself, which is what lets each element see its own ancestry
+   * without the renderer holding a registry of who is drawing what.
+   */
+  private readonly path = computed<RenderPath>(() => {
+    const parent = this.parentPath?.() ?? null;
+    return {
+      key: this.elementKey(),
+      depth: (parent?.depth ?? 0) + 1,
+      scopePath: this.repeatScope?.basePath() ?? null,
+      parent,
+    };
+  });
+
+  /**
+   * Why this element is not drawn, or null when it is.
+   *
+   * The cycle half is unconditional — not something `validate` turns on. An
+   * element that renders itself without reading any deeper renders forever,
+   * and a spec that never stops rendering takes the tab with it; refusing to
+   * draw the repetition is the only outcome that leaves anything on screen.
+   * It costs one walk up a chain of parents, bounded by `maxDepth` where one
+   * is set and by the spec's own nesting where it is not.
+   */
+  protected readonly refusal = computed<'cycle' | 'depth' | null>(() => {
+    const path = this.path();
+    if (repeatsItself(path)) return 'cycle';
+    const maxDepth = this.root.limits()?.maxDepth;
+    if (maxDepth !== undefined && path.depth > maxDepth) return 'depth';
+    return null;
+  });
+
   private readonly renderCtx: RenderContext = {
     element: this.resolvedElement as Signal<UIElement>,
     props: computed(() => this.resolvedElement()?.props ?? {}),
@@ -151,11 +237,32 @@ export class JrElement {
     providers: [
       { provide: RENDER_CONTEXT, useValue: this.renderCtx },
       { provide: ELEMENT_KEY, useValue: this.elementKey },
+      { provide: RENDER_PATH, useValue: this.path },
     ],
     parent: inject(Injector),
   });
 
   constructor() {
+    // Warn (once) when this element is refused. Both reasons are silent
+    // failures on screen — something the spec asked for is missing — so
+    // neither should be silent in the console.
+    let warnedRefusal = false;
+    effect(() => {
+      const reason = this.refusal();
+      if (!reason || warnedRefusal) return;
+      warnedRefusal = true;
+      const path = untracked(this.path);
+      if (reason === 'cycle') {
+        console.warn(
+          `[ngx-json-render] Cycle in the spec: ${describePath(path)}. "${path.key}" renders itself again without reading any deeper into state${path.scopePath === null ? '' : ` (still at "${path.scopePath}")`}, so it never ends. It is not rendered again; everything above it still is. A tree that recurses needs a repeat with a relative statePath, like {"$item": "children"}.`,
+        );
+      } else {
+        console.warn(
+          `[ngx-json-render] renderLimits.maxDepth (${untracked(this.root.limits)?.maxDepth}) reached at ${describePath(path)}. "${path.key}" and anything below it do not render.`,
+        );
+      }
+    });
+
     // Warn (once per type) about unknown component types.
     const warnedTypes = new Set<string>();
     effect(() => {

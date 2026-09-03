@@ -371,6 +371,60 @@ The check waits for the spec to settle. While `loading` is true a missing child
 is a patch that has not arrived yet, not a defect, so nothing is reported and
 `strict` keeps rendering; the hooks check once, when the generation completes.
 
+Pass the catalog too, and the same check covers what structure alone cannot
+see — every `type` is one the catalog defines, and the props match its schema:
+
+```html
+<json-render [spec]="spec()" [registry]="registry" [catalog]="catalog" validate="strict" />
+```
+
+### Capping what a spec may cost
+
+`validate` describes a spec. `renderLimits` constrains it:
+
+```html
+<json-render
+  [spec]="spec()"
+  [registry]="registry"
+  [renderLimits]="{ maxElements: 500, maxDepth: 16, maxRepeatItems: 200 }"
+/>
+```
+
+```ts
+readonly ui = injectUIStream({
+  api: '/api/generate',
+  renderLimits: { maxElements: 500, maxDepth: 16 },
+});
+```
+
+| Limit            | What it caps                    | When it is passed                                               |
+| ---------------- | ------------------------------- | --------------------------------------------------------------- |
+| `maxElements`    | Elements in the spec            | Nothing renders — there is no useful part of an oversized graph |
+| `maxDepth`       | Nesting, counting the root as 1 | Elements below the cap do not render; what fits still does      |
+| `maxRepeatItems` | Items one `repeat` expands      | The surplus items do not render                                 |
+
+Every limit is opt-in and unset means unlimited; there are no defaults, so
+upgrading changes nothing about what your app renders today.
+
+Two things follow from limits being a control rather than a report. They are
+enforced in **every** mode, `validate="off"` included — the app already made
+the decision by setting a number. And they apply while `loading`: a partial
+spec is a subset of the finished one, so a cap can only ever fire early, never
+falsely. Under `strict`, a spec over `maxDepth` is refused outright rather than
+truncated, which is how an app says it would rather draw nothing than draw the
+first sixteen levels of something hostile.
+
+In the hooks, a limit fails the generation instead of calling `onComplete`, in
+any mode — the same reasoning as `strict`: `onComplete` is where apps persist a
+spec, and this is one the app has already refused.
+
+One order is deliberate rather than incidental. The cheap caps run before the
+structural check, because core's `validateSpec` walks the tree by recursion:
+the specs that most need a limit are exactly the ones that would overflow the
+stack proving they exceed it. If you accept specs you did not generate, set
+`maxDepth` — with no cap there is nothing to stop the check from recursing as
+deep as the spec asks.
+
 ## Testing
 
 `ngx-json-render/testing` is a separate entry point, so nothing in it can reach
@@ -616,10 +670,36 @@ string to the `navigate` callback you provide, verbatim. Treat it as untrusted:
 match it against known routes, and never hand it to `window.location` or
 `router.navigateByUrl` unchecked.
 
-**A spec sizes its own render tree.** `repeat` iterates a state array the spec
-may itself have supplied, so specs are a denial-of-service surface against the
-browser tab. Cap spec size and array lengths at the boundary where you accept
-one.
+**A spec cannot render forever.** Two elements naming each other as children,
+or one naming itself, would recurse until the tab died. The renderer refuses to
+draw an element that is rendering itself again _without reading any deeper into
+state_, so the cycle is broken where it closes and everything above it still
+renders. This holds in every mode, including `validate="off"` and mid-stream:
+it is a crash guard, not an opinion about spec quality. Core's `validateSpec`
+does not report cycles, so nothing else in the stack catches this for you.
+
+Recursion that goes somewhere is untouched. A tree — a comment thread, a file
+browser, a nested menu — is an element repeating over a path relative to the
+item it is already inside (`{"$item": "children"}`) and rendering itself for
+each one, so every pass reads one level further in and the drawing ends where
+the data does. What the guard stops is the pass that reads the same array
+again: `repeat` over a fixed `/items` inside itself never runs out, however
+much data there is.
+
+**A spec sizes its own render tree, up to the caps you set.** `repeat` iterates
+a state array the spec may itself have supplied, and nesting costs a component
+per level, so specs are a denial-of-service surface against the browser tab.
+`renderLimits` is the cap: `maxElements`, `maxDepth` and `maxRepeatItems`,
+enforced in every mode. They are unset by default — a renderer cannot guess
+what your catalog considers a reasonable page — so an app taking specs it did
+not generate should set all three. See
+[Capping what a spec may cost](#capping-what-a-spec-may-cost).
+
+**A spec can name components you never built.** `validate` with a `catalog`
+reports every `type` the catalog does not define and every prop its schema
+rejects; `strict` refuses such a spec outright. Without a catalog the renderer
+only warns and draws nothing in that element's place, which degrades well but
+tells you nothing until you read the console.
 
 **`confirm` is a UX affordance, not a security control.** It routes an action
 through the confirmation dialog before the handler runs, but it is set on the
@@ -635,6 +715,10 @@ Injectables/helpers: `injectRenderContext`, `injectElementKey`, `injectRepeatSco
 
 Tokens: `JR_CONFIRM_DIALOG` (replace the confirmation dialog), `JR_CONFIRM_LABELS` (its two words), `CONFIRM_CONTEXT`, `RENDER_CONTEXT`, `REPEAT_SCOPE`.
 
+Spec checking: `checkSpec`, `formatSpecCheckIssues`, and the types
+`RenderLimits`, `SpecCheck`, `SpecCheckIssue`, `SpecCheckIssueCode`,
+`SpecCheckOptions`, `SpecCatalog`, `SpecValidationMode`.
+
 `injectActions().execute()` rejects when the user dismisses a `confirm`
 dialog, which is a normal gesture rather than a failure — `isActionCancelled(error)`
 is how you tell the two apart.
@@ -647,21 +731,23 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 
 ## Renderer inputs
 
-| Input                 | Type                                 | Purpose                                                |
-| --------------------- | ------------------------------------ | ------------------------------------------------------ |
-| `spec`                | `Spec \| null`                       | The UI spec (may be partial while streaming)           |
-| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                       |
-| `loading`             | `boolean`                            | Suppress missing-element warnings while streaming      |
-| `fallback`            | `Type<unknown>`                      | Component for unknown types                            |
-| `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)   |
-| `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`) |
-| `store`               | `StateStore`                         | External store (controlled mode)                       |
-| `handlers`            | `Record<string, ActionHandler>`      | Action handlers                                        |
-| `onAction`            | `(name, params) => unknown`          | Catch-all action handler                               |
-| `navigate`            | `(path) => void`                     | Used by `onSuccess: { navigate }`                      |
-| `validationFunctions` | `Record<string, ValidationFunction>` | Custom validation                                      |
-| `functions`           | `Record<string, ComputedFunction>`   | `$computed` functions                                  |
-| `directives`          | `DirectiveDefinition[]`              | Custom `$`-prefixed expressions                        |
+| Input                 | Type                                 | Purpose                                                 |
+| --------------------- | ------------------------------------ | ------------------------------------------------------- |
+| `spec`                | `Spec \| null`                       | The UI spec (may be partial while streaming)            |
+| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                        |
+| `loading`             | `boolean`                            | Suppress missing-element warnings while streaming       |
+| `fallback`            | `Type<unknown>`                      | Component for unknown types                             |
+| `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)    |
+| `renderLimits`        | `RenderLimits`                       | Cap elements, depth and repeat expansion (default none) |
+| `catalog`             | `Catalog`                            | Also check types and props against the catalog          |
+| `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`)  |
+| `store`               | `StateStore`                         | External store (controlled mode)                        |
+| `handlers`            | `Record<string, ActionHandler>`      | Action handlers                                         |
+| `onAction`            | `(name, params) => unknown`          | Catch-all action handler                                |
+| `navigate`            | `(path) => void`                     | Used by `onSuccess: { navigate }`                       |
+| `validationFunctions` | `Record<string, ValidationFunction>` | Custom validation                                       |
+| `functions`           | `Record<string, ComputedFunction>`   | `$computed` functions                                   |
+| `directives`          | `DirectiveDefinition[]`              | Custom `$`-prefixed expressions                         |
 
 Output: `(stateChange)` — batched `{ path, value }[]` in uncontrolled mode.
 

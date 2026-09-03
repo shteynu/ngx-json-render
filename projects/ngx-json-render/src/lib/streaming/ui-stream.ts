@@ -1,9 +1,14 @@
 import { DestroyRef, type Signal, inject, signal } from '@angular/core';
-import type { JsonPatch, Spec, SpecIssue } from '@json-render/core';
-import { formatSpecIssues } from '@json-render/core';
+import type { JsonPatch, Spec } from '@json-render/core';
+import type {
+  RenderLimits,
+  SpecCatalog,
+  SpecCheckIssue,
+} from '../render-limits';
 import {
   type SpecValidationMode,
   checkSpec,
+  formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
 import { applyPatch } from './patch';
@@ -104,6 +109,18 @@ export interface UIStreamOptions {
    */
   validate?: SpecValidationMode;
   /**
+   * Caps on what the finished spec may cost the browser. Enforced whatever
+   * `validate` is: a spec over `maxElements` fails the generation rather than
+   * reaching `onComplete`.
+   */
+  renderLimits?: RenderLimits | null;
+  /**
+   * The catalog the spec was generated for. Given one, `validate` also checks
+   * every element `type` against the catalog and the props against its
+   * schema — the half a structural check cannot see.
+   */
+  catalog?: SpecCatalog | null;
+  /**
    * Transport, defaulting to the global `fetch`.
    *
    * Anything with fetch's shape works, so a test, a demo replaying a recorded
@@ -131,10 +148,12 @@ export interface UIStreamReturn {
   /** Raw JSONL lines received from the stream (JSON patch lines) */
   readonly rawLines: Signal<string[]>;
   /**
-   * Structural issues in the finished spec. Empty until a generation
-   * completes, and always empty while `validate` is off.
+   * What the check found in the finished spec — structure, catalog and
+   * limits alike. Empty until a generation completes; empty while `validate`
+   * is off unless a `renderLimits` cap was passed, since those are enforced
+   * in every mode.
    */
-  readonly issues: Signal<readonly SpecIssue[]>;
+  readonly issues: Signal<readonly SpecCheckIssue[]>;
   /** Send a prompt to generate UI */
   send: (prompt: string, options?: UIStreamSendOptions) => Promise<void>;
   /**
@@ -169,8 +188,12 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
   const error = signal<Error | null>(null);
   const usage = signal<TokenUsage | null>(null);
   const rawLines = signal<string[]>([]);
-  const issues = signal<readonly SpecIssue[]>([]);
+  const issues = signal<readonly SpecCheckIssue[]>([]);
   const validate = options.validate ?? 'off';
+  const checkOptions = {
+    limits: options.renderLimits ?? null,
+    catalog: options.catalog ?? null,
+  };
   const session = createStreamSession();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
@@ -237,7 +260,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       );
 
       gate.commit(() => {
-        const check = checkSpec(currentSpec, validate);
+        const check = checkSpec(currentSpec, validate, checkOptions);
         reportSpecCheck(check, validate);
         if (check.spec) {
           currentSpec = check.spec;
@@ -249,9 +272,12 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
         // app's onComplete is where a spec usually gets persisted, and handing
         // it one that cannot render is the outcome this mode is asked to
         // prevent. The spec stays put so the app can show or discard it.
-        if (validate === 'strict' && check.hasErrors) {
+        // A limit the app set fails the generation whatever the mode: the
+        // spec it would hand `onComplete` is one the app already said it did
+        // not want rendered.
+        if (check.blocked || (validate === 'strict' && check.hasErrors)) {
           const invalid = new Error(
-            `Generated spec failed validation:\n${formatSpecIssues([...check.issues])}`,
+            `Generated spec failed validation:\n${formatSpecCheckIssues(check.issues)}`,
           );
           error.set(invalid);
           options.onError?.(invalid);
