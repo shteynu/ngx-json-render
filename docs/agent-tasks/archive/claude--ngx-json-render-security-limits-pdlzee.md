@@ -5,8 +5,8 @@
 - Branch: `claude/ngx-json-render-security-limits-pdlzee`
 - Base branch: `main`
 - Base commit: `c752213`
-- Current HEAD: `c752213` plus two commits on this branch
-- Status: implemented, verified
+- Landed as: `b0fa27b` and `c4cc9ce` on `main` — the branch was fast-forwarded
+- Status: done, verified, merged into `main`
 - Last updated: 2026-09-03
 - Last agent/tool: Claude Code
 
@@ -176,10 +176,14 @@ None outstanding. Two failures during development, both fixed and pinned:
 
 ### Blocked or not run
 
-- `scripts/angular-compat.mjs` (Angular 20 / 22 matrix). Not run: it rewrites
-  the workspace and must go in a throwaway checkout. Nothing here is
-  version-coupled — no new dependency, no `angular.json` change, no builder
-  option — so the CI job covers it.
+- `scripts/angular-compat.mjs` (Angular 20 / 22 matrix). Run before the merge,
+  in throwaway checkouts, because CI only fires on `main` and on pull requests
+  — so on a branch there was nothing to catch a break before it landed. Both
+  lines passed the job's own steps in full: install, build library, 268 tests,
+  build Material catalog. Angular 22 needed a newer Node than the session
+  container carried (v22.22.2 against the CLI's v22.22.3 floor), which is a
+  property of the container and not of the change; 22.23.2 was fetched to run
+  it. CI then confirmed both on `main`.
 - `npm run check:published`. Not applicable: it inspects the public registry
   after a release, and nothing is released here.
 - No runtime smoke in a browser. The renderer changes are covered by TestBed
@@ -207,5 +211,9 @@ Local, on the session container. Node/npm from the repo's own `npm ci`.
 
 ## Next concrete step
 
-Nothing required — the work is implemented, reviewed and verified. Open a PR
-when the change is wanted in `main`.
+None. The work is in `main` and CI is green there — `build-and-test` plus both
+compatibility jobs — and the demo redeployed to Pages from that commit.
+
+The two optional follow-ups under `Remaining` are unclaimed, neither blocking:
+a `(specRefused)` output so an app can surface truncation without reading the
+console, and teaching the demo's playground to set limits.
