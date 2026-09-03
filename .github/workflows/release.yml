@@ -10,6 +10,11 @@ jobs:
     permissions:
       contents: read
       id-token: write # npm trusted publishing (OIDC) + provenance
+    # Whether the package actually reached npm, which is not the same as this
+    # job going green: the verification below runs after the publish and
+    # cannot un-publish anything.
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
     steps:
       - uses: actions/checkout@v7
 
@@ -53,7 +58,10 @@ jobs:
         run: cp LICENSE dist/ngx-json-render/
 
       - name: Publish to npm
-        run: npm publish
+        id: publish
+        run: |
+          npm publish
+          echo "published=true" >> "$GITHUB_OUTPUT"
         working-directory: dist/ngx-json-render
 
       # `check:peers` above compares this commit's manifests, which are bumped
@@ -66,9 +74,16 @@ jobs:
       - name: Verify the published package installs as itself
         run: npm run check:published -- ngx-json-render
 
+  # Gated on the publish rather than on the publish *job*. Once a version is
+  # on npm it cannot be taken back, so the release notes describing it should
+  # exist whatever the verification afterwards concluded — otherwise a red
+  # check leaves the registry and the releases page disagreeing, which is how
+  # v0.4.0 shipped with no release entry. Kept as its own job so the half
+  # holding npm's publishing credentials never also holds `contents: write`.
   github-release:
     runs-on: ubuntu-latest
     needs: publish
+    if: always() && needs.publish.outputs.published == 'true'
     permissions:
       contents: write
     steps:
