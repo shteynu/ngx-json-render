@@ -40,19 +40,35 @@
 }
 
 @if (tab() === 'playground') {
-  <app-playground />
+  @defer (on immediate) {
+    <app-playground />
+  } @placeholder {
+    <p class="tab-loading">Loading the playground…</p>
+  }
 } @else if (tab() === 'interactive') {
-  <app-interactive
-    [spec]="spec()"
-    [specJson]="specJson()"
-    [log]="log()"
-    [handlers]="handlers"
-    [onAction]="onUnknownAction"
-    (stateChange)="onStateChange($event)"
-    (ready)="onRendererReady($event)"
-  />
+  @defer (on immediate) {
+    <app-interactive
+      [spec]="spec()"
+      [specJson]="specJson()"
+      [log]="log()"
+      [handlers]="handlers"
+      [onAction]="onUnknownAction"
+      (stateChange)="onStateChange($event)"
+      (ready)="onRendererReady($event)"
+    />
+  } @placeholder {
+    <p class="tab-loading">Loading the renderer…</p>
+  }
 } @else if (tab() === 'streaming') {
-  <app-stream />
+  @defer (on immediate) {
+    <app-stream />
+  } @placeholder {
+    <p class="tab-loading">Loading the stream…</p>
+  }
 } @else {
-  <app-chat />
+  @defer (on immediate) {
+    <app-chat />
+  } @placeholder {
+    <p class="tab-loading">Loading the chat…</p>
+  }
 }

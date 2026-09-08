@@ -1,5 +1,9 @@
 import { provideZonelessChangeDetection } from '@angular/core';
-import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import {
+  type ComponentFixture,
+  DeferBlockBehavior,
+  TestBed,
+} from '@angular/core/testing';
 import type { Spec } from 'ngx-json-render';
 import { App } from './app';
 
@@ -17,8 +21,20 @@ async function settle(fixture: ComponentFixture<unknown>) {
 
 async function render() {
   TestBed.configureTestingModule({
+    // App has to be imported, not just instantiated: its `@defer` blocks give
+    // it async metadata, and `compileComponents()` only resolves that for
+    // components the testing module knows about.
+    imports: [App],
     providers: [provideZonelessChangeDetection()],
+    // Each tab sits behind an `@defer`; TestBed leaves those manual by
+    // default, so without this the tabs never render and every assertion
+    // below would be reading an empty page.
+    deferBlockBehavior: DeferBlockBehavior.Playthrough,
   });
+  // Playthrough resolves the deferred tabs, and resolving them means
+  // fetching their components — which TestBed will only do after an explicit
+  // compile.
+  await TestBed.compileComponents();
   const fixture = TestBed.createComponent(App);
   await settle(fixture);
   return fixture;
