@@ -42,41 +42,15 @@
 @if (tab() === 'playground') {
   <app-playground />
 } @else if (tab() === 'interactive') {
-  <main class="layout">
-    <section class="pane">
-      <json-render
-        #interactive
-        [spec]="spec()"
-        [registry]="registry"
-        [handlers]="handlers"
-        [onAction]="onUnknownAction"
-        (stateChange)="onStateChange($event)"
-      />
-    </section>
-    <aside class="pane side">
-      <section class="panel">
-        <h2>Event log</h2>
-        @if (log().length === 0) {
-          <p class="hint">
-            Interact with the UI on the left — state changes and actions land
-            here.
-          </p>
-        }
-        <ul class="log">
-          @for (entry of log(); track $index) {
-            <li>{{ entry }}</li>
-          }
-        </ul>
-      </section>
-      <section class="panel">
-        <h2>Spec</h2>
-        <p class="hint">
-          The entire UI on the left is rendered from this JSON.
-        </p>
-        <pre class="code">{{ specJson() }}</pre>
-      </section>
-    </aside>
-  </main>
+  <app-interactive
+    [spec]="spec()"
+    [specJson]="specJson()"
+    [log]="log()"
+    [handlers]="handlers"
+    [onAction]="onUnknownAction"
+    (stateChange)="onStateChange($event)"
+    (ready)="onRendererReady($event)"
+  />
 } @else if (tab() === 'streaming') {
   <app-stream />
 } @else {
