@@ -83,6 +83,34 @@ function repeatsItself(path: RenderPath): boolean {
   return false;
 }
 
+/**
+ * Whether two objects hold the same values under the same keys.
+ *
+ * `objectsByIdentity` decides what the same object or array reference means.
+ * The internal store copies every path it writes and never touches a snapshot
+ * it has handed out, so there the same reference is the same content. An
+ * external store may write into its snapshot in place, so there only
+ * primitives can be trusted to compare equal, and any object value counts as
+ * changed.
+ */
+function sameValues(
+  a: Readonly<Record<string, unknown>>,
+  b: Readonly<Record<string, unknown>>,
+  objectsByIdentity: boolean,
+): boolean {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  for (const key of keys) {
+    if (!Object.hasOwn(b, key)) return false;
+    const value = a[key];
+    if (!Object.is(value, b[key])) return false;
+    if (!objectsByIdentity && typeof value === 'object' && value !== null) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** The chain from the root down to `path`, as a line a human can follow. */
 function describePath(path: RenderPath): string {
   const keys: string[] = [];
@@ -154,23 +182,58 @@ export class JrElement {
     return evaluateVisibility(el.visible, this.resolutionCtx());
   });
 
-  /** The element with all prop expressions resolved. */
-  readonly resolvedElement = computed<UIElement | undefined>(() => {
-    const el = this.rawElement();
-    if (!el) return undefined;
-    return {
-      ...el,
-      props: resolveElementProps(el.props ?? {}, this.resolutionCtx()),
-    };
-  });
+  /**
+   * The element with all prop expressions resolved.
+   *
+   * Resolving builds a new props object on every state write, whatever the
+   * write touched. Handing that on as a change would re-run every catalog
+   * template in the tree for one keystroke, so a result that holds the same
+   * values as the last one counts as unchanged and keeps the old object.
+   *
+   * Two-way bound elements are the exception, and keep treating every
+   * resolution as a change. Their component writes the user's input into the
+   * DOM before it reaches state, so the DOM can differ from a prop whose
+   * value never did: typing and a `clearStatePath` in the same turn take
+   * the prop from '' through 'milk' back to '' with nobody reading 'milk'.
+   * The README tells catalog authors to sync such inputs with an effect on
+   * props, and that effect only gets to put the DOM right if it runs.
+   */
+  readonly resolvedElement = computed<UIElement | undefined>(
+    () => {
+      const el = this.rawElement();
+      if (!el) return undefined;
+      return {
+        ...el,
+        props: resolveElementProps(el.props ?? {}, this.resolutionCtx()),
+      };
+    },
+    {
+      equal: (a, b) => {
+        if (a === b) return true;
+        if (!a || !b || untracked(this.bindings)) return false;
+        const { props: aProps, ...aRest } = a;
+        const { props: bProps, ...bRest } = b;
+        // Everything but props is the spec element itself, never state.
+        return (
+          sameValues(aRest, bRest, true) &&
+          sameValues(aProps, bProps, !untracked(this.root.store))
+        );
+      },
+    },
+  );
 
   /** Two-way binding paths ($bindState / $bindItem) by prop name. */
-  readonly bindings = computed<Record<string, string> | undefined>(() => {
-    const el = this.rawElement();
-    return el
-      ? resolveBindings(el.props ?? {}, this.resolutionCtx())
-      : undefined;
-  });
+  readonly bindings = computed<Record<string, string> | undefined>(
+    () => {
+      const el = this.rawElement();
+      return el
+        ? resolveBindings(el.props ?? {}, this.resolutionCtx())
+        : undefined;
+    },
+    {
+      equal: (a, b) => a === b || (!!a && !!b && sameValues(a, b, true)),
+    },
+  );
 
   private readonly entry = computed(() => {
     const el = this.rawElement();

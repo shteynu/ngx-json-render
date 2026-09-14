@@ -594,6 +594,18 @@ const bound = injectBoundProp<string>(() => ctx.props().value, () => ctx.binding
 
 Share one store across renderers (or drive it from your own state management) by passing a core `StateStore` — `createStateStore()`, or `createStoreAdapter()` over Redux/NgRx/etc. — via the `store` input. `createStoreSetState(store)` adapts a whole-state updater to fine-grained path writes.
 
+### What a state write re-renders
+
+A write reaches only the components whose resolved props actually changed. Writing `/user/name` re-runs the template of the text that shows it, not the rest of the tree. So `ctx.props()` and `ctx.element()` are the signals to read: a template that reads anything else, such as a mutable object or `Date.now()`, is no longer refreshed by unrelated writes.
+
+"Changed" is decided per prop value:
+
+- Primitives compare by value.
+- Objects and arrays compare by reference with the built-in store, which copies every path it writes.
+- With an external `store`, objects and arrays always count as changed, because such a store may write into its snapshot in place.
+
+Elements with a `$bindState` or `$bindItem` prop still re-run on every write. Their DOM can hold the user's input before state does, and the note below depends on them getting the chance to put it right.
+
 ### A note on inputs
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.
