@@ -1,6 +1,6 @@
 {
   "name": "ngx-json-render",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Angular renderer for json-render — stream AI-generated JSON specs into real Angular components with signals.",
   "keywords": [
     "angular",
