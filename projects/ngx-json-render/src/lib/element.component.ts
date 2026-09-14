@@ -11,7 +11,11 @@ import {
   isDevMode,
   untracked,
 } from '@angular/core';
-import type { PropResolutionContext, UIElement } from '@json-render/core';
+import type {
+  ActionBinding,
+  PropResolutionContext,
+  UIElement,
+} from '@json-render/core';
 import {
   evaluateVisibility,
   resolveActionParam,
@@ -315,23 +319,8 @@ export class JrElement {
         void (async () => {
           for (const path of paths) {
             if (!changedPaths.has(path)) continue;
-
             const binding = watchConfig[path];
-            if (!binding) continue;
-            const bindings = Array.isArray(binding) ? binding : [binding];
-
-            for (const b of bindings) {
-              if (!b.params) {
-                await this.actions.execute(b);
-                continue;
-              }
-              const liveCtx = this.liveResolutionCtx();
-              const resolved: Record<string, unknown> = {};
-              for (const [key, val] of Object.entries(b.params)) {
-                resolved[key] = resolveActionParam(val, liveCtx);
-              }
-              await this.actions.execute({ ...b, params: resolved });
-            }
+            if (binding) await this.dispatch(binding);
           }
         })().catch(reportActionError);
       });
@@ -361,11 +350,19 @@ export class JrElement {
   }
 
   private async emitEvent(eventName: string): Promise<void> {
-    const el = untracked(this.rawElement);
-    const binding = el?.on?.[eventName];
-    if (!binding) return;
-    const actionBindings = Array.isArray(binding) ? binding : [binding];
-    for (const b of actionBindings) {
+    const binding = untracked(this.rawElement)?.on?.[eventName];
+    if (binding) await this.dispatch(binding);
+  }
+
+  /**
+   * Run an `on` or `watch` binding's actions in order. Params are resolved
+   * per action, just before it runs, so a `$state` read in a later action of
+   * the chain sees what an earlier one wrote.
+   */
+  private async dispatch(
+    binding: ActionBinding | ActionBinding[],
+  ): Promise<void> {
+    for (const b of Array.isArray(binding) ? binding : [binding]) {
       if (!b.params) {
         await this.actions.execute(b);
         continue;
