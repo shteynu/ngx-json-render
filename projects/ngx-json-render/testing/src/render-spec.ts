@@ -3,7 +3,6 @@ import {
   Component,
   type Provider,
   type Type,
-  provideZonelessChangeDetection,
   signal,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
@@ -24,6 +23,12 @@ import {
   type StateChange,
   type StateModel,
 } from 'ngx-json-render';
+import {
+  type DomQueries,
+  configureTestBed,
+  domQueries,
+  settler,
+} from './fixture-helpers';
 
 /** One action the spec asked for, in the order it was dispatched. */
 export interface DispatchedAction {
@@ -65,7 +70,7 @@ export interface RenderSpecOptions {
  * `fixture` and `element` are there for everything this does not cover — the
  * harness is a shortcut, not a wall.
  */
-export interface SpecHarness {
+export interface SpecHarness extends DomQueries {
   /** The fixture of the host that owns the `<json-render>`. */
   readonly fixture: ComponentFixture<unknown>;
   /** The host element, the root of the rendered DOM. */
@@ -94,19 +99,6 @@ export interface SpecHarness {
   write(path: string, value: unknown): Promise<void>;
   /** The whole state model. */
   state(): StateModel;
-
-  /** Trimmed text of the first match, or of everything when given nothing. */
-  text(selector?: string): string;
-  /** Trimmed text of every match. */
-  texts(selector: string): string[];
-  /** The first match. Throws when there is none. */
-  find<T extends HTMLElement>(selector: string): T;
-  /** Every match, possibly none. */
-  findAll<T extends HTMLElement>(selector: string): T[];
-  /** Click an element (or the first match of a selector) and settle. */
-  click(target: string | Element): Promise<void>;
-  /** Set an input's value, fire `input`, and settle. */
-  fill(target: string | Element, value: string): Promise<void>;
 
   /** Destroy the fixture. Rarely needed — TestBed resets between tests. */
   destroy(): void;
@@ -180,28 +172,6 @@ function recordingHandlers(
 }
 
 /**
- * Configure the TestBed, unless the test already did.
- *
- * A test that called `TestBed.runInInjectionContext` first — or that renders
- * a second spec — has an instantiated module, and configuring it again
- * throws. Its own module stands; the only thing that cannot be salvaged is
- * this call's `providers`, so that is the one case worth failing over.
- */
-function configureTestBed(providers: Provider[]): void {
-  try {
-    TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection(), ...providers],
-    });
-  } catch {
-    if (providers.length > 0) {
-      throw new Error(
-        'renderSpec: the TestBed was already instantiated, so `providers` cannot be applied. Pass them to your own TestBed.configureTestingModule() call instead.',
-      );
-    }
-  }
-}
-
-/**
  * Render a spec against a registry and hand back the few things a test does
  * to it.
  *
@@ -234,7 +204,7 @@ export async function renderSpec(
   const dispatched: DispatchedAction[] = [];
   const changes: StateChange[] = [];
 
-  configureTestBed(options.providers ?? []);
+  configureTestBed('renderSpec', options.providers ?? []);
 
   const fixture = TestBed.createComponent(JrTestHost);
   const host = fixture.componentInstance;
@@ -256,14 +226,7 @@ export async function renderSpec(
   host.record = (batch) => changes.push(...batch);
   host.spec.set(spec);
 
-  const settle = async () => {
-    // Twice: the first pass runs the effects that a render schedules, the
-    // second renders what those effects changed. One pass leaves a test
-    // asserting against a frame that no browser would ever show.
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
-  };
+  const settle = settler(fixture);
   await settle();
 
   const element = fixture.nativeElement as HTMLElement;
@@ -277,17 +240,6 @@ export async function renderSpec(
   // From the renderer's own injector: these services are provided by the
   // component, so the root TestBed injector has never heard of them.
   const validation = rendererElement.injector.get(JsonRenderValidationService);
-
-  const resolve = (target: string | Element): HTMLElement => {
-    if (typeof target !== 'string') return target as HTMLElement;
-    const found = element.querySelector<HTMLElement>(target);
-    if (!found) {
-      throw new Error(
-        `renderSpec: nothing matches ${JSON.stringify(target)}. Rendered HTML:\n${element.innerHTML}`,
-      );
-    }
-    return found;
-  };
 
   return {
     fixture,
@@ -315,25 +267,7 @@ export async function renderSpec(
     },
     state: () => store.state(),
 
-    text: (selector) =>
-      ((selector ? resolve(selector) : element).textContent ?? '').trim(),
-    texts: (selector) =>
-      Array.from(element.querySelectorAll(selector)).map((el) =>
-        (el.textContent ?? '').trim(),
-      ),
-    find: <T extends HTMLElement>(selector: string) => resolve(selector) as T,
-    findAll: <T extends HTMLElement>(selector: string) =>
-      Array.from(element.querySelectorAll<T>(selector)),
-    async click(target) {
-      resolve(target).click();
-      await settle();
-    },
-    async fill(target, value) {
-      const input = resolve(target) as HTMLInputElement;
-      input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      await settle();
-    },
+    ...domQueries('renderSpec', element, settle),
 
     destroy: () => fixture.destroy(),
   };

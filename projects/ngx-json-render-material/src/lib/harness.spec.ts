@@ -4,9 +4,11 @@ import type { Spec } from '@json-render/core';
 import { injectUIStream } from 'ngx-json-render';
 import {
   recordedTransport,
+  renderComponent,
   renderSpec,
   specStream,
 } from 'ngx-json-render/testing';
+import { JrmButton, JrmSlideToggle } from './form.components';
 import { materialRegistry } from './registry';
 
 /**
@@ -84,5 +86,30 @@ describe('the testing entry point, from a catalog package', () => {
       registry: materialRegistry,
     });
     expect(rendered.text('mat-card-title')).toBe('Sign up');
+  });
+
+  it('mounts a Material component on its own, with no spec', async () => {
+    const button = await renderComponent(JrmButton, {
+      props: { label: 'Save' },
+    });
+
+    expect(button.text('button')).toBe('Save');
+    await button.click('button');
+    expect(button.emitted).toEqual(['press']);
+
+    await button.patchProps({ disabled: true });
+    expect(button.find<HTMLButtonElement>('button').disabled).toBe(true);
+  });
+
+  it('records what a Material control writes to its bound prop', async () => {
+    const toggle = await renderComponent(JrmSlideToggle, {
+      props: { label: 'Dark mode', checked: false },
+      bindings: { checked: '/dark' },
+    });
+
+    await toggle.click('button[role="switch"]');
+
+    expect(toggle.writes).toEqual([{ prop: 'checked', value: true }]);
+    expect(toggle.props()).toMatchObject({ checked: true });
   });
 });

@@ -473,6 +473,40 @@ the harness: `text` / `texts` / `find` / `findAll` for the DOM, `click` /
 Options mirror the renderer's inputs, plus `providers` for anything the
 components under test inject.
 
+### Mounting one component
+
+`renderComponent` mounts a catalog component with no renderer and no spec. You
+give it props and read back what it emitted and what it wrote to bound props.
+It tests the component as a presentational one — what it draws, and what it
+says when used — and leaves what the spec does with that to `renderSpec`:
+
+```ts
+import { renderComponent } from 'ngx-json-render/testing';
+
+it('emits press, and stays quiet once disabled', async () => {
+  const button = await renderComponent(MyButton, { props: { label: 'Save' } });
+
+  expect(button.text('button')).toBe('Save');
+  await button.click('button');
+  expect(button.emitted).toEqual(['press']);
+
+  await button.patchProps({ disabled: true });
+  expect(button.find<HTMLButtonElement>('button').disabled).toBe(true);
+});
+```
+
+`bindings` says which props are two-way bound (`{ checked: '/dark' }`): a
+`setBound` on one of them is recorded in `writes` and lands back in the props,
+and on any other prop it is the same no-op it is under the renderer. `on` lists
+the events the spec would bind, for components that read `ctx.on(event).bound`;
+`key`, `type` and `loading` fill in the rest of the context, and `setProps` /
+`patchProps` / `setLoading` change it between frames. The DOM helpers are the
+same as `renderSpec`'s.
+
+A component that renders `<jr-children>`, registers field validation or
+dispatches actions itself needs the renderer's own services, and there is no
+honest fake for a subtree — it fails with a message pointing at `renderSpec`.
+
 ### Replaying a generation
 
 `recordedTransport` is a `fetch` that answers from a recording, so a test runs
@@ -731,7 +765,7 @@ is how you tell the two apart.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`.
 
-Testing (`ngx-json-render/testing`): `renderSpec`, `recordedTransport`, `specStream`, `usageLine`.
+Testing (`ngx-json-render/testing`): `renderSpec`, `renderComponent`, `recordedTransport`, `specStream`, `usageLine`.
 
 Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, prompt builders, spec validators, SpecStream compiler) composes with this package; the most common symbols are re-exported.
 

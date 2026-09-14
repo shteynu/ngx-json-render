@@ -9,11 +9,13 @@ import type { Spec, ValidationConfig } from '@json-render/core';
 import {
   JrChildren,
   injectChatUI,
+  injectElementKey,
   injectFieldValidation,
   injectRenderContext,
   injectUIStream,
 } from 'ngx-json-render';
 import { recordedTransport, specStream, usageLine } from './recorded-transport';
+import { renderComponent } from './render-component';
 import { renderSpec } from './render-spec';
 
 // ---------------------------------------------------------------------------
@@ -90,6 +92,18 @@ class TField {
 })
 class TGreeting {
   readonly greeting = inject(GREETING);
+}
+
+/** Reads the rest of the context: its key, `on` metadata and loading. */
+@Component({
+  selector: 't-status',
+  template: `<span class="status">{{ key() }}:{{ bound() }}:{{ loading() }}</span>`,
+})
+class TStatus {
+  private readonly ctx = injectRenderContext();
+  readonly key = injectElementKey();
+  readonly bound = () => this.ctx.on('press').bound;
+  readonly loading = this.ctx.loading;
 }
 
 const REGISTRY = {
@@ -245,6 +259,104 @@ describe('renderSpec', () => {
     );
 
     expect(ui.text('.greeting')).toBe('guten tag');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderComponent
+// ---------------------------------------------------------------------------
+
+describe('renderComponent', () => {
+  it('draws the props it is given and re-draws when they change', async () => {
+    const button = await renderComponent(TBtn, { props: { label: 'Save' } });
+
+    expect(button.text('.btn')).toBe('Save');
+    expect(button.component).toBeInstanceOf(TBtn);
+    expect(button.context.props()).toEqual({ label: 'Save' });
+
+    await button.patchProps({ label: 'Saved' });
+    expect(button.text('.btn')).toBe('Saved');
+
+    await button.setProps({});
+    expect(button.text('.btn')).toBe('');
+  });
+
+  it('records what the component emits, with no spec to bind it', async () => {
+    const button = await renderComponent(TBtn, { props: { label: 'Save' } });
+
+    await button.click('.btn');
+    await button.click('.btn');
+
+    expect(button.emitted).toEqual(['press', 'press']);
+  });
+
+  it('writes a bound prop back, the way the renderer round-trips it', async () => {
+    const input = await renderComponent(TInput, {
+      props: { value: 'old' },
+      bindings: { value: '/email' },
+    });
+
+    await input.fill('.input', 'new');
+
+    expect(input.writes).toEqual([{ prop: 'value', value: 'new' }]);
+    expect(input.props()).toEqual({ value: 'new' });
+    expect(input.context.bindings()).toEqual({ value: '/email' });
+  });
+
+  it('ignores setBound on an unbound prop, as the renderer does', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const input = await renderComponent(TInput, { props: { value: 'old' } });
+
+    await input.fill('.input', 'new');
+
+    expect(input.writes).toEqual([]);
+    expect(input.props()).toEqual({ value: 'old' });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('setBound("value")'),
+    );
+    warn.mockRestore();
+  });
+
+  it('provides the element key, the bound events and the loading flag', async () => {
+    const status = await renderComponent(TStatus, {
+      key: 'save',
+      type: 'Status',
+      props: { tone: 'quiet' },
+      on: ['press'],
+    });
+    expect(status.text('.status')).toBe('save:true:false');
+    expect(status.context.element()).toEqual({
+      type: 'Status',
+      props: { tone: 'quiet' },
+      children: [],
+    });
+
+    status.context.on('press').emit();
+    expect(status.emitted).toEqual(['press']);
+
+    await status.setLoading(true);
+    expect(status.text('.status')).toBe('save:true:true');
+
+    const unbound = await renderComponent(TStatus);
+    expect(unbound.text('.status')).toBe('element:false:false');
+  });
+
+  it('passes extra providers to the component', async () => {
+    const greeting = await renderComponent(TGreeting, {
+      providers: [{ provide: GREETING, useValue: 'guten tag' }],
+    });
+
+    expect(greeting.text('.greeting')).toBe('guten tag');
+  });
+
+  it('points at renderSpec when the component needs a real renderer', async () => {
+    await expect(renderComponent(TBox)).rejects.toThrowError(
+      /needs a real <json-render>.*renderSpec/s,
+    );
+    TestBed.resetTestingModule();
+    await expect(
+      renderComponent(TField, { bindings: { value: '/email' } }),
+    ).rejects.toThrowError(/renderSpec/);
   });
 });
 

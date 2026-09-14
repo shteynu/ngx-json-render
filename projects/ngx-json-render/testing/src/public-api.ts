@@ -15,6 +15,12 @@ export {
   type RecordedTransportOptions,
 } from './recorded-transport';
 export {
+  renderComponent,
+  type BoundWrite,
+  type ComponentHarness,
+  type RenderComponentOptions,
+} from './render-component';
+export {
   renderSpec,
   type DispatchedAction,
   type RenderSpecOptions,
