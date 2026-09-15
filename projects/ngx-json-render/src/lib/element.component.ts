@@ -14,10 +14,12 @@ import {
 import type {
   ActionBinding,
   PropResolutionContext,
+  StateModel,
   UIElement,
 } from '@json-render/core';
 import {
   evaluateVisibility,
+  getByPath,
   resolveActionParam,
   resolveBindings,
   resolveElementProps,
@@ -25,6 +27,7 @@ import {
 import { JsonRenderActionsService, isActionCancelled } from './actions.service';
 import { injectDevtoolsActive } from './devtools';
 import { JsonRenderRootContext } from './root-context';
+import { collectStateReads } from './state-reads';
 import { JsonRenderStateService } from './state.service';
 import {
   ELEMENT_KEY,
@@ -111,6 +114,18 @@ function sameValues(
   return true;
 }
 
+const EMPTY_READS: ReadonlySet<string> = new Set();
+
+function sameReads(
+  a: ReadonlySet<string> | null,
+  b: ReadonlySet<string> | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.size !== b.size) return false;
+  for (const path of a) if (!b.has(path)) return false;
+  return true;
+}
+
 /** The chain from the root down to `path`, as a line a human can follow. */
 function describePath(path: RenderPath): string {
   const keys: string[] = [];
@@ -159,11 +174,80 @@ export class JrElement {
     () => this.root.spec()?.elements?.[this.elementKey()],
   );
 
+  /**
+   * The state paths this element's expressions can read, or null when the
+   * spec doesn't say — see {@link collectStateReads} for when that is.
+   */
+  private readonly stateReads = computed<ReadonlySet<string> | null>(
+    () => {
+      const el = this.rawElement();
+      if (!el) return EMPTY_READS;
+      return collectStateReads(
+        el,
+        this.root.directiveRegistry(),
+        this.repeatScope?.basePath(),
+      );
+    },
+    { equal: sameReads },
+  );
+
+  /**
+   * One signal per path this element reads, each holding the value at that
+   * path. They are rebuilt only when the paths change, and a cell that stays
+   * keeps its last value, so a path that didn't change is not a change.
+   *
+   * A cell compares like a resolved prop does: primitives by value, objects
+   * by reference with the internal store (which copies every path it writes)
+   * and never equal with an external `store`, which may write into its
+   * snapshot in place.
+   */
+  private readonly stateCells = (() => {
+    let cells = new Map<string, Signal<unknown>>();
+    return computed<ReadonlyMap<string, Signal<unknown>> | null>(() => {
+      const reads = this.stateReads();
+      if (reads === null) return null;
+      const next = new Map<string, Signal<unknown>>();
+      for (const path of reads) {
+        next.set(
+          path,
+          cells.get(path) ??
+            computed(() => getByPath(this.state.state(), path), {
+              equal: (a, b) =>
+                Object.is(a, b) &&
+                (typeof a !== 'object' ||
+                  a === null ||
+                  !untracked(this.root.store)),
+            }),
+        );
+      }
+      cells = next;
+      return next;
+    });
+  })();
+
+  /**
+   * The state to resolve against: the whole snapshot, but only as fresh as
+   * the paths this element reads. A write elsewhere doesn't reach it, so the
+   * element doesn't resolve anything for it. An element whose reads are
+   * unknown follows every write, as all elements did before.
+   */
+  private readonly readableState = computed<StateModel>(
+    () => {
+      const cells = this.stateCells();
+      if (cells === null) return this.state.state();
+      for (const cell of cells.values()) cell();
+      return untracked(this.state.state);
+    },
+    // A snapshot an external store mutated in place is the same object, and
+    // still has to count as newer when a cell says so.
+    { equal: () => false },
+  );
+
   /** Prop/visibility resolution context (state + repeat scope + extensions). */
   private readonly resolutionCtx = computed<PropResolutionContext>(() => {
     const scope = this.repeatScope;
     return {
-      stateModel: this.state.state(),
+      stateModel: this.readableState(),
       ...(scope
         ? {
             repeatItem: scope.item(),

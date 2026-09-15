@@ -8,11 +8,15 @@ import {
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import {
+  type ComputedFunction,
+  type DirectiveDefinition,
   type Spec,
   type StateModel,
   type StateStore,
+  defineDirective,
   getByPath,
 } from '@json-render/core';
+import { z } from 'zod';
 import { JrChildren } from './children.component';
 import { JsonRenderer } from './renderer.component';
 import { applyPatch } from './streaming/patch';
@@ -114,18 +118,38 @@ const REGISTRY: ComponentRegistry = {
   Input: PInput,
 };
 
+/**
+ * How many times each `$computed` function ran, by the label it was given.
+ * A function runs once per resolution of the prop that calls it, so this is
+ * the count of resolutions the render counters above cannot see: resolving
+ * props to the same values runs no template.
+ */
+let calls: Record<string, number> = {};
+
+const FUNCTIONS: Record<string, ComputedFunction> = {
+  tag: (args) => {
+    const label = String(args['label']);
+    calls[label] = (calls[label] ?? 0) + 1;
+    return label;
+  },
+};
+
 @Component({
   imports: [JsonRenderer],
   template: `<json-render
     [spec]="spec()"
     [registry]="registry"
     [store]="store()"
+    [functions]="functions"
+    [directives]="directives()"
   />`,
 })
 class Host {
   readonly spec = signal<Spec | null>(null);
   readonly store = signal<StateStore | null>(null);
+  readonly directives = signal<DirectiveDefinition[] | undefined>(undefined);
   readonly registry = REGISTRY;
+  readonly functions = FUNCTIONS;
 }
 
 const SPEC: Spec = {
@@ -151,15 +175,21 @@ async function settle(fixture: ComponentFixture<unknown>) {
   await fixture.whenStable();
 }
 
-async function setup(spec: Spec, store: StateStore | null = null) {
+async function setup(
+  spec: Spec,
+  store: StateStore | null = null,
+  directives?: DirectiveDefinition[],
+) {
   TestBed.configureTestingModule({
     providers: [provideZonelessChangeDetection()],
   });
   const fixture = TestBed.createComponent(Host);
   fixture.componentInstance.store.set(store);
+  fixture.componentInstance.directives.set(directives);
   fixture.componentInstance.spec.set(spec);
   await settle(fixture);
   runs = {};
+  calls = {};
   const state = fixture.debugElement.children[0].componentInstance
     .stateStore as {
     set(path: string, value: unknown): void;
@@ -335,5 +365,185 @@ describe('what a data change re-renders with an external store', () => {
     await settle(fixture);
 
     expect(texts(fixture, '.p-item')).toEqual(['a', 'b']);
+  });
+});
+
+describe('what a data change resolves', () => {
+  const tag = (label: unknown) => ({ $computed: 'tag', args: { label } });
+
+  const RESOLVE_SPEC: Spec = {
+    root: 'card',
+    state: {
+      user: { name: 'Ada', email: 'ada@example.com' },
+      flag: true,
+      todos: [{ title: 'one' }],
+    },
+    elements: {
+      card: {
+        type: 'Box',
+        props: {},
+        children: ['name', 'email', 'either', 'shown', 'todos'],
+      },
+      name: { type: 'Text', props: { content: tag({ $state: '/user/name' }) } },
+      email: {
+        type: 'Text',
+        props: { content: tag({ $state: '/user/email' }) },
+      },
+      either: {
+        type: 'Text',
+        props: {
+          content: {
+            $cond: { $state: '/flag' },
+            $then: { $state: '/user/name' },
+            $else: { $state: '/user/email' },
+          },
+        },
+      },
+      shown: {
+        type: 'Text',
+        props: { content: 'flagged' },
+        visible: { $state: '/flag' },
+      },
+      todos: {
+        type: 'Box',
+        props: {},
+        repeat: { statePath: '/todos' },
+        children: ['todo', 'byline'],
+      },
+      todo: { type: 'Text', props: { content: tag({ $item: 'title' }) } },
+      byline: {
+        type: 'Text',
+        props: { content: { $template: '${title} for ${/user/name}' } },
+      },
+    },
+  };
+
+  it('a write resolves only the elements that read its path', async () => {
+    const { fixture, state } = await setup(RESOLVE_SPEC);
+
+    state.set('/user/name', 'Grace');
+    await settle(fixture);
+
+    expect(calls).toEqual({ Grace: 1 });
+    expect(texts(fixture, '.p-text')).toEqual([
+      'Grace',
+      'ada@example.com',
+      'Grace',
+      'flagged',
+      'one',
+      'one for Grace',
+    ]);
+  });
+
+  it('a write to a path nobody reads resolves nothing', async () => {
+    const { fixture, state } = await setup(RESOLVE_SPEC);
+
+    state.set('/unrelated', 1);
+    await settle(fixture);
+
+    expect(calls).toEqual({});
+    expect(runs).toEqual({});
+  });
+
+  it('$cond follows the branch its condition now selects', async () => {
+    const { fixture, state } = await setup(RESOLVE_SPEC);
+
+    state.set('/flag', false);
+    await settle(fixture);
+    expect(texts(fixture, '.p-text')).toEqual([
+      'Ada',
+      'ada@example.com',
+      'ada@example.com',
+      'one',
+      'one for Ada',
+    ]);
+
+    state.set('/user/email', 'grace@example.com');
+    await settle(fixture);
+    expect(texts(fixture, '.p-text')[2]).toBe('grace@example.com');
+  });
+
+  it('an item field written by path reaches the item that shows it', async () => {
+    const { fixture, state } = await setup(RESOLVE_SPEC);
+
+    state.set('/todos/0/title', 'uno');
+    await settle(fixture);
+
+    expect(calls).toEqual({ uno: 1 });
+    expect(texts(fixture, '.p-text').slice(-2)).toEqual(['uno', 'uno for Ada']);
+  });
+
+  it('an element reading a whole object resolves when a field inside it changes', async () => {
+    const { fixture, state } = await setup({
+      root: 'user',
+      state: { user: { name: 'Ada', email: 'ada@example.com' } },
+      elements: {
+        user: {
+          type: 'Text',
+          props: { content: tag({ $state: '/user' }) },
+        },
+      },
+    });
+
+    state.set('/user/email', 'ada@example.org');
+    await settle(fixture);
+
+    expect(calls).toEqual({ '[object Object]': 1 });
+  });
+
+  it('an in-place item mutation from an external store still reaches the item', async () => {
+    const todos = [{ title: 'one' }];
+    const store = mutatingStore({ todos });
+    const { fixture } = await setup(
+      {
+        root: 'todos',
+        elements: {
+          todos: {
+            type: 'Box',
+            props: {},
+            repeat: { statePath: '/todos' },
+            children: ['todo'],
+          },
+          todo: { type: 'Text', props: { content: { $item: 'title' } } },
+        },
+      },
+      store,
+    );
+
+    store.set('/todos/0/title', 'uno');
+    await settle(fixture);
+
+    expect(texts(fixture, '.p-text')).toEqual(['uno']);
+  });
+
+  it('a directive keeps resolving on every write, since it may read any path', async () => {
+    const shout = defineDirective({
+      name: '$shout',
+      schema: z.object({ $shout: z.string() }),
+      resolve: (raw, ctx) =>
+        String(getByPath(ctx.stateModel, raw.$shout)).toUpperCase(),
+    });
+    const { fixture, state } = await setup(
+      {
+        root: 'card',
+        state: { word: 'hi', other: 0 },
+        elements: {
+          card: { type: 'Box', props: {}, children: ['loud', 'count'] },
+          loud: { type: 'Text', props: { content: { $shout: '/word' } } },
+          count: {
+            type: 'Text',
+            props: { content: tag({ $state: '/other' }) },
+          },
+        },
+      },
+      null,
+      [shout],
+    );
+
+    state.set('/word', 'hey');
+    await settle(fixture);
+
+    expect(texts(fixture, '.p-text')).toEqual(['HEY', '0']);
+    expect(calls).toEqual({});
   });
 });

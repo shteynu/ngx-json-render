@@ -606,6 +606,10 @@ A write reaches only the components whose resolved props actually changed. Writi
 
 Elements with a `$bindState` or `$bindItem` prop still re-run on every write. Their DOM can hold the user's input before state does, and the note below depends on them getting the chance to put it right.
 
+Before any of that, a write only makes the elements that can read its path resolve their props at all. The renderer works the paths out from each element's spec — `$state`, `$item`, `$template` placeholders, both branches of a `$cond`, `$computed` arguments and `visible` conditions — so a write to `/user/name` leaves the todo list alone, and its `$computed` functions don't run. A `$computed` function should therefore depend only on its arguments: one that also reads the clock or a variable outside the spec is no longer called again by unrelated writes.
+
+Some elements keep resolving on every write, because their reads can't be known from the spec: those using a directive (its `resolve` gets the whole state), those with a two-way binding, and any prop with a `$`-key the renderer doesn't recognise.
+
 ### A note on inputs
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.
