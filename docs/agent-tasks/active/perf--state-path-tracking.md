@@ -5,8 +5,10 @@
 - Branch: `perf/state-path-tracking`
 - Base branch: `main`
 - Base commit: `175f312`
-- Current HEAD: `175f312` (no commits on the branch yet)
-- Status: implemented and verified, uncommitted; awaiting the user's review
+- Current HEAD: `7c9ff40` (the implementation), followed by the commit that
+  updates this file; not pushed
+- Status: implemented, verified on Angular 20, 21 and 22, committed; awaiting
+  the user's review
 - Last updated: 2026-09-15
 - Last agent/tool: Claude Code (Opus 5)
 
@@ -91,6 +93,19 @@ elements whose expressions read that path. Rendered output is unchanged.
   95.55.
 - `npm run build:material`; `npm run test:material`: 67/67.
 - `npx ng test demo --coverage`: 58 passed. `npx ng build demo`: built.
+- `angular-compat` steps, each run as CI runs them in a throwaway clone of
+  `7c9ff40`, on Angular 20.3.31 and 22.1.6. Each of these passed:
+  - retarget and install;
+  - `ng build ngx-json-render`;
+  - `ng test ngx-json-render`, 314/314;
+  - `ng build ngx-json-render-material`.
+  - The Angular 20 log has warnings that were already there before this change:
+    - NG0912 in `registry.spec`;
+    - the expected missing-provider error in `testing.spec`;
+    - "switching from uncontrolled to controlled mode" in the external-store
+      tests of `render-precision.spec`. Those tests set the store after
+      creating the component. The 0.5.1 ones warn too, and the store still
+      takes effect.
 - `npm run check:zoneless`: passed. `git diff --check`: clean. Prettier is
   clean on every changed file.
 - Browser (`ng serve demo`), no console errors:
@@ -109,8 +124,7 @@ elements whose expressions read that path. Rendered output is unchanged.
 
 ### Blocked or not run
 
-- `angular-compat` (Angular 20/22) not run. The change uses `computed`
-  `equal`, `Set` and `String.prototype.matchAll` only.
+- Nothing outstanding for this change.
 
 ### Residual risk
 
@@ -123,13 +137,14 @@ elements whose expressions read that path. Rendered output is unchanged.
 
 ## Approval gates
 
-- Commit, push and release are the user's.
+- Push and release are the user's; commits only when the user asks.
 - This is a runtime behaviour change for every consumer, so it belongs in a
   renderer minor release note (0.6.0). The catalog peer range must move in the
   same commit as the version bump (see AGENTS.md, `check:peers`).
 
 ## Next concrete step
 
-The user reviews the diff. Optional follow-up, a separate step: a dev-mode
-check that re-resolves skipped elements on a write and warns when the result
-differs, catching an unmodelled read before production.
+The user reviews the branch and decides whether to push it. Optional
+follow-up, as a separate step: a dev-mode check that re-resolves skipped
+elements on a write and warns when the result differs, catching an unmodelled
+read before production.
