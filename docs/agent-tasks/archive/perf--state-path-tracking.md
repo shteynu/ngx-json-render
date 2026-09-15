@@ -5,11 +5,10 @@
 - Branch: `perf/state-path-tracking`
 - Base branch: `main`
 - Base commit: `175f312`
-- Commits: `7c9ff40` path tracking, `31c2a33` task-file update, then "Warn in
-  dev mode when an element skipped a write it needed". Not pushed.
-- Working tree: clean after that commit.
-- Status: path tracking and the dev-mode check are committed and verified;
-  awaiting the user's review.
+- Current HEAD: `8627a60` on `main` (fast-forwarded and pushed)
+- Commits: `7c9ff40` path tracking, `31c2a33` Angular 20/22 compat record,
+  `8627a60` dev-mode check on skipped writes
+- Status: done, merged into `main`; unreleased, ships in ngx-json-render 0.6.0
 - Last updated: 2026-09-15
 - Last agent/tool: Claude Code (Opus 5)
 
@@ -188,4 +187,5 @@ elements whose expressions read that path. Rendered output is unchanged.
 
 ## Next concrete step
 
-The user reviews the branch and decides whether to push it.
+None on this task. The release is the user's: 0.6.0 of the renderer, with the
+catalog peer range moved in the same commit as the version bump.
