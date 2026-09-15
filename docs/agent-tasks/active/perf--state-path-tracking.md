@@ -5,10 +5,11 @@
 - Branch: `perf/state-path-tracking`
 - Base branch: `main`
 - Base commit: `175f312`
-- Current HEAD: `7c9ff40` (the implementation), followed by the commit that
-  updates this file; not pushed
-- Status: implemented, verified on Angular 20, 21 and 22, committed; awaiting
-  the user's review
+- Commits: `7c9ff40` path tracking, `31c2a33` task-file update, then "Warn in
+  dev mode when an element skipped a write it needed". Not pushed.
+- Working tree: clean after that commit.
+- Status: path tracking and the dev-mode check are committed and verified;
+  awaiting the user's review.
 - Last updated: 2026-09-15
 - Last agent/tool: Claude Code (Opus 5)
 
@@ -81,6 +82,49 @@ elements whose expressions read that path. Rendered output is unchanged.
 - README, "What a state write re-renders": resolution is now per path, and
   `$computed` functions should be pure.
 
+## Dev-mode check on skipped writes
+
+- **What it does.** When an element skips a state write, it resolves again
+  against the whole state. If props or visibility come out different, it warns
+  once per element key.
+- **How a skipped write is detected.** `readableState` counts the snapshots it
+  takes. An effect on `state.state()` compares that count between writes.
+- **What it leaves alone.** It reports only and never corrects the element, so
+  dev mode renders what production renders. It skips elements whose reads are
+  `null`, since they resolve on every write anyway.
+- **How results are compared.** `sameContent` compares plain objects, arrays
+  and `Date` values by content. Functions, `Map`s and class instances count as
+  equal, so the check never warns about an element that is correct.
+- **How it is switched on.** It is gated by `CHECK_SKIPPED_WRITES` (internal,
+  not exported), which defaults to `isDevMode()`. `render-precision.spec` turns
+  it off except in its own block, because the check calls `$computed` again
+  and `calls` counts those calls.
+- **Tests:**
+  - it stays quiet across the resolve spec's writes: `$cond`, `visible`,
+    repeat, template and array replace;
+  - it stays quiet with an external store that writes in place;
+  - it stays quiet for a pure `$computed` that returns new objects;
+  - it warns exactly once, leaving the text as it was, for a `$computed` that
+    reads a module variable.
+- **False-positive probe.** The warning was temporarily made to throw, and the
+  lib, Material and demo suites were run. Only the intentional test failed;
+  every other test passed, including all the default dev-mode runs. The probe
+  was reverted, and `grep PROBE` found nothing afterwards.
+- **Verification:**
+  - `build:lib`;
+  - lib tests with coverage: 318 passed, 95.62 / 89.74 / 95.36 / 97.08;
+  - `build:material` and `test:material` 67/67;
+  - demo tests 58 and `ng build demo`;
+  - `check:zoneless`, `git diff --check` and prettier;
+  - `angular-compat` steps on a copy of the working tree, Angular 20.3.31 and
+    22.1.6: builds, and 317/317, which is before the content-comparison test
+    was added;
+  - browser `ng serve demo`: `main.js` contains the check. Playground typing,
+    Interactive (name, counter, checkbox, add, remove) and Streaming checklist
+    toggles produced no warnings or errors.
+- **Dev-mode cost.** Every element resolves on every write, the 0.5.1 cost.
+  `$computed` runs on every write in dev, and the README says so.
+
 ## Verification evidence
 
 ### Passed
@@ -144,7 +188,4 @@ elements whose expressions read that path. Rendered output is unchanged.
 
 ## Next concrete step
 
-The user reviews the branch and decides whether to push it. Optional
-follow-up, as a separate step: a dev-mode check that re-resolves skipped
-elements on a write and warns when the result differs, catching an unmodelled
-read before production.
+The user reviews the branch and decides whether to push it.

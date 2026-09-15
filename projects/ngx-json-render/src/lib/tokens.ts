@@ -1,4 +1,4 @@
-import { InjectionToken, type Signal, inject } from '@angular/core';
+import { InjectionToken, type Signal, inject, isDevMode } from '@angular/core';
 import type { RenderContext, RenderPath, RepeatScope } from './types';
 
 /**
@@ -36,6 +36,19 @@ export const REPEAT_SCOPE = new InjectionToken<RepeatScope>(
  */
 export const RENDER_PATH = new InjectionToken<Signal<RenderPath>>(
   'ngx-json-render RENDER_PATH',
+);
+
+/**
+ * Whether an element that skipped a state write checks that it was right to:
+ * that resolving it against the whole state would not give anything else.
+ * On in dev mode, off in production.
+ *
+ * @internal Not part of the public API. The check calls `$computed`
+ * functions again, so tests that count those calls turn it off.
+ */
+export const CHECK_SKIPPED_WRITES = new InjectionToken<boolean>(
+  'ngx-json-render CHECK_SKIPPED_WRITES',
+  { providedIn: 'root', factory: () => isDevMode() },
 );
 
 /**

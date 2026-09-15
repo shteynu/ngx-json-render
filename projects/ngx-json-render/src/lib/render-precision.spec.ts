@@ -20,7 +20,11 @@ import { z } from 'zod';
 import { JrChildren } from './children.component';
 import { JsonRenderer } from './renderer.component';
 import { applyPatch } from './streaming/patch';
-import { injectElementKey, injectRenderContext } from './tokens';
+import {
+  CHECK_SKIPPED_WRITES,
+  injectElementKey,
+  injectRenderContext,
+} from './tokens';
 import type { ComponentRegistry } from './types';
 
 /**
@@ -126,12 +130,24 @@ const REGISTRY: ComponentRegistry = {
  */
 let calls: Record<string, number> = {};
 
+/** A value outside the spec, which a `$computed` function should not read. */
+let outside = 'before';
+
 const FUNCTIONS: Record<string, ComputedFunction> = {
   tag: (args) => {
     const label = String(args['label']);
     calls[label] = (calls[label] ?? 0) + 1;
     return label;
   },
+  outside: () => outside,
+  // Pure, but a new value of every kind on each call.
+  shape: (args) => ({
+    label: args['label'],
+    list: [args['label'], { nested: true }],
+    at: new Date(0),
+    format: () => String(args['label']),
+    index: new Map([['label', args['label']]]),
+  }),
 };
 
 @Component({
@@ -179,9 +195,15 @@ async function setup(
   spec: Spec,
   store: StateStore | null = null,
   directives?: DirectiveDefinition[],
+  // Off unless a test is about it: the check calls `$computed` functions
+  // again, which is exactly what `calls` counts.
+  checkSkippedWrites = false,
 ) {
   TestBed.configureTestingModule({
-    providers: [provideZonelessChangeDetection()],
+    providers: [
+      provideZonelessChangeDetection(),
+      { provide: CHECK_SKIPPED_WRITES, useValue: checkSkippedWrites },
+    ],
   });
   const fixture = TestBed.createComponent(Host);
   fixture.componentInstance.store.set(store);
@@ -545,5 +567,133 @@ describe('what a data change resolves', () => {
 
     expect(texts(fixture, '.p-text')).toEqual(['HEY', '0']);
     expect(calls).toEqual({});
+  });
+
+  describe('the dev-mode check on skipped writes', () => {
+    function skippedWriteWarnings(warn: { mock: { calls: unknown[][] } }) {
+      return warn.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes('did not resolve again'));
+    }
+
+    it('stays quiet through writes the elements handle', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { fixture, state } = await setup(
+        RESOLVE_SPEC,
+        null,
+        undefined,
+        true,
+      );
+
+      state.set('/user/name', 'Grace');
+      state.set('/unrelated', 1);
+      await settle(fixture);
+      state.set('/flag', false);
+      await settle(fixture);
+      state.set('/todos/0/title', 'uno');
+      state.set('/todos', [{ title: 'uno' }, { title: 'dos' }]);
+      await settle(fixture);
+      state.set('/user/email', 'grace@example.com');
+      await settle(fixture);
+
+      expect(texts(fixture, '.p-text')).toEqual([
+        'Grace',
+        'grace@example.com',
+        'grace@example.com',
+        'uno',
+        'uno for Grace',
+        'dos',
+        'dos for Grace',
+      ]);
+      expect(skippedWriteWarnings(warn)).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('stays quiet with an external store that writes in place', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const store = mutatingStore(structuredClone(RESOLVE_SPEC.state ?? {}));
+      const { fixture } = await setup(RESOLVE_SPEC, store, undefined, true);
+
+      store.set('/todos/0/title', 'uno');
+      await settle(fixture);
+      store.set('/user/name', 'Grace');
+      await settle(fixture);
+
+      expect(texts(fixture, '.p-text').slice(-2)).toEqual([
+        'uno',
+        'uno for Grace',
+      ]);
+      expect(skippedWriteWarnings(warn)).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('compares by content, so a $computed returning new objects stays quiet', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { fixture, state } = await setup(
+        {
+          root: 'card',
+          state: { label: 'a', other: 0 },
+          elements: {
+            card: {
+              type: 'Text',
+              props: {
+                content: {
+                  $computed: 'shape',
+                  args: { label: { $state: '/label' } },
+                },
+              },
+            },
+          },
+        },
+        null,
+        undefined,
+        true,
+      );
+
+      state.set('/other', 1);
+      await settle(fixture);
+      state.set('/label', 'b');
+      await settle(fixture);
+      state.set('/other', 2);
+      await settle(fixture);
+
+      expect(skippedWriteWarnings(warn)).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('warns once, and changes nothing, when a $computed reads outside its args', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      outside = 'before';
+      const { fixture, state } = await setup(
+        {
+          root: 'clock',
+          state: { other: 0 },
+          elements: {
+            clock: {
+              type: 'Text',
+              props: { content: { $computed: 'outside' } },
+            },
+          },
+        },
+        null,
+        undefined,
+        true,
+      );
+
+      outside = 'after';
+      state.set('/other', 1);
+      await settle(fixture);
+      state.set('/other', 2);
+      await settle(fixture);
+
+      // Production shows the same: the element had no reason to resolve.
+      expect(texts(fixture, '.p-text')).toEqual(['before']);
+      const warnings = skippedWriteWarnings(warn);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('"clock"');
+      expect(warnings[0]).toContain('changes content');
+      expect(warnings[0]).toContain('reads no state paths');
+      warn.mockRestore();
+    });
   });
 });

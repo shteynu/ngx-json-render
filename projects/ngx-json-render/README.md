@@ -610,6 +610,8 @@ Before any of that, a write only makes the elements that can read its path resol
 
 Some elements keep resolving on every write, because their reads can't be known from the spec: those using a directive (its `resolve` gets the whole state), those with a two-way binding, and any prop with a `$`-key the renderer doesn't recognise.
 
+In dev mode each element that skipped a write resolves anyway, against the whole state, and the console warns once if that gives anything other than what it shows. The warning means a `$computed` function reads more than its arguments, or the renderer missed a read, which is a bug worth reporting. The element itself is left as production would leave it. The check calls the element's `$computed` functions again, so in dev mode they still run on every write.
+
 ### A note on inputs
 
 If a catalog component renders `<input [value]="ctx.props().value">`, remember that one-way bindings do not re-assert the DOM when the bound value returns to its previously applied value while the user typed in between (e.g. `pushState` + `clearStatePath`). Sync imperatively instead — see `InputComponent` in the demo app for the pattern.

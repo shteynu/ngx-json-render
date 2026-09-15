@@ -30,6 +30,7 @@ import { JsonRenderRootContext } from './root-context';
 import { collectStateReads } from './state-reads';
 import { JsonRenderStateService } from './state.service';
 import {
+  CHECK_SKIPPED_WRITES,
   ELEMENT_KEY,
   REPEAT_SCOPE,
   RENDER_CONTEXT,
@@ -113,6 +114,45 @@ function sameValues(
   }
   return true;
 }
+
+/**
+ * Whether two resolved values hold the same content, however they are built.
+ *
+ * For the dev-mode check on skipped writes, which compares a fresh resolution
+ * with an old one: a `$computed` function returns a new object every time,
+ * so identity says nothing there. What it can't see into — functions, a `Map`,
+ * a class instance — it counts as the same, because a check that warns about
+ * a correct element is worse than one that misses a case.
+ */
+function sameContent(
+  a: unknown,
+  b: unknown,
+  seen = new Set<unknown>(),
+): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a === 'function' && typeof b === 'function') return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
+  if (a instanceof Date) return a.getTime() === (b as Date).getTime();
+  const plain =
+    Array.isArray(a) || Object.getPrototypeOf(a) === Object.prototype;
+  if (!plain || seen.has(a)) return true;
+  seen.add(a);
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every(
+    (key) =>
+      Object.hasOwn(b, key) &&
+      sameContent(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key],
+        seen,
+      ),
+  );
+}
+
+/** Element keys already warned about by the check on skipped writes. */
+const warnedSkippedWrites = new Set<string>();
 
 const EMPTY_READS: ReadonlySet<string> = new Set();
 
@@ -226,6 +266,12 @@ export class JrElement {
   })();
 
   /**
+   * How many times {@link readableState} has taken a snapshot. The dev-mode
+   * check compares it between state writes to tell which ones were skipped.
+   */
+  private snapshotsTaken = 0;
+
+  /**
    * The state to resolve against: the whole snapshot, but only as fresh as
    * the paths this element reads. A write elsewhere doesn't reach it, so the
    * element doesn't resolve anything for it. An element whose reads are
@@ -233,6 +279,7 @@ export class JrElement {
    */
   private readonly readableState = computed<StateModel>(
     () => {
+      this.snapshotsTaken++;
       const cells = this.stateCells();
       if (cells === null) return this.state.state();
       for (const cell of cells.values()) cell();
@@ -414,6 +461,26 @@ export class JrElement {
       }
     });
 
+    // Dev mode: after a state write this element skipped, check that it was
+    // right to. Resolving against the whole state has to give what the element
+    // already shows; anything else is a read the spec analysis didn't name.
+    if (inject(CHECK_SKIPPED_WRITES)) {
+      let snapshotsSeen = -1;
+      effect(() => {
+        this.state.state();
+        const shown = this.resolvedElement();
+        const shownVisible = this.visible();
+        const reads = this.stateReads();
+        untracked(() => {
+          const skipped = this.snapshotsTaken === snapshotsSeen;
+          snapshotsSeen = this.snapshotsTaken;
+          if (skipped && shown && reads !== null) {
+            this.checkSkippedWrite(shown, shownVisible, reads);
+          }
+        });
+      });
+    }
+
     // Warn (once per type) about unknown component types.
     const warnedTypes = new Set<string>();
     effect(() => {
@@ -474,6 +541,42 @@ export class JrElement {
 
       onCleanup(unsubscribe);
     });
+  }
+
+  /**
+   * Resolve this element against the whole current state and warn, once per
+   * element key, when that differs from what it shows after skipping a write.
+   *
+   * It only reports, and leaves the element as it is: correcting it here would
+   * make dev mode render what production doesn't.
+   */
+  private checkSkippedWrite(
+    shown: UIElement,
+    shownVisible: boolean,
+    reads: ReadonlySet<string>,
+  ): void {
+    const key = this.elementKey();
+    const el = this.rawElement();
+    if (!el || warnedSkippedWrites.has(key)) return;
+    const ctx = this.liveResolutionCtx();
+    let props: Record<string, unknown>;
+    let visible: boolean;
+    try {
+      props = resolveElementProps(el.props ?? {}, ctx);
+      visible = el.visible === undefined || evaluateVisibility(el.visible, ctx);
+    } catch {
+      return;
+    }
+    const differs = Object.keys({ ...props, ...shown.props }).filter(
+      (prop) => !sameContent(props[prop], shown.props[prop]),
+    );
+    if (visible !== shownVisible) differs.push('visible');
+    if (differs.length === 0) return;
+    warnedSkippedWrites.add(key);
+    const paths = reads.size > 0 ? [...reads].join(', ') : 'no state paths';
+    console.warn(
+      `[ngx-json-render] "${key}" did not resolve again after a state write, but resolving it now changes ${differs.join(', ')}. It resolves only when a state path it reads changes, and it reads ${paths}. Either a $computed function in it depends on something besides its args, or the renderer missed a read — please report the spec at https://github.com/shteynu/ngx-json-render/issues. This check runs in dev mode only.`,
+    );
   }
 
   /**
