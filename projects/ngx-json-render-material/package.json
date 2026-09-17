@@ -1,6 +1,6 @@
 {
   "name": "ngx-json-render-material",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Angular Material catalog for ngx-json-render — a ready-made component vocabulary an LLM can generate UI against.",
   "keywords": [
     "angular",
@@ -29,7 +29,7 @@
     "@angular/forms": ">=20.0.0",
     "@angular/material": ">=20.0.0",
     "@json-render/core": "^0.20.0",
-    "ngx-json-render": "^0.6.0",
+    "ngx-json-render": "^0.7.0",
     "zod": "^4.0.0"
   },
   "dependencies": {
