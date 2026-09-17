@@ -61,8 +61,10 @@ export interface ChatUIOptions {
   renderLimits?: RenderLimits | null;
   /**
    * The catalog the spec was generated for. Given one, `validate` also checks
-   * every element `type` against the catalog and the props against its
-   * schema — the half a structural check cannot see.
+   * every element `type` against the catalog and each element's props against
+   * its component's schema — the half a structural check cannot see. Props
+   * written as expressions are left alone: they have no value until render
+   * time.
    */
   catalog?: SpecCatalog | null;
 }

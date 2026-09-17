@@ -239,7 +239,7 @@ app.post('/api/generate', async (req, res) => {
 });
 ```
 
-The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `catalog.validate(spec)` checks a finished spec against the catalog.
+The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `checkSpec(spec, 'strict', { catalog })` checks a finished spec against the catalog, props included — see [Checking what the model produced](#checking-what-the-model-produced) for why that and not `catalog.validate(spec)` alone.
 
 ### Chat + GenUI
 
@@ -372,11 +372,22 @@ is a patch that has not arrived yet, not a defect, so nothing is reported and
 `strict` keeps rendering; the hooks check once, when the generation completes.
 
 Pass the catalog too, and the same check covers what structure alone cannot
-see — every `type` is one the catalog defines, and the props match its schema:
+see — every `type` is one the catalog defines, and each element's props match
+its component's schema:
 
 ```html
 <json-render [spec]="spec()" [registry]="registry" [catalog]="catalog" validate="strict" />
 ```
+
+A prop written as an expression — `{"$state": …}`, `{"$bindState": …}`,
+`{"$template": …}`, a directive — is not checked: it has no value until render
+time. The catalog's spec schema also holds every element to the grammar, which
+wants a `children` array even on a leaf.
+
+The props check is this package's own. Core's `catalog.validate(spec)` gives an
+element's props its component's schema only when the catalog has exactly one
+component; with more, it checks element shapes and `type` names but not a
+single prop.
 
 ### Capping what a spec may cost
 
@@ -754,10 +765,13 @@ not generate should set all three. See
 [Capping what a spec may cost](#capping-what-a-spec-may-cost).
 
 **A spec can name components you never built.** `validate` with a `catalog`
-reports every `type` the catalog does not define and every prop its schema
-rejects; `strict` refuses such a spec outright. Without a catalog the renderer
-only warns and draws nothing in that element's place, which degrades well but
-tells you nothing until you read the console.
+reports every `type` the catalog does not define and every prop its component's
+schema rejects; `strict` refuses such a spec outright. A prop bound to an
+expression (`$state`, `$bindState`, `$template`, …) is not among them — its value
+only exists at render time — so a component should not count on such a prop
+having the type its schema declares. Without a catalog the renderer only warns
+and draws nothing in that element's place, which degrades well but tells you
+nothing until you read the console.
 
 **`confirm` is a UX affordance, not a security control.** It routes an action
 through the confirmation dialog before the handler runs, but it is set on the

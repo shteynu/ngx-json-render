@@ -127,7 +127,11 @@ export class JsonRenderer {
   /**
    * The catalog the spec was generated for. Given one, `validate` also checks
    * what structure alone cannot: that every `type` is a component the catalog
-   * defines, and that the props match its schema.
+   * defines, that every element has the shape the catalog's spec schema asks
+   * for — a `children` array, even on a leaf — and that its props match its
+   * component's schema. A prop written as an expression — `$state`,
+   * `$bindState`, `$template`, a directive — has no value until render time,
+   * so it is not checked.
    *
    * Only read when `validate` is on, and — like the rest of the check —
    * skipped while `loading`.

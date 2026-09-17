@@ -34,9 +34,10 @@ export interface SpecCheckOptions {
   readonly limits?: RenderLimits | null;
   /**
    * The catalog the spec was generated for. Given one, the check also reports
-   * component types the catalog does not define and props its own schema
-   * rejects — the half of "is this spec renderable" that structure alone
-   * cannot answer.
+   * component types the catalog does not define, elements its spec schema
+   * rejects, and props their component's schema rejects — the half of "is
+   * this spec renderable" that structure alone cannot answer. A prop written
+   * as an expression is not judged: it has no value until render time.
    */
   readonly catalog?: SpecCatalog | null;
 }

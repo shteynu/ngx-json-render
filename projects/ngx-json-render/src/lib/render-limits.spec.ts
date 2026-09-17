@@ -6,10 +6,12 @@ import {
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { ActionHandler, Catalog, Spec } from '@json-render/core';
+import { z } from 'zod';
 import { JrChildren } from './children.component';
 import type { RenderLimits, SpecCatalog } from './render-limits';
 import { analyseSpecGraph } from './render-limits';
 import { JsonRenderer } from './renderer.component';
+import { schema } from './schema';
 import type { SpecValidationMode } from './spec-validation';
 import { checkSpec, formatSpecCheckIssues } from './spec-validation';
 import { injectRenderContext } from './tokens';
@@ -610,10 +612,9 @@ describe('catalog checking', () => {
     expect(issue?.message).toContain('Expected string, received number');
   });
 
-  it('skips the schema pass while a component type is unknown', () => {
-    // A catalog schema keys its element shapes off `type`. Running it with an
-    // unrecognised one buries the actual finding in prop errors about a
-    // component that was never the point.
+  it('skips the schema passes while a component type is unknown', () => {
+    // The unknown type is the finding. The spec schema would only restate it,
+    // and no props schema can be picked for an element whose type has none.
     const check = checkSpec(UNKNOWN_TYPE, 'warn', { catalog: REJECTS_PROPS });
 
     expect(check.issues.map((issue) => issue.code)).not.toContain(
@@ -634,10 +635,362 @@ describe('catalog checking', () => {
     expect(check.issues).toEqual([]);
   });
 
+  it('reads each reported issue defensively', () => {
+    const oddIssues: SpecCatalog = {
+      componentNames: ['Box', 'Text'],
+      validate: () => ({
+        success: false,
+        error: { issues: [null, { path: 'label', message: 7 }] },
+      }),
+    };
+    const check = checkSpec(FINE, 'warn', { catalog: oddIssues });
+
+    expect(check.issues.map((issue) => issue.message)).toEqual([
+      'spec: is not valid',
+      'spec: is not valid',
+    ]);
+  });
+
+  it('counts a spec schema that throws as a rejection, not a crash', () => {
+    for (const thrown of [new RangeError('too deep'), 'not an Error']) {
+      const throwing: SpecCatalog = {
+        componentNames: ['Box', 'Text'],
+        validate: () => {
+          throw thrown;
+        },
+      };
+      const check = checkSpec(FINE, 'warn', { catalog: throwing });
+
+      expect(check.issues).toEqual([
+        {
+          severity: 'error',
+          code: 'invalid_props',
+          message: expect.stringMatching(
+            /^spec: the catalog schema threw instead of answering( \(RangeError: too deep\))?, so this counts as rejected$/,
+          ),
+        },
+      ]);
+    }
+  });
+
+  it('reads a catalog’s data defensively', () => {
+    // `data` is typed `unknown`, so anything can arrive in it. Where it holds
+    // no schema to call for an element's type, those props are left to
+    // `validate`, as they were before `data` was read at all.
+    for (const data of [
+      'nonsense',
+      { components: null },
+      { components: {} },
+      { components: { Box: null, Text: { props: 'not a schema' } } },
+    ]) {
+      const catalog: SpecCatalog = { ...REJECTS_PROPS, data };
+      const check = checkSpec(FINE, 'warn', { catalog });
+
+      expect(check.issues.map((issue) => issue.message)).toEqual([
+        'elements.label.props.content: Expected string, received number',
+      ]);
+    }
+  });
+
   it('is not consulted while validation is off', () => {
     const check = checkSpec(UNKNOWN_TYPE, 'off', { catalog: CATALOG });
 
     expect(check.issues).toEqual([]);
+  });
+
+  describe('built by schema.createCatalog', () => {
+    // The stubs above decide what `validate` returns, so they prove how a
+    // rejection is reported, never what a real catalog's schema rejects.
+    const Box = {
+      props: z.object({}),
+      slots: ['default'],
+      description: 'A container',
+    };
+    const Text = {
+      props: z.object({ content: z.string() }),
+      slots: [],
+      description: 'A line of text',
+    };
+    const Heading = {
+      props: z.object({
+        content: z.string(),
+        level: z.number().min(1).max(3).optional(),
+      }),
+      slots: [],
+      description: 'A section heading',
+    };
+    const Table = {
+      props: z.object({ rows: z.array(z.object({ label: z.string() })) }),
+      slots: [],
+      description: 'Rows of labels',
+    };
+
+    const SEVERAL = schema.createCatalog({
+      components: { Box, Text, Heading, Table },
+      actions: {},
+    });
+
+    /** A spec of one childless element — `children` is still required. */
+    const only = (type: string, props: unknown) =>
+      ({
+        root: 'title',
+        elements: { title: { type, props, children: [] } },
+      }) as unknown as Spec;
+
+    const BAD_HEADING = only('Heading', { content: 42, level: 9 });
+
+    const found = (spec: Spec, catalog: SpecCatalog) =>
+      checkSpec(spec, 'warn', { catalog }).issues.map((issue) => [
+        issue.code,
+        issue.elementKey,
+        issue.message,
+      ]);
+
+    it('reports props the schema rejects, with one component', () => {
+      // With one component core checks the props itself. They are still
+      // reported once.
+      const catalog = schema.createCatalog({
+        components: { Heading },
+        actions: {},
+      });
+
+      expect(found(BAD_HEADING, catalog)).toEqual([
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.content:'),
+        ],
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.level:'),
+        ],
+      ]);
+    });
+
+    it('reports props the schema rejects, with several components', () => {
+      // Every catalog worth rendering has more than one component, and core's
+      // spec schema only checks props against a component's schema when there
+      // is exactly one: with more, each element's props are an open record.
+      expect(found(BAD_HEADING, SEVERAL)).toEqual([
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.content:'),
+        ],
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.level:'),
+        ],
+      ]);
+    });
+
+    it('leaves props written as expressions to render time', () => {
+      // Core resolves each of these before the component sees it, so what the
+      // schema would reject is not what renders. A `$` key core does not know
+      // is left alone as well: directives are `$`-prefixed.
+      const bound = {
+        root: 'root',
+        state: { title: 'Hi', big: true, rows: [] },
+        elements: {
+          root: {
+            type: 'Box',
+            props: {},
+            children: ['title', 'fed', 'mixed'],
+          },
+          title: {
+            type: 'Heading',
+            props: {
+              content: { $bindState: '/title' },
+              level: { $cond: { $state: '/big' }, $then: 1, $else: 2 },
+            },
+            children: [],
+          },
+          fed: {
+            type: 'Table',
+            props: { rows: { $state: '/rows' } },
+            children: [],
+          },
+          mixed: {
+            type: 'Table',
+            props: {
+              rows: [
+                { label: { $template: 'Hello, ${/title}!' } },
+                { label: { $format: 'date', value: '/today' } },
+              ],
+            },
+            children: [],
+          },
+        },
+      } as unknown as Spec;
+
+      expect(found(bound, SEVERAL)).toEqual([]);
+    });
+
+    it('does not pass on what core says about expressions, with one component', () => {
+      // Core's own check of a one-component catalog runs the props schema over
+      // the spec as written, and rejects every expression in it.
+      const catalog = schema.createCatalog({
+        components: { Heading },
+        actions: {},
+      });
+
+      expect(
+        found(only('Heading', { content: { $state: '/title' } }), catalog),
+      ).toEqual([]);
+    });
+
+    it('reports a literal beside an expression, at its full path', () => {
+      const spec = only('Table', {
+        rows: [{ label: { $item: 'name' } }, { label: 7 }],
+      });
+
+      expect(found(spec, SEVERAL)).toEqual([
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.rows.1.label:'),
+        ],
+      ]);
+    });
+
+    it('leaves a value holding an expression alone, and judges one without', () => {
+      // A union reports at the value it could not match, not inside it, so an
+      // expression in `text` would otherwise surface as a rejected `label`.
+      const Badge = {
+        props: z.object({
+          label: z.union([z.string(), z.object({ text: z.string() })]),
+        }),
+        slots: [],
+        description: 'A label, plain or rich',
+      };
+      const catalog = schema.createCatalog({
+        components: { Text, Badge },
+        actions: {},
+      });
+
+      expect(
+        found(only('Badge', { label: { text: { $state: '/t' } } }), catalog),
+      ).toEqual([]);
+      expect(found(only('Badge', { label: { text: 5 } }), catalog)).toEqual([
+        ['invalid_props', 'title', 'elements.title.props.label: Invalid input'],
+      ]);
+    });
+
+    it('keeps what the spec schema says about an element beyond its props', () => {
+      const spec = {
+        root: 'title',
+        elements: { title: { type: 'Heading', props: { content: 42 } } },
+      } as unknown as Spec;
+
+      expect(found(spec, SEVERAL)).toEqual([
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.children:'),
+        ],
+        [
+          'invalid_props',
+          'title',
+          expect.stringContaining('elements.title.props.content:'),
+        ],
+      ]);
+    });
+
+    it('stops at twenty issues, however many props fail', () => {
+      // A hostile spec fails in as many places as it has props. It is refused
+      // either way, and twenty is plenty to act on — so the last element read
+      // is cut off part-way through its own issues.
+      const elements: Record<string, unknown> = {
+        h0: {
+          type: 'Heading',
+          props: { content: 'fine', level: 9 },
+          children: [],
+        },
+      };
+      for (let i = 1; i < 30; i++) {
+        elements[`h${i}`] = {
+          type: 'Heading',
+          props: { content: i, level: 9 },
+          children: [],
+        };
+      }
+      const check = checkSpec(
+        { root: 'h0', elements } as unknown as Spec,
+        'warn',
+        { catalog: SEVERAL },
+      );
+
+      expect(check.issues).toHaveLength(20);
+      expect(check.issues.at(-1)?.message).toContain(
+        'elements.h10.props.content:',
+      );
+    });
+
+    it('counts a props schema that throws as a rejection, not a crash', () => {
+      // Real ones do: `ValidationConfigSchema`, behind every Material input's
+      // `validation`, overflows the stack a thousand `$and`s deep. This one
+      // throws on purpose, so the test does not depend on the stack size.
+      const Fragile = {
+        props: z.object({}).superRefine(() => {
+          throw new RangeError('Maximum call stack size exceeded');
+        }),
+        slots: [],
+        description: 'Throws on every check',
+      };
+      const catalog = schema.createCatalog({
+        components: { Text, Fragile },
+        actions: {},
+      });
+
+      expect(found(only('Fragile', {}), catalog)).toEqual([
+        [
+          'invalid_props',
+          'title',
+          'elements.title.props: the "Fragile" schema threw instead of answering (RangeError: Maximum call stack size exceeded), so this counts as rejected',
+        ],
+      ]);
+    });
+
+    it('walks props too deep to recurse over, and props holding themselves', () => {
+      // Whether a rejected value holds an expression is found by walking it. A
+      // recursive walk would overflow on the first and never end on the second.
+      let deep: Record<string, unknown> = { leaf: true };
+      for (let i = 0; i < 20_000; i++) deep = { next: deep };
+      const loop: Record<string, unknown> = {};
+      loop['self'] = loop;
+
+      for (const content of [deep, loop]) {
+        const keys = found(only('Heading', { content }), SEVERAL).map(
+          ([, key]) => key,
+        );
+        expect(keys).toEqual(['title']);
+      }
+    });
+
+    it('refuses a spec whose props the catalog rejects under strict', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const labelled = (content: unknown) =>
+        ({
+          root: 'root',
+          elements: {
+            root: { type: 'Box', props: {}, children: ['label'] },
+            label: { type: 'Text', props: { content }, children: [] },
+          },
+        }) as unknown as Spec;
+      const fixture = await setup(labelled(42), (host) => {
+        host.validate.set('strict');
+        host.catalog.set(SEVERAL);
+      });
+
+      expect(count(fixture, '.l-box')).toBe(0);
+
+      fixture.componentInstance.spec.set(labelled('hi'));
+      await settle(fixture);
+      expect(count(fixture, '.l-text')).toBe(1);
+      error.mockRestore();
+    });
   });
 });
 

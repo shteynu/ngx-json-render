@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Spec } from '@json-render/core';
-import { JsonRenderer, type StateChange } from 'ngx-json-render';
+import { JsonRenderer, type StateChange, checkSpec } from 'ngx-json-render';
 import { materialCatalog } from './catalog';
 import { materialComponents, materialRegistry } from './registry';
 
@@ -91,6 +91,58 @@ describe('material catalog', () => {
     const prompt = materialCatalog.prompt();
     expect(prompt).toContain('Card');
     expect(prompt).toContain('SlideToggle');
+  });
+
+  it('holds each element to its own component’s props under checkSpec', () => {
+    // With 28 components, core's `materialCatalog.validate` checks no props at
+    // all. The renderer's check does — `validation` included — and leaves the
+    // expressions in them alone.
+    const spec = {
+      root: 'form',
+      state: { email: '' },
+      elements: {
+        form: {
+          type: 'Stack',
+          props: { gap: 8 },
+          children: ['title', 'email', 'broken'],
+        },
+        title: {
+          type: 'Heading',
+          props: { content: { $template: 'Hi, ${/email}' }, level: 9 },
+          children: [],
+        },
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: {
+              checks: [{ type: 'required', message: 'Required' }],
+              validateOn: 'blur',
+            },
+          },
+          children: [],
+        },
+        broken: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: { checks: 'required', validateOn: 'hover' },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+
+    const check = checkSpec(spec, 'strict', { catalog: materialCatalog });
+
+    expect(check.issues.map((issue) => issue.message.split(':')[0])).toEqual([
+      'elements.title.props.level',
+      'elements.broken.props.validation.checks',
+      'elements.broken.props.validation.validateOn',
+    ]);
+    expect(check.hasErrors).toBe(true);
   });
 });
 

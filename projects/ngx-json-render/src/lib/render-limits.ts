@@ -59,7 +59,8 @@ export interface RenderLimits {
  *   terminate. A tree that recurses into its items is not this.
  * - `too_deep` / `too_many_elements` — a {@link RenderLimits} cap was passed.
  * - `unknown_component` — a `type` the catalog does not define.
- * - `invalid_props` — the catalog's own schema rejected part of the spec.
+ * - `invalid_props` — an element's props fail its component's schema, or the
+ *   element fails the catalog's spec schema: a missing `children`, say.
  */
 export type SpecCheckIssueCode =
   | SpecIssue['code']
@@ -94,6 +95,33 @@ export interface SpecCatalog {
     readonly success: boolean;
     readonly error?: unknown;
   };
+  /**
+   * The definitions the catalog was created from. Where
+   * `data.components[type].props` is a schema — anything with a `safeParse`,
+   * as a Zod schema has — each element's props are checked against its own
+   * component's. Without it, props are checked only as far as `validate`
+   * checks them, which for a catalog of more than one component is not at
+   * all.
+   *
+   * `unknown` rather than that shape, so that a `Catalog` whose generic
+   * arguments were left off — and whose `data` is therefore `unknown` — still
+   * fits.
+   */
+  readonly data?: unknown;
+}
+
+/** The part of a props schema the check calls: what a Zod schema has. */
+interface PropsSchema {
+  safeParse(value: unknown): {
+    readonly success: boolean;
+    readonly error?: unknown;
+  };
+}
+
+/** One complaint from a schema, at a path into the value it was given. */
+interface SchemaIssue {
+  readonly path: readonly unknown[];
+  readonly message: string;
 }
 
 /** What one walk of the element graph found. */
@@ -266,65 +294,236 @@ export function depthIssue(depth: number, limit: number): SpecCheckIssue {
 }
 
 /**
- * Check a spec against a catalog: the component types it names, and then the
- * catalog's own schema.
+ * Check a spec against a catalog: the component types it names, then the
+ * catalog's spec schema, then each element's props against its own
+ * component's schema.
  *
- * The schema pass is skipped while a type is unknown. A catalog schema keys
- * its element shapes off `type`, so one name it does not recognise turns into
- * a pile of prop errors describing a component that was never the point.
+ * The props need that pass of their own. Core builds one schema for the whole
+ * spec, and it gives an element's props a component's schema only when the
+ * catalog has exactly one component; with more, every element's props are an
+ * open record, whatever its `type`. So `catalog.validate` holds an element to
+ * its shape — `children`, a `type` from the catalog — and not to its props.
+ *
+ * Whatever that schema did say about the props of an element checked here is
+ * dropped: with a one-component catalog it would be reported twice, and it
+ * judges expressions this pass knows to leave alone.
+ *
+ * The schema passes are skipped while a type is unknown. That is an error on
+ * its own, and the spec schema would only restate it as a `type` outside the
+ * ones it accepts.
  */
 export function catalogIssues(
   spec: Spec,
   catalog: SpecCatalog,
 ): SpecCheckIssue[] {
-  const issues: SpecCheckIssue[] = [];
+  const elements = Object.entries(spec.elements ?? {});
   const known = new Set(catalog.componentNames);
 
-  for (const [key, element] of Object.entries(spec.elements ?? {})) {
+  const unknown: SpecCheckIssue[] = [];
+  for (const [key, element] of elements) {
     if (known.has(element.type)) continue;
-    issues.push({
+    unknown.push({
       severity: 'error',
       code: 'unknown_component',
       elementKey: key,
       message: `Element "${key}" has type "${element.type}", which this catalog does not define. Nothing renders for it.`,
     });
   }
-  if (issues.length > 0) return issues;
+  if (unknown.length > 0) return unknown;
 
-  const result = catalog.validate(spec);
-  if (result.success) return issues;
-  return propIssues(result.error);
+  const schemas = new Map<string, PropsSchema>();
+  for (const [key, element] of elements) {
+    const schema = propsSchemaOf(catalog.data, element.type);
+    if (schema) schemas.set(key, schema);
+  }
+
+  const found = specSchemaIssues(spec, catalog).filter(
+    ({ path }) =>
+      !(
+        path[0] === 'elements' &&
+        typeof path[1] === 'string' &&
+        schemas.has(path[1]) &&
+        path[2] === 'props'
+      ),
+  );
+  for (const [key, element] of elements) {
+    const room = MAX_REPORTED_PROP_ISSUES - found.length;
+    if (room <= 0) break;
+    const schema = schemas.get(key);
+    if (schema) found.push(...propsIssues(key, element, schema, room));
+  }
+
+  return found.slice(0, MAX_REPORTED_PROP_ISSUES).map(toSpecCheckIssue);
 }
 
 /**
- * Turn whatever the catalog's schema reported into issues.
+ * The props schema a catalog declares for a component type, if it declares
+ * one that can be called.
+ */
+function propsSchemaOf(data: unknown, type: string): PropsSchema | undefined {
+  const components = (data as { components?: unknown } | null | undefined)
+    ?.components;
+  if (
+    typeof components !== 'object' ||
+    components === null ||
+    !Object.hasOwn(components, type)
+  ) {
+    return undefined;
+  }
+  const props = (
+    components as Record<string, { props?: unknown } | null | undefined>
+  )[type]?.props;
+  return typeof (props as Partial<PropsSchema> | null | undefined)
+    ?.safeParse === 'function'
+    ? (props as PropsSchema)
+    : undefined;
+}
+
+/** What the catalog's spec schema reported, with paths rooted at the spec. */
+function specSchemaIssues(spec: Spec, catalog: SpecCatalog): SchemaIssue[] {
+  try {
+    const result = catalog.validate(spec);
+    return result.success ? [] : readIssues(result.error);
+  } catch (error) {
+    return [{ path: [], message: threwMessage('the catalog schema', error) }];
+  }
+}
+
+/**
+ * What an element's component schema says about its props, leaving out what
+ * it says about expressions, with paths rooted at the spec.
+ *
+ * A schema that throws counts as a rejection, not a crash. Real ones do:
+ * `ValidationConfigSchema`, which every Material input's `validation` prop
+ * uses, recurses through `enabled` and overflows the stack a thousand
+ * `$and`s deep.
+ */
+function propsIssues(
+  key: string,
+  element: UIElement,
+  schema: PropsSchema,
+  room: number,
+): SchemaIssue[] {
+  const at = ['elements', key, 'props'];
+  let result: ReturnType<PropsSchema['safeParse']>;
+  try {
+    result = schema.safeParse(element.props);
+  } catch (error) {
+    return [
+      {
+        path: at,
+        message: threwMessage(`the "${element.type}" schema`, error),
+      },
+    ];
+  }
+  if (result.success) return [];
+
+  const issues: SchemaIssue[] = [];
+  for (const { path, message } of readIssues(result.error)) {
+    if (issues.length >= room) break;
+    if (reachesExpression(element.props, path)) continue;
+    issues.push({ path: [...at, ...path], message });
+  }
+  return issues;
+}
+
+/**
+ * Whether a props issue is about an expression: it sits on one, inside one,
+ * or on a value holding one.
+ *
+ * `{"$state": "/title"}` where the schema wants a string is not a defect.
+ * Core resolves every such value before the component sees it, so the schema
+ * would be judging something that never renders. Any `$`-prefixed key counts
+ * — directive names must start with `$`, and so would an expression added to
+ * core later. A value merely holding one is left alone too, since a union or
+ * a refinement over it ran on the unresolved value.
+ *
+ * The props object itself is not an expression: core resolves the values
+ * inside it, never the object.
+ */
+function reachesExpression(props: unknown, path: readonly unknown[]): boolean {
+  let value = props;
+  for (const segment of path) {
+    if (typeof value !== 'object' || value === null) return false;
+    value = (value as Record<PropertyKey, unknown>)[segment as PropertyKey];
+    if (isExpression(value)) return true;
+  }
+  return holdsExpression(value);
+}
+
+/** A value core resolves at render time — or will, once it knows the key. */
+function isExpression(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).some((key) => key.startsWith('$'))
+  );
+}
+
+/**
+ * Whether anything nested inside `value` is an expression.
+ *
+ * Iterative, and it remembers what it has seen, for the same reason as
+ * {@link analyseSpecGraph}: props are as attacker-shaped as the rest of the
+ * spec, and a check that overflowed or looped on them would be a second way
+ * to crash.
+ */
+function holdsExpression(value: unknown): boolean {
+  const pending: unknown[] = [value];
+  const seen = new Set<object>();
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current !== 'object' || current === null) continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const child of Object.values(current)) {
+      if (isExpression(child)) return true;
+      pending.push(child);
+    }
+  }
+  return false;
+}
+
+/**
+ * Read what a schema reported.
  *
  * Read defensively rather than typed against the schema library: the shape
  * below (`issues`, each with `path` and `message`) is what every version of
  * it has produced, and a renderer that threw while explaining a bad spec
  * would be the worse failure.
  */
-function propIssues(error: unknown): SpecCheckIssue[] {
+function readIssues(error: unknown): SchemaIssue[] {
   const raw = (error as { issues?: unknown } | null | undefined)?.issues;
   if (!Array.isArray(raw)) return [];
 
-  return raw.slice(0, MAX_REPORTED_PROP_ISSUES).map((entry): SpecCheckIssue => {
-    const item = entry as { path?: unknown; message?: unknown };
-    const path = Array.isArray(item.path) ? (item.path as unknown[]) : [];
-    const message =
-      typeof item.message === 'string' ? item.message : 'is not valid';
-    // Paths are rooted at the spec, so `elements.<key>.props.<prop>` names the
-    // element in its second segment.
-    const elementKey =
-      path[0] === 'elements' && typeof path[1] === 'string'
-        ? path[1]
-        : undefined;
-    const where = path.length > 0 ? path.join('.') : 'spec';
+  return raw.map((entry): SchemaIssue => {
+    const item = entry as { path?: unknown; message?: unknown } | null;
+    const path = item?.path;
+    const message = item?.message;
     return {
-      severity: 'error',
-      code: 'invalid_props',
-      ...(elementKey === undefined ? {} : { elementKey }),
-      message: `${where}: ${message}`,
+      path: Array.isArray(path) ? path : [],
+      message: typeof message === 'string' ? message : 'is not valid',
     };
   });
+}
+
+function threwMessage(schema: string, error: unknown): string {
+  const reason =
+    error instanceof Error ? ` (${error.name}: ${error.message})` : '';
+  return `${schema} threw instead of answering${reason}, so this counts as rejected`;
+}
+
+function toSpecCheckIssue({ path, message }: SchemaIssue): SpecCheckIssue {
+  // Paths are rooted at the spec, so `elements.<key>.props.<prop>` names the
+  // element in its second segment.
+  const elementKey =
+    path[0] === 'elements' && typeof path[1] === 'string' ? path[1] : undefined;
+  const where = path.length > 0 ? path.map(String).join('.') : 'spec';
+  return {
+    severity: 'error',
+    code: 'invalid_props',
+    ...(elementKey === undefined ? {} : { elementKey }),
+    message: `${where}: ${message}`,
+  };
 }
