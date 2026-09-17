@@ -215,7 +215,7 @@ export class GeneratePage {
 `injectUIStream` POSTs `{ prompt, context, currentSpec }` to your endpoint and expects the response body to be SpecStream JSONL — one RFC 6902 patch per line. Any server that can stream text works; with the [AI SDK](https://ai-sdk.dev) it's a few lines — `catalog.prompt()` teaches the model your component vocabulary and the patch protocol:
 
 ```ts
-// server.ts — Express shown; any Node server works the same way
+// server.ts — Express shown (plain Node needs one extra import, see below)
 import express from 'express';
 import { streamText } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
@@ -238,6 +238,8 @@ app.post('/api/generate', async (req, res) => {
   res.end();
 });
 ```
+
+`catalog.ts` imports `schema` from `ngx-json-render`, and that entry point also loads Angular and the renderer's components, which are published partially compiled. In an Angular SSR app (`ng new --ssr`) the Angular CLI finishes compiling them when it builds the server, so the route above goes into its `server.ts` unchanged and works both under `ng serve` and from the built server. A Node server the Angular CLI doesn't build, run with `node` or `tsx`, fails on that import with `'@angular/compiler' is not available` — make `import '@angular/compiler';` its first import.
 
 The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `checkSpec(spec, 'strict', { catalog })` checks a finished spec against the catalog, props included — see [Checking what the model produced](#checking-what-the-model-produced) for why that and not `catalog.validate(spec)` alone.
 
