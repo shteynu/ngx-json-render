@@ -15,6 +15,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSliderModule } from '@angular/material/slider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import type { ValidationConfig } from '@json-render/core';
 import { injectRenderContext } from 'ngx-json-render';
 import { type JrmField, injectJrmField } from './field';
@@ -70,17 +71,18 @@ export class JrmButton {
   readonly props = this.ctx.props;
 }
 
-/** Icon-only Material button; emits `press`. */
+/** Icon-only Material button; emits `press`. `label` is also its tooltip. */
 @Component({
   selector: 'jrm-icon-button',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
   template: `
     <button
       matIconButton
       [color]="props().color ?? null"
       [disabled]="props().disabled ?? false"
       [attr.aria-label]="props().label"
+      [matTooltip]="props().label"
       (click)="ctx.emit('press')"
     >
       <mat-icon>{{ props().icon }}</mat-icon>

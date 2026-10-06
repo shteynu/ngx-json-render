@@ -216,7 +216,7 @@ export const materialCatalog = schema.createCatalog({
       }),
       slots: [],
       description:
-        "Icon-only Material button that emits a 'press' event. `label` is the accessible name and is required.",
+        "Icon-only Material button that emits a 'press' event. `label` is the accessible name and is required; it is also shown as a tooltip on hover and focus.",
     },
     Input: {
       props: z.object({

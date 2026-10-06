@@ -4,6 +4,8 @@ import {
   signal,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatTooltip } from '@angular/material/tooltip';
+import { By } from '@angular/platform-browser';
 import type { Spec } from '@json-render/core';
 import { JsonRenderer, type StateChange, checkSpec } from 'ngx-json-render';
 import { materialCatalog } from './catalog';
@@ -1274,6 +1276,28 @@ describe('material form controls', () => {
     button.click();
     await settle(fixture);
     expect(lastValueAt(fixture, '/closed')).toBe(true);
+  });
+
+  it('shows an IconButton label as a tooltip and keeps it as the accessible name', async () => {
+    const fixture = await render({
+      root: 'icon-button',
+      elements: {
+        'icon-button': {
+          type: 'IconButton',
+          props: { icon: 'delete', label: 'Delete row' },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const host = fixture.debugElement.query(By.directive(MatTooltip));
+    expect(host).not.toBeNull();
+    const button = host.nativeElement as HTMLButtonElement;
+    expect(button.tagName).toBe('BUTTON');
+    // The tooltip is for sighted mouse users; it adds to the accessible name
+    // rather than replacing it.
+    expect(host.injector.get(MatTooltip).message).toBe('Delete row');
+    expect(button.getAttribute('aria-label')).toBe('Delete row');
   });
 
   it('renders Input hint and type, and emits submit on Enter', async () => {
