@@ -1374,6 +1374,39 @@ describe('material form controls', () => {
     expect(lastValueAt(fixture, '/pressed')).toBeUndefined();
   });
 
+  it('keeps a disabled Button focusable without emitting press', async () => {
+    const fixture = await render({
+      root: 'button',
+      state: { pressed: false },
+      elements: {
+        button: {
+          type: 'Button',
+          props: { label: 'Submit', disabled: true },
+          on: {
+            press: {
+              action: 'setState',
+              params: { statePath: '/pressed', value: true },
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const button = fixture.nativeElement.querySelector(
+      'button',
+    ) as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(false);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    button.click();
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/pressed')).toBeUndefined();
+  });
+
   it('renders Input hint and type, and emits submit on Enter', async () => {
     const fixture = await render({
       root: 'input',

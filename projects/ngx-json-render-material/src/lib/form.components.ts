@@ -57,7 +57,8 @@ function syncErrorState(
       [matButton]="props().variant ?? 'filled'"
       [color]="props().color ?? null"
       [disabled]="props().disabled ?? false"
-      (click)="ctx.emit('press')"
+      [disabledInteractive]="props().disabled ?? false"
+      (click)="onPress()"
     >
       @if (props().icon) {
         <mat-icon>{{ props().icon }}</mat-icon>
@@ -69,6 +70,12 @@ function syncErrorState(
 export class JrmButton {
   readonly ctx = injectRenderContext<MaterialProps<'Button'>>();
   readonly props = this.ctx.props;
+
+
+  onPress(): void {
+    if (this.props().disabled) return;
+    this.ctx.emit('press');
+  }
 }
 
 /** Icon-only Material button; emits `press`. `label` is also its tooltip. */
