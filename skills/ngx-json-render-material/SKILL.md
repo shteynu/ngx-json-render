@@ -23,14 +23,14 @@ Angular ≥ 20. These are real Material components: the app needs a Material the
 
 ## Exports
 
-| Export                    | Purpose                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `materialCatalog`         | The catalog: `.prompt()` is the system prompt, `.jsonSchema()` the structured-output schema, `.validate(spec)` the spec check |
-| `materialRegistry`        | Ready registry for `<json-render [registry]="materialRegistry">`                                                              |
-| `materialComponents`      | Catalog name → component map, to override single entries                                                                      |
-| `JrmCard`, `JrmButton`, … | The individual components (`Jrm` + catalog name)                                                                              |
-| `MaterialProps<'Card'>`   | Props of one catalog component, from its Zod schema with every field optional — type a replacement with it                    |
-| `ThemeColor`              | `'primary' \| 'accent' \| 'warn'`                                                                                             |
+| Export                    | Purpose                                                                                                                                                                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `materialCatalog`         | The catalog: `.prompt()` is the system prompt, `.jsonSchema()` the structured-output schema, `.validate(spec)` the spec check. Also from `ngx-json-render-material/catalog`, with no Angular, for servers |
+| `materialRegistry`        | Ready registry for `<json-render [registry]="materialRegistry">`                                                                                                                                          |
+| `materialComponents`      | Catalog name → component map, to override single entries                                                                                                                                                  |
+| `JrmCard`, `JrmButton`, … | The individual components (`Jrm` + catalog name)                                                                                                                                                          |
+| `MaterialProps<'Card'>`   | Props of one catalog component, from its Zod schema with every field optional — type a replacement with it                                                                                                |
+| `ThemeColor`              | `'primary' \| 'accent' \| 'warn'`                                                                                                                                                                         |
 
 ## Render a spec
 
@@ -71,7 +71,7 @@ import { materialCatalog } from 'ngx-json-render-material';
 const system = materialCatalog.prompt(); // vocabulary + spec grammar + patch protocol
 ```
 
-Server side with the AI SDK: `streamText({ model, system: materialCatalog.prompt(), prompt })` and write `result.textStream` to the response as-is; it is SpecStream JSONL, which `injectUIStream` from `ngx-json-render` consumes (see the `ngx-json-render` skill). `materialCatalog` imports `ngx-json-render`, which imports Angular: a plain Node server needs `import '@angular/compiler';` as its first import, an Angular SSR server does not.
+Server side with the AI SDK: `streamText({ model, system: materialCatalog.prompt(), prompt })` and write `result.textStream` to the response as-is; it is SpecStream JSONL, which `injectUIStream` from `ngx-json-render` consumes (see the `ngx-json-render` skill). On a server, import the catalog from `ngx-json-render-material/catalog`: it has the catalog without the components and loads no Angular, so plain Node works with no extra setup.
 
 ## Components
 

@@ -23,7 +23,7 @@ Peer dependencies: `@angular/core` and `@angular/common` `>=19` (the Material ca
 
 ```ts
 // catalog.ts
-import { schema } from 'ngx-json-render';
+import { schema } from 'ngx-json-render/schema'; // no Angular: a server can import this file
 import { z } from 'zod';
 
 export const catalog = schema.createCatalog({
@@ -286,7 +286,7 @@ app.post('/api/generate', async (req, res) => {
 });
 ```
 
-`catalog.ts` imports `schema` from `ngx-json-render`, which loads Angular. In an Angular SSR app the route goes into `server.ts` unchanged (on Angular 20 and 21 first add `"prebundle": { "exclude": ["zod"] }` to the `serve` options in `angular.json`, or the dev server answers every request with a 500); a plain Node server needs `import '@angular/compiler';` as its first import. For structured output use `catalog.jsonSchema({ strict: true })` with `streamObject` or a tool call and render the finished spec.
+Import `schema` in `catalog.ts` from `ngx-json-render/schema`, which loads no Angular, so any server can import the catalog. Imported from `ngx-json-render`, it loads Angular, and a plain Node server then needs `import '@angular/compiler';` as its first import. In an Angular SSR app the route goes into `server.ts` (on Angular 20 and 21 first add `"prebundle": { "exclude": ["zod"] }` to the `serve` options in `angular.json`, or the dev server answers every request with a 500). For structured output use `catalog.jsonSchema({ strict: true })` with `streamObject` or a tool call and render the finished spec.
 
 ## Checking what the model produced
 
@@ -299,6 +299,20 @@ The renderer never executes code from a spec, only dispatches actions you regist
 ## Confirmation dialogs
 
 `confirm` on a binding opens the packaged accessible modal. Customize its words with the `JR_CONFIRM_LABELS` token (`{ confirm, cancel }`), its colours with the `--jr-confirm-*` CSS variables on `json-render`, or replace it with `JR_CONFIRM_DIALOG` (a component that calls `injectConfirmContext()` for `config`, `confirm()`, `cancel()`).
+
+## MCP Apps (`ngx-json-render/mcp`)
+
+Render a tool's spec inline in an MCP Apps host (Claude, ChatGPT, VS Code). Optional peers: `npm install @modelcontextprotocol/ext-apps @modelcontextprotocol/sdk`.
+
+```ts fragment
+import { injectJsonRenderApp } from 'ngx-json-render/mcp';
+
+readonly mcp = injectJsonRenderApp({ name: 'my-app', version: '1.0.0' }); // in an injection context
+// <json-render [spec]="mcp.spec()" [loading]="mcp.loading()" [registry]="registry" />
+await this.mcp.sendMessage('Approve release 2.4.0', { version: '2.4.0' }); // posts a user message to the chat
+```
+
+`spec`, `loading`, `connected`, `connecting` and `error` are signals. The spec streams in from `toolinputpartial` while the model writes the call (`streamPartialInput: false` to wait for the result), and `callServerTool(name, args)` replaces it with another tool's result. The server side is `@json-render/mcp`; a full example lives in `projects/mcp-app` of the repository.
 
 ## Testing (`ngx-json-render/testing`)
 

@@ -79,6 +79,12 @@ import { materialCatalog } from 'ngx-json-render-material';
 const systemPrompt = materialCatalog.prompt();
 ```
 
+On a server, import it from `ngx-json-render-material/catalog` instead. That entry point holds the catalog without the components, so it loads no Angular, and plain Node or an edge function can describe the vocabulary to a model and validate what comes back:
+
+```ts
+import { materialCatalog } from 'ngx-json-render-material/catalog';
+```
+
 ## Components
 
 | Group        | Components                                                                                               |

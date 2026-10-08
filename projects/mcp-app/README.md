@@ -68,7 +68,7 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
 
 ## How it fits together
 
-- `src/app/json-render-app.ts`: `injectJsonRenderApp()`. It has the same
+- `injectJsonRenderApp()` from `ngx-json-render/mcp`. It has the same
   fields as upstream's `UseJsonRenderAppReturn` (`spec`, `loading`,
   `connected`, `connecting`, `error`, `app`, `callServerTool`), as signals,
   and reads a tool result the same way (`parseSpecFromToolResult`).
@@ -94,13 +94,13 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
   dependency and the view inlined, into `.vercel/output`, and `vercel.json`
   builds it that way on every push to `main`.
 
-The server imports the Material catalog from source
-(`projects/ngx-json-render-material/src/lib/catalog.ts`). The published bundle
-also contains the components, and loading it in Node would pull in Angular
-and its JIT compiler. Upstream splits these two with separate
-`@json-render/shadcn/catalog` and `@json-render/react/schema` entry points. A
-`ngx-json-render-material/catalog` entry point would do the same here and let
-an app's server import the catalog from npm.
+The server imports the Material catalog from
+`ngx-json-render-material/catalog`, which holds the catalog without the
+components, on top of `ngx-json-render/schema`. Neither loads Angular, so the
+server runs in plain Node. Upstream splits its packages the same way, with
+`@json-render/shadcn/catalog` and `@json-render/react/schema`. The build
+bundles both entry points from `dist/`, so the server runs the same code an
+app's server gets from npm.
 
 ## Upstream issues in `createMcpApp`
 
@@ -184,10 +184,6 @@ either way so the model has one rule.
   ChatGPT, which posts it to the chat at once; there the model did not answer
   the posted message. Whether Claude passes the whole input schema to the model, or
   cuts it off like the description, is checked only by asking it.
-- `injectJsonRenderApp` lives in this example. If the approach holds, it
-  belongs in a `ngx-json-render/mcp` secondary entry point with
-  `@modelcontextprotocol/ext-apps` as an optional peer, plus a README section
-  and a skill update.
 - The view is about 1.4 MB uncompressed, because it bundles Angular Material,
   zod and the MCP SDK. That works for an inline resource, but it has not been
   optimized.

@@ -135,7 +135,7 @@ ready-made Material catalog before you have written a component.
 
 ```ts
 // catalog.ts
-import { schema } from 'ngx-json-render';
+import { schema } from 'ngx-json-render/schema';
 import { z } from 'zod';
 
 export const catalog = schema.createCatalog({
@@ -302,7 +302,7 @@ app.post('/api/generate', async (req, res) => {
 });
 ```
 
-`catalog.ts` imports `schema` from `ngx-json-render`, and that entry point also loads Angular and the renderer's components, which are published partially compiled. In an Angular SSR app (`ng new --ssr`) the Angular CLI finishes compiling them when it builds the server, so the route above goes into its `server.ts` unchanged and works both under `ng serve` and from the built server. On Angular 20 and 21, add `"prebundle": { "exclude": ["zod"] }` to the `serve` options in `angular.json` first: their Vite 7 dev server can't transform zod for the server (`Cannot split a chunk that has already been edited`) and answers every page and API route with a 500. A Node server the Angular CLI doesn't build, run with `node` or `tsx`, fails on that import with `'@angular/compiler' is not available` — make `import '@angular/compiler';` its first import.
+`catalog.ts` imports `schema` from `ngx-json-render/schema`, an entry point that needs nothing but `@json-render/core`, so any server can load the catalog without Angular: plain Node, `tsx`, an edge function. (`ngx-json-render` exports the same `schema`, but that entry point also loads Angular and the renderer's partially compiled components. A Node server the Angular CLI doesn't build then fails with `'@angular/compiler' is not available`.) In an Angular SSR app (`ng new --ssr`) the route goes into its `server.ts`. On Angular 20 and 21, add `"prebundle": { "exclude": ["zod"] }` to the `serve` options in `angular.json` first: their Vite 7 dev server can't transform zod for the server (`Cannot split a chunk that has already been edited`) and answers every page and API route with a 500.
 
 The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `checkSpec(spec, 'strict', { catalog })` checks a finished spec against the catalog, props included — see [Checking what the model produced](#checking-what-the-model-produced) for why that and not `catalog.validate(spec)` alone.
 
@@ -506,6 +506,35 @@ the specs that most need a limit are exactly the ones that would overflow the
 stack proving they exceed it. If you accept specs you did not generate, set
 `maxDepth` — with no cap there is nothing to stop the check from recursing as
 deep as the spec asks.
+
+## Inside an MCP App host
+
+An [MCP App](https://modelcontextprotocol.io/docs/extensions/apps) is a tool whose result a host (Claude, ChatGPT, VS Code) renders as an inline view. `ngx-json-render/mcp` is the Angular side of that view: `injectJsonRenderApp()` connects to the host and keeps the spec the model passed to the tool in a signal. It is the counterpart of `useJsonRenderApp` from `@json-render/mcp/app`. It needs two optional peers:
+
+```bash
+npm install @modelcontextprotocol/ext-apps @modelcontextprotocol/sdk
+```
+
+```ts
+import { Component } from '@angular/core';
+import { JsonRenderer } from 'ngx-json-render';
+import { injectJsonRenderApp } from 'ngx-json-render/mcp';
+import { materialRegistry } from 'ngx-json-render-material';
+
+@Component({
+  selector: 'app-root',
+  imports: [JsonRenderer],
+  template: `<json-render [spec]="mcp.spec()" [loading]="mcp.loading()" [registry]="registry" />`,
+})
+export class App {
+  readonly mcp = injectJsonRenderApp({ name: 'my-app', version: '1.0.0' });
+  readonly registry = materialRegistry;
+}
+```
+
+The spec renders while the model is still writing the tool call, from the host's `toolinputpartial` notifications; pass `streamPartialInput: false` to wait for the result. `mcp.sendMessage(text, data)` posts a user message to the chat, so a button can continue the conversation, and `mcp.callServerTool(name, args)` replaces the spec with another tool's result. The connection closes with the injector that created it.
+
+The server side is upstream's `@json-render/mcp`, which serves the view as a single HTML resource. [`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, the build that inlines it into one page, and a server that works around two `createMcpApp` problems.
 
 ## Testing
 
@@ -873,6 +902,10 @@ is how you tell the two apart. One dialog is open at a time: an action with a
 `execute()` rejects the same way.
 
 Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`, and the catalog types `InferComponentProps`, `InferCatalogComponents`, `InferActionParams` (re-exported from core).
+
+Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec`, with no Angular behind them, for a server that defines a catalog.
+
+MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
 
 Testing (`ngx-json-render/testing`): `renderSpec`, `renderComponent`, `recordedTransport`, `specStream`, `usageLine`.
 
