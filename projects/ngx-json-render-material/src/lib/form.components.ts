@@ -19,7 +19,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import type { ValidationConfig } from '@json-render/core';
 import { injectRenderContext } from 'ngx-json-render';
 import { type JrmField, injectJrmField } from './field';
-import type { MaterialProps } from './catalog';
+import type { MaterialProps } from 'ngx-json-render-material/catalog';
 
 interface SelectOption {
   value: string;

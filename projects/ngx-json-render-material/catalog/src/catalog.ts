@@ -3,7 +3,7 @@ import {
   type InferComponentProps,
   ValidationConfigSchema,
 } from '@json-render/core';
-import { schema } from 'ngx-json-render';
+import { schema } from 'ngx-json-render/schema';
 import { z } from 'zod';
 
 /** Palette shared by every Material component that takes a colour. */

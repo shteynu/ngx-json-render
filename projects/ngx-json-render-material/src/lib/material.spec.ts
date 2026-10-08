@@ -8,7 +8,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import type { Spec } from '@json-render/core';
 import { JsonRenderer, type StateChange, checkSpec } from 'ngx-json-render';
-import { materialCatalog } from './catalog';
+import { materialCatalog } from 'ngx-json-render-material/catalog';
 import { materialComponents, materialRegistry } from './registry';
 
 @Component({

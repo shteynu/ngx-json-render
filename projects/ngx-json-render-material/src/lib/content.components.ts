@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTableModule } from '@angular/material/table';
 import { JrChildren, injectRenderContext } from 'ngx-json-render';
-import type { MaterialProps } from './catalog';
+import type { MaterialProps } from 'ngx-json-render-material/catalog';
 
 /** Section heading (level 1–3) on the Material type scale. */
 @Component({

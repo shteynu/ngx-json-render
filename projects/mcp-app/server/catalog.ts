@@ -4,8 +4,8 @@
 // handlers in `src/app/app.ts`, which talk to the host.
 import { defineCatalog } from '@json-render/core';
 import { z } from 'zod';
-// From source, like `app.ts`, so the server does not load Angular.
-import { materialCatalog } from '../../ngx-json-render-material/src/lib/catalog';
+// The catalog-only entry point, so the server does not load Angular.
+import { materialCatalog } from 'ngx-json-render-material/catalog';
 
 /** Params of the `sendMessage` action. */
 export const sendMessageParams = z.object({

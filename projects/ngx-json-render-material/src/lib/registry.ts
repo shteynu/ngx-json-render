@@ -1,5 +1,5 @@
 import { type Components, defineRegistry } from 'ngx-json-render';
-import { materialCatalog } from './catalog';
+import { materialCatalog } from 'ngx-json-render-material/catalog';
 import { JrmCallout, JrmProgressBar, JrmSpinner } from './feedback.components';
 import {
   JrmButton,

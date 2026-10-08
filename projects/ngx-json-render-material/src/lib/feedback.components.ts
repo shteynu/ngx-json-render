@@ -3,7 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { injectRenderContext } from 'ngx-json-render';
-import type { MaterialProps } from './catalog';
+import type { MaterialProps } from 'ngx-json-render-material/catalog';
 
 /** Material progress bar (0–100). */
 @Component({

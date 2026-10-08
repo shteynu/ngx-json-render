@@ -16,8 +16,8 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-// The catalog alone — the build bundles it from source so the server does not
-// load the Angular components (and Angular) along with it. See README.md.
+// The catalog alone, from `ngx-json-render-material/catalog`, so the server
+// does not load the Angular components (and Angular) along with it.
 import { mcpCatalog } from './catalog';
 import { TOOL_DESCRIPTION, specInputSchema, specProblems } from './tool';
 

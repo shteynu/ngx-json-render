@@ -7,7 +7,7 @@ export {
   materialCatalog,
   type MaterialCatalog,
   type MaterialProps,
-} from './lib/catalog';
+} from 'ngx-json-render-material/catalog';
 
 // Registry — drop straight into <json-render [registry]="...">.
 export { materialComponents, materialRegistry } from './lib/registry';

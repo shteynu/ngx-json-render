@@ -22,7 +22,7 @@ import {
   injectElementKey,
   injectRenderContext,
 } from 'ngx-json-render';
-import type { MaterialProps } from './catalog';
+import type { MaterialProps } from 'ngx-json-render-material/catalog';
 
 /** Layout container that stacks children vertically or horizontally. */
 @Component({
