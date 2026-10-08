@@ -98,7 +98,11 @@ describe('the testing entry point, from a catalog package', () => {
     expect(button.emitted).toEqual(['press']);
 
     await button.patchProps({ disabled: true });
-    expect(button.find<HTMLButtonElement>('button').disabled).toBe(true);
+    const disabledButton = button.find<HTMLButtonElement>('button');
+    expect(disabledButton.getAttribute('aria-disabled')).toBe('true');
+    expect(disabledButton.hasAttribute('disabled')).toBe(false);
+    await button.click('button');
+    expect(button.emitted).toEqual(['press']);
   });
 
   it('records what a Material control writes to its bound prop', async () => {

@@ -1278,7 +1278,8 @@ describe('material form controls', () => {
     expect(buttons[0].querySelector('mat-icon')?.textContent?.trim()).toBe(
       'send',
     );
-    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[1].getAttribute('aria-disabled')).toBe('true');
+    expect(buttons[1].hasAttribute('disabled')).toBe(false);
 
     buttons[0].click();
     buttons[1].click();
@@ -1368,6 +1369,39 @@ describe('material form controls', () => {
     expect(button.getAttribute('aria-label')).toBe('Delete row');
     expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.hasAttribute('disabled')).toBe(false);
+
+    button.click();
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/pressed')).toBeUndefined();
+  });
+
+  it('keeps a disabled Button focusable without emitting press', async () => {
+    const fixture = await render({
+      root: 'button',
+      state: { pressed: false },
+      elements: {
+        button: {
+          type: 'Button',
+          props: { label: 'Submit', disabled: true },
+          on: {
+            press: {
+              action: 'setState',
+              params: { statePath: '/pressed', value: true },
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const button = fixture.nativeElement.querySelector(
+      'button',
+    ) as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(false);
+    button.focus();
+    expect(document.activeElement).toBe(button);
 
     button.click();
     await settle(fixture);
