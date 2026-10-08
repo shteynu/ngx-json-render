@@ -1342,6 +1342,38 @@ describe('material form controls', () => {
     expect(button.getAttribute('aria-label')).toBe('Delete row');
   });
 
+  it('keeps a disabled IconButton tooltip accessible without emitting press', async () => {
+    const fixture = await render({
+      root: 'icon-button',
+      state: { pressed: false },
+      elements: {
+        'icon-button': {
+          type: 'IconButton',
+          props: { icon: 'delete', label: 'Delete row', disabled: true },
+          on: {
+            press: {
+              action: 'setState',
+              params: { statePath: '/pressed', value: true },
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const host = fixture.debugElement.query(By.directive(MatTooltip));
+    expect(host).not.toBeNull();
+    const button = host.nativeElement as HTMLButtonElement;
+    expect(host.injector.get(MatTooltip).message).toBe('Delete row');
+    expect(button.getAttribute('aria-label')).toBe('Delete row');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(false);
+
+    button.click();
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/pressed')).toBeUndefined();
+  });
+
   it('renders Input hint and type, and emits submit on Enter', async () => {
     const fixture = await render({
       root: 'input',

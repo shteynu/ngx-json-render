@@ -81,9 +81,10 @@ export class JrmButton {
       matIconButton
       [color]="props().color ?? null"
       [disabled]="props().disabled ?? false"
+      [disabledInteractive]="props().disabled ?? false"
       [attr.aria-label]="props().label"
       [matTooltip]="props().label"
-      (click)="ctx.emit('press')"
+      (click)="onPress()"
     >
       <mat-icon>{{ props().icon }}</mat-icon>
     </button>
@@ -92,6 +93,11 @@ export class JrmButton {
 export class JrmIconButton {
   readonly ctx = injectRenderContext<MaterialProps<'IconButton'>>();
   readonly props = this.ctx.props;
+
+  onPress(): void {
+    if (this.props().disabled) return;
+    this.ctx.emit('press');
+  }
 }
 
 /** Material text field; two-way bindable via `$bindState`, emits `submit`. */
