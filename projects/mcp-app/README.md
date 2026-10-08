@@ -29,7 +29,7 @@ node dist/mcp-app/server.mjs                  # stdio
 node dist/mcp-app/server.mjs --http           # Streamable HTTP on http://localhost:3001/mcp
 ```
 
-Claude Desktop, Cursor (`.cursor/mcp.json`) or VS Code:
+Claude Desktop or Cursor (`.cursor/mcp.json`):
 
 ```json
 {
@@ -42,9 +42,29 @@ Claude Desktop, Cursor (`.cursor/mcp.json`) or VS Code:
 }
 ```
 
+VS Code reads `.vscode/mcp.json`, whose top-level key is `servers`, not
+`mcpServers`:
+
+```json
+{
+  "servers": {
+    "ngx-json-render": {
+      "command": "node",
+      "args": ["/absolute/path/to/ngx-json-render/dist/mcp-app/server.mjs"]
+    }
+  }
+}
+```
+
 The server resolves its dependencies from this workspace's `node_modules`, so
 run it from a checkout, not a copied `dist/`. Then ask for UI: "show me a
 dashboard of my last three releases".
+
+To try it without building, point the host at the hosted endpoint instead,
+for example in VS Code
+`{ "servers": { "ngx-json-render-ui": { "type": "http", "url": "https://ngx-json-render.vercel.app/mcp" } } }`.
+Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
+`render-ui` call renders inline in the chat.
 
 ## How it fits together
 
