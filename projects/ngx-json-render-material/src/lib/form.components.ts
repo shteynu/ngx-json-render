@@ -71,7 +71,6 @@ export class JrmButton {
   readonly ctx = injectRenderContext<MaterialProps<'Button'>>();
   readonly props = this.ctx.props;
 
-
   onPress(): void {
     if (this.props().disabled) return;
     this.ctx.emit('press');

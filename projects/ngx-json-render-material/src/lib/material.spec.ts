@@ -1278,7 +1278,8 @@ describe('material form controls', () => {
     expect(buttons[0].querySelector('mat-icon')?.textContent?.trim()).toBe(
       'send',
     );
-    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[1].getAttribute('aria-disabled')).toBe('true');
+    expect(buttons[1].hasAttribute('disabled')).toBe(false);
 
     buttons[0].click();
     buttons[1].click();
