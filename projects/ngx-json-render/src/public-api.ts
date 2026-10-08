@@ -114,7 +114,11 @@ export {
 } from './lib/streaming';
 
 // Schema (spec format + prompt rules)
-export { schema, type AngularSchema, type AngularSpec } from './lib/schema';
+export {
+  schema,
+  type AngularSchema,
+  type AngularSpec,
+} from 'ngx-json-render/schema';
 
 // Devtools
 export { injectDevtoolsActive } from './lib/devtools';

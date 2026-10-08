@@ -10,7 +10,12 @@
     "paths": {
       "ngx-json-render": ["./dist/ngx-json-render"],
       "ngx-json-render/testing": ["./dist/ngx-json-render/testing"],
-      "ngx-json-render-material": ["./dist/ngx-json-render-material"]
+      "ngx-json-render/schema": ["./dist/ngx-json-render/schema"],
+      "ngx-json-render/mcp": ["./dist/ngx-json-render/mcp"],
+      "ngx-json-render-material": ["./dist/ngx-json-render-material"],
+      "ngx-json-render-material/catalog": [
+        "./dist/ngx-json-render-material/catalog"
+      ]
     },
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,

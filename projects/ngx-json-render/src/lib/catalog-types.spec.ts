@@ -5,7 +5,7 @@ import type {
   InferComponentProps,
   RenderContext,
 } from '../public-api';
-import { schema } from './schema';
+import { schema } from 'ngx-json-render/schema';
 
 // Types only: these checks run when the spec compiles, not when it runs.
 const catalog = schema.createCatalog({

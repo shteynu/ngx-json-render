@@ -12,7 +12,7 @@ import { materialRegistry } from 'ngx-json-render-material';
 import {
   type JsonRenderAppOptions,
   injectJsonRenderApp,
-} from './json-render-app';
+} from 'ngx-json-render/mcp';
 
 /** Extra options for the app's connection — tests use it to supply a transport. */
 export const JSON_RENDER_APP_OPTIONS = new InjectionToken<JsonRenderAppOptions>(

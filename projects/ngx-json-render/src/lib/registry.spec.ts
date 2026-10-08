@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { createStateStore } from '@json-render/core';
 import { z } from 'zod';
 import { createStoreSetState, defineRegistry } from './registry';
-import { schema } from './schema';
+import { schema } from 'ngx-json-render/schema';
 import type { RegistryEntry } from './types';
 
 @Component({ template: '' })

@@ -11,7 +11,7 @@ import { JrChildren } from './children.component';
 import type { RenderLimits, SpecCatalog } from './render-limits';
 import { analyseSpecGraph } from './render-limits';
 import { JsonRenderer } from './renderer.component';
-import { schema } from './schema';
+import { schema } from 'ngx-json-render/schema';
 import type { SpecValidationMode } from './spec-validation';
 import { checkSpec, formatSpecCheckIssues } from './spec-validation';
 import { injectRenderContext } from './tokens';

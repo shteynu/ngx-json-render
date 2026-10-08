@@ -10,7 +10,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { mcpCatalog } from '../../server/catalog';
 import { App, JSON_RENDER_APP_OPTIONS } from './app';
-import { messageText } from './json-render-app';
+import { messageText } from 'ngx-json-render/mcp';
 
 // Material components hold live handles; tear the module down explicitly.
 afterEach(() => {

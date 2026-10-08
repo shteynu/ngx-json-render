@@ -30,7 +30,8 @@
             "tsConfig": "projects/ngx-json-render/tsconfig.spec.json",
             "coverageInclude": [
               "projects/ngx-json-render/src/**",
-              "projects/ngx-json-render/testing/src/**"
+              "projects/ngx-json-render/testing/src/**",
+              "projects/ngx-json-render/mcp/src/**"
             ],
             "coverageThresholds": {
               "statements": 94,
@@ -40,7 +41,8 @@
             },
             "include": [
               "**/*.spec.ts",
-              "../testing/src/**/*.spec.ts"
+              "../testing/src/**/*.spec.ts",
+              "../mcp/src/**/*.spec.ts"
             ]
           }
         }
