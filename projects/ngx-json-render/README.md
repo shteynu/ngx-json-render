@@ -273,6 +273,40 @@ export class GeneratePage {
 }
 ```
 
+### Placeholders while props stream
+
+An element can arrive before its props do: a Card with no `title` yet, a Text
+with no `content`. By default the component mounts anyway and renders what it
+has. Pass the `catalog` and the renderer waits instead: while `loading` is
+true, an element whose props do not pass its component's schema shows its
+registry entry's `fallback`, or nothing, and the component mounts once they
+do.
+
+```ts
+export const { registry } = defineRegistry(catalog, {
+  components: {
+    Card: { component: CardComponent, fallback: CardSkeleton },
+    Text: TextComponent, // nothing on screen until `content` arrives
+  },
+});
+```
+
+```html
+<json-render [spec]="ui.spec()" [registry]="registry" [catalog]="catalog" [loading]="ui.isStreaming()" />
+```
+
+- The fallback gets the same render context as the component: it can read
+  the props that have arrived, and a `<jr-children />` in it lays out the
+  children that have.
+- Props are checked as the spec writes them. `{ "$state": "/title" }` counts
+  as arrived, whatever it resolves to.
+- Once an element's component has mounted it stays, even if a later patch
+  takes a prop away again.
+- When `loading` turns false every element mounts, valid or not; reporting
+  what is wrong with the finished spec is `validate`'s job.
+- Without a `catalog`, or for a type the catalog has no props schema for,
+  nothing is held back.
+
 ### The server side
 
 `injectUIStream` POSTs `{ prompt, context, currentSpec }` to your endpoint and expects the response body to be SpecStream JSONL — one RFC 6902 patch per line. Any server that can stream text works; with the [AI SDK](https://ai-sdk.dev) it's a few lines — `catalog.prompt()` teaches the model your component vocabulary and the patch protocol:
@@ -1013,7 +1047,7 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 | `fallback`            | `Type<unknown>`                      | Component for unknown types                             |
 | `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)    |
 | `renderLimits`        | `RenderLimits`                       | Cap elements, depth and repeat expansion (default none) |
-| `catalog`             | `Catalog`                            | Also check types and props against the catalog          |
+| `catalog`             | `Catalog`                            | Check types and props; hold back half-streamed props    |
 | `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`)  |
 | `store`               | `StateStore`                         | External store (controlled mode)                        |
 | `handlers`            | `Record<string, ActionHandler>`      | Action handlers                                         |

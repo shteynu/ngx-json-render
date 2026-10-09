@@ -29,6 +29,7 @@ import { JsonRenderActionsService, isActionCancelled } from './actions.service';
 import { injectDevtoolsActive } from './devtools';
 import { JsonRenderRootContext } from './root-context';
 import { sameJson } from './same-json';
+import { propsArrived } from './render-limits';
 import { collectStateReads } from './state-reads';
 import { JsonRenderStateService } from './state.service';
 import {
@@ -416,8 +417,37 @@ export class JrElement {
     return el ? this.root.resolveEntry(el.type) : undefined;
   });
 
-  protected readonly component = computed(
-    () => this.entry()?.component ?? null,
+  /** Set once the real component has been shown; see {@link held}. */
+  private mounted = false;
+
+  /**
+   * Whether the component waits for its props: the spec is still loading, a
+   * catalog was given, and the props written so far do not pass the
+   * component's schema (see {@link propsArrived}).
+   *
+   * One-way. Once the component has been shown it is never swapped back for
+   * the fallback, even if a later patch takes a prop away again: a component
+   * flickering out mid-stream is worse than one showing a gap. Once latched
+   * this reads no signals, so a mounted element pays nothing for the gate on
+   * later patches — and neither does any element when nothing is loading.
+   */
+  protected readonly held = computed(() => {
+    if (this.mounted) return false;
+    const el = this.rawElement();
+    const catalog = this.root.catalog();
+    const held =
+      !!el && !!catalog && this.root.loading() && !propsArrived(el, catalog);
+    if (!held && this.entry() && this.visible() && !this.refusal()) {
+      this.mounted = true;
+    }
+    return held;
+  });
+
+  /** What the outlet shows: the component, or its fallback while held. */
+  protected readonly component = computed(() =>
+    this.held()
+      ? (this.entry()?.fallback ?? null)
+      : (this.entry()?.component ?? null),
   );
 
   protected readonly devtoolsKey = computed(() =>

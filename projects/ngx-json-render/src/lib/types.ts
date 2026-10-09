@@ -98,6 +98,14 @@ export interface RegistryEntry {
   component: Type<unknown>;
   /** Slot names this component supports (from the catalog definition). */
   slots?: string[];
+  /**
+   * Shown instead of `component` while the spec streams and this element's
+   * props do not yet pass its component's schema in the renderer's
+   * `catalog`. It gets the same render context, so it can read the props
+   * that have arrived and place `<jr-children />`. Without one, the element
+   * renders nothing until it is ready.
+   */
+  fallback?: Type<unknown>;
 }
 
 /**
@@ -108,10 +116,12 @@ export type ComponentRegistry = Record<string, Type<unknown> | RegistryEntry>;
 
 /**
  * Registry of all Angular components for a catalog. Keys are checked against
- * the catalog's component names.
+ * the catalog's component names. A value is the component, or the component
+ * with a {@link RegistryEntry.fallback} to show while its props stream in.
  */
 export type Components<C extends Catalog> = {
-  [K in keyof InferCatalogComponents<C>]: Type<unknown>;
+  [K in keyof InferCatalogComponents<C>]:
+    Type<unknown> | Pick<RegistryEntry, 'component' | 'fallback'>;
 };
 
 // =============================================================================

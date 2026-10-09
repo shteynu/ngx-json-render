@@ -176,7 +176,7 @@ export class Page {
 | `loading`             | `boolean`                            | Suppress missing-element warnings while streaming                    |
 | `fallback`            | `Type<unknown>`                      | Component for unknown types                                          |
 | `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)                 |
-| `catalog`             | `Catalog`                            | Also check element types and props against the catalog               |
+| `catalog`             | `Catalog`                            | Check types and props; hold elements back while their props stream   |
 | `renderLimits`        | `RenderLimits`                       | Cap `maxElements`, `maxDepth`, `maxRepeatItems` (default none)       |
 | `state`               | `StateModel`                         | Initial state (uncontrolled; defaults to `spec.state`)               |
 | `store`               | `StateStore`                         | External store (controlled mode)                                     |
@@ -265,6 +265,8 @@ export class GeneratePage {
 ```
 
 `injectUIStream({ api, onComplete?, onError?, validate?, catalog?, renderLimits?, fetch? })` returns signals `spec`, `isStreaming`, `error`, `usage`, `rawLines`, `issues`, plus `send(prompt, { context?, previousSpec? })` (`previousSpec` refines the current UI instead of starting over), `stop()` (keeps what rendered) and `clear()`. It POSTs `{ prompt, context, currentSpec }` and expects SpecStream JSONL back; `fetch` swaps the transport (auth headers, a recorded replay).
+
+While `loading` is true and a `catalog` is given, an element whose props do not yet pass its component's schema is held back: the renderer shows its registry entry's `fallback` (`defineRegistry(catalog, { components: { Card: { component: CardComponent, fallback: CardSkeleton } } })`), or nothing, until they do. The fallback gets the same render context, so it can read the props so far and place `<jr-children />`. Props are checked as written, so an expression such as `{ "$state": "/title" }` counts as arrived. A mounted component never goes back to its fallback, and everything mounts when `loading` ends. Do not hand-filter elements without props before rendering; this replaces that.
 
 `injectChatUI({ api, ... })` is the same for a chat whose replies mix prose with ` ```spec ` fenced JSONL: the endpoint receives `{ messages }`, and `messages()` holds `{ id, role, text, spec }` per turn (render `m.spec` with `<json-render>` when set), plus `isStreaming`, `error`, `issues`, `send(text)`, `stop()`, `clear()`. For AI SDK `UIMessage.parts`, `jsonRenderMessage(() => parts)` gives `text()`, `spec()`, `hasSpec()`; never give patch data parts an `id`. With `@ai-sdk/angular`, pass the message being streamed down as a copy (`{ ...m, parts: m.parts.map((p) => ({ ...p })) }`): its `Chat` writes every chunk into one object and hands back the same reference, so a signal input holding it never changes and the message renders empty. `applyPatch(spec, patch)` applies one RFC 6902 patch immutably.
 

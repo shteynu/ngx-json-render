@@ -357,6 +357,42 @@ export function catalogIssues(
 }
 
 /**
+ * Whether an element's props have arrived: they pass its component's schema,
+ * leaving out what the schema says about expressions, the same way
+ * {@link catalogIssues} judges them. The renderer holds an element back on
+ * this while the spec streams.
+ *
+ * The props are taken as written in the spec, not as resolved. What a stream
+ * leaves out is spec, and an expression that is there has arrived, whatever
+ * it resolves to; checking the spec also keeps state writes from re-running
+ * the schema.
+ *
+ * True when the catalog declares no schema that can be called for the type:
+ * there is nothing to wait for. False when the schema throws, or fails
+ * without saying where — the element mounts once loading ends either way.
+ */
+export function propsArrived(
+  element: UIElement,
+  catalog: SpecCatalog,
+): boolean {
+  const schema = propsSchemaOf(catalog.data, element.type);
+  if (!schema) return true;
+  const props = element.props ?? {};
+  let result: ReturnType<PropsSchema['safeParse']>;
+  try {
+    result = schema.safeParse(props);
+  } catch {
+    return false;
+  }
+  if (result.success) return true;
+  const issues = readIssues(result.error);
+  return (
+    issues.length > 0 &&
+    issues.every(({ path }) => reachesExpression(props, path))
+  );
+}
+
+/**
  * The props schema a catalog declares for a component type, if it declares
  * one that can be called.
  */

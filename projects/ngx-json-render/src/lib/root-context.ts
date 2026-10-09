@@ -8,7 +8,7 @@ import type {
   StateStore,
   ValidationFunction,
 } from '@json-render/core';
-import type { RenderLimits } from './render-limits';
+import type { RenderLimits, SpecCatalog } from './render-limits';
 import type { ComponentRegistry, RegistryEntry, StateChange } from './types';
 
 const EMPTY = signal(undefined);
@@ -31,6 +31,11 @@ export class JsonRenderRootContext {
    * they apply whatever `validate` is set to.
    */
   limits: Signal<RenderLimits | null | undefined> = EMPTY;
+  /**
+   * The catalog the spec was generated for. While loading, an element whose
+   * props do not pass its component's schema waits for them.
+   */
+  catalog: Signal<SpecCatalog | null | undefined> = EMPTY;
 
   /** External store (controlled mode). */
   store: Signal<StateStore | null | undefined> = EMPTY;

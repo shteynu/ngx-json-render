@@ -88,10 +88,16 @@ export function defineRegistry<C extends Catalog>(
   // Build the component registry, attaching slot metadata from the catalog.
   const registry: ComponentRegistry = {};
   if (options.components) {
-    for (const [name, component] of Object.entries(options.components) as Array<
-      [string, Type<unknown>]
+    for (const [name, value] of Object.entries(options.components) as Array<
+      [string, Type<unknown> | Pick<RegistryEntry, 'component' | 'fallback'>]
     >) {
-      const entry: RegistryEntry = { component };
+      const entry: RegistryEntry =
+        typeof value === 'function'
+          ? { component: value }
+          : {
+              component: value.component,
+              ...(value.fallback ? { fallback: value.fallback } : {}),
+            };
       const slots = catalogComponents?.[name]?.slots;
       if (slots) entry.slots = slots;
       registry[name] = entry;

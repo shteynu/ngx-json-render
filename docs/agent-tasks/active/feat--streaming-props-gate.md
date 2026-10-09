@@ -3,8 +3,8 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Base commit: `169578e` (Release ngx-json-render 0.8.2)
-- Status: **not started**: recorded 2026-10-09 as a future task
+- Base commit: `cba4ec0`
+- Status: **implemented and committed** (2026-10-09), not released
 - Last updated: 2026-10-09
 - Last agent/tool: Claude Code (Opus 5.5)
 
@@ -14,75 +14,64 @@ While `loading` is true, do not mount an element's component until its props
 validate against that component's catalog schema. Until then, render a
 per-component placeholder instead.
 
-## User-visible outcome
+## What shipped
 
-Components never receive half-streamed props (for example `label: undefined`
-where the schema requires a string). Each registry entry can have its own
-skeleton. Users no longer hand-write the "only elements with type and props"
-filter. The LangChain docs PR (langchain-ai/docs#6576) had to show that
-filter for both React and Angular.
-
-## Context
-
-Idea taken from `@threadplane/render` 0.3.2 (cacheplane). It calls this a
-"mount-readiness gate": an element's fallback is shown until its props pass
-the schema (sync validation only). Compared on 2026-10-09 against unpacked
-tarballs.
-
-Today in ngx-json-render:
-
-- `JsonRenderer` has one `fallback` input, and it applies only to unknown
-  types. `JsonRenderRootContext.resolveEntry` does
-  `registry()[type] ?? fallback()` (`projects/ngx-json-render/src/lib/root-context.ts:58`).
-- `RegistryEntry` is `{ component, slots? }` (`lib/types.ts:97`), so an
-  entry cannot carry a fallback.
-- The renderer already takes a `catalog` input (`renderer.component.ts:139`),
-  which holds the Zod props schemas the gate needs.
-- An element whose props are partial mounts its component with those
-  partial props while streaming.
-
-## Scope
-
-- Add an optional `fallback` to `RegistryEntry`. Let `defineRegistry` accept
-  it.
-- In the element, when `loading()` is true and a catalog is present, run
-  `safeParse` on the element's resolved props against its schema. If it
-  fails, render the entry's fallback (or nothing). Once it passes, or once
-  `loading` turns false, mount the real component.
-- Make the check cheap: run it only while `loading` is true, and only for
-  elements that are not mounted yet. Once mounted, never unmount back to the
-  fallback.
-- Document it in the README streaming section and the agent skill
-  (`skills/ngx-json-render/SKILL.md`, checked by `npm run check:skills`).
-
-## Non-goals
-
-- Async validators.
-- Gating after streaming ends. `validate: 'warn' | 'strict'` already covers
-  finished specs.
-- Changing what the global `fallback` input means.
-
-## Acceptance criteria
-
-- With a catalog and `loading` true, a component whose required prop has not
-  arrived renders its entry fallback, then switches to the real component
-  once the prop arrives.
-- Without a catalog, behaviour is unchanged.
-- After `loading` goes false, every element mounts even if its props are
-  invalid. Existing `validate` modes still apply.
-- Expressions in props (`$state`, `$template`, …) are resolved before the
-  check, or the check skips them. A `{ $state: … }` object must not fail a
-  `z.string()`. Decide which, and test it.
-- Unit tests in `projects/ngx-json-render` and the full project matrix from
-  `AGENTS.md` pass.
+- `RegistryEntry.fallback?: Type<unknown>` (`lib/types.ts`). `Components<C>`
+  (what `defineRegistry` takes) now accepts `{ component, fallback }` as well
+  as a bare component; `defineRegistry` carries it into the entry next to the
+  catalog's slots (`lib/registry.ts`).
+- `propsArrived(element, catalog)` in `lib/render-limits.ts`: `safeParse` of
+  the raw props, ignoring issues that reach an expression (same rule as
+  `catalogIssues`). Not exported from the public API.
+- `JsonRenderRootContext.catalog`, wired from the renderer's `catalog` input.
+- `JrElement.held` (`lib/element.component.ts`): held while loading, catalog
+  given and props not arrived; latches to "mounted" once the real component
+  shows (visible, not refused), after which it reads no signals.
+  `component()` returns the entry fallback while held.
+- Docs: README "Placeholders while props stream" under Streaming, `catalog`
+  row in the inputs table and the `catalog` input doc comment; agent skill
+  paragraph under Streaming and its inputs row.
+- Tests: `lib/streaming-gate.spec.ts`, 14 cases (fallback then component,
+  no fallback, no catalog, loading ends, not loading, expression prop,
+  latch, fallback with `<jr-children>`, type without schema, `propsArrived`
+  edge cases, `defineRegistry` with fallback).
 
 ## Decisions made
 
-None yet. Open question: check the resolved props or the raw spec props?
-Resolved props are more correct but cost more.
+- Check the raw spec props, not resolved ones. A stream leaves out spec, not
+  state; an expression present has arrived. Also keeps state writes from
+  re-running schemas. Matches how `validate` treats expressions.
+- The gate is on whenever `catalog` is bound and `loading` is true,
+  independent of `validate`. No separate opt-in input.
+- A schema that throws, or fails without issues, counts as not arrived; the
+  element mounts when loading ends.
+- No latch reset if an element's `type` changes mid-stream (rare; the entry
+  changes and the outlet remounts anyway).
+
+## Behaviour change to call out in the release notes
+
+An app that already binds `[catalog]` while streaming now sees elements with
+incomplete props appear only once complete (or as their fallback), instead
+of half-filled. In this repo nothing does: the demo binds `catalog` only on
+`<json-render-devtools>`.
+
+## Verification (2026-10-09, before commit)
+
+- `npm run build` — pass.
+- `npm test` — pass: ngx-json-render 416/416 with coverage thresholds,
+  demo 73/73, mcp-app 17/17, Material 78/78, schematics.
+- `npm run check:skills` — all 9 snippet modules compile.
+- `git diff --check`, prettier on changed files — clean.
+- Note: coverage dropped below threshold until `npm run build:lib` was
+  rerun; the `testing` entry point runs the built renderer, and stale `dist/`
+  source maps land on the edited `src` files.
+- Browser: not run; no app in the repo binds `catalog` on `<json-render>`.
+
+## Possible follow-ups (not started)
+
+- Material catalog skeleton fallbacks (`ngx-json-render-material`).
+- Bind `[catalog]` in the demo streaming page so the replay shows the gate.
 
 ## Next concrete step
 
-Read `element.component.ts` around the `resolveEntry` call (line ~416) and
-the prop-resolution path. Decide where the gate sits relative to prop
-resolution, then write the failing test first.
+Release with the behaviour change in the notes (tags are the user's).

@@ -133,8 +133,14 @@ export class JsonRenderer {
    * `$bindState`, `$template`, a directive — has no value until render time,
    * so it is not checked.
    *
-   * Only read when `validate` is on, and — like the rest of the check —
-   * skipped while `loading`.
+   * The check is read only when `validate` is on, and — like the rest of
+   * it — skipped while `loading`.
+   *
+   * While `loading`, the catalog also gates mounting, whatever `validate` is:
+   * an element whose props do not yet pass its component's schema shows its
+   * registry entry's `fallback`, or nothing, instead of a component with half
+   * its props. Once an element has mounted it stays mounted, and when
+   * `loading` ends every element mounts.
    */
   readonly catalog = input<SpecCatalog | null>(null);
 
@@ -199,6 +205,7 @@ export class JsonRenderer {
     root.loading = this.loading;
     root.fallback = this.fallback;
     root.limits = this.renderLimits;
+    root.catalog = this.catalog;
     root.store = this.store;
     root.initialState = computed(
       () => this.state() ?? this.spec()?.state ?? {},
