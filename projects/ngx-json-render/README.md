@@ -346,6 +346,14 @@ readonly msg = jsonRenderMessage(() => this.message().parts);
 // template: {{ msg.text() }} @if (msg.hasSpec()) { <json-render [spec]="msg.spec()" ... /> }
 ```
 
+With `@ai-sdk/angular`, hand that component a copy of the message being
+streamed. The SDK's `Chat` writes every chunk into one message object and
+passes that same object back each time, so a signal input holding it never
+changes, and the message renders empty even after the stream ends.
+[`examples/ai-sdk-chat`](https://github.com/shteynu/ngx-json-render/tree/main/examples/ai-sdk-chat)
+is the whole path, server to rendered message, and makes the copy in
+`app.ts`.
+
 Two things about the parts themselves, both the SDK's semantics rather than
 this package's, and both silent when you get them wrong:
 

@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": { "packageManager": "npm", "analytics": false },
+  "newProjectRoot": "projects",
+  "projects": {
+    "ai-sdk-chat": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "styles": ["src/styles.scss"],
+            "allowedCommonJsDependencies": ["@vercel/oidc"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                { "type": "initial", "maximumWarning": "2MB", "maximumError": "3MB" },
+                { "type": "anyComponentStyle", "maximumWarning": "4kB", "maximumError": "8kB" }
+              ],
+              "outputHashing": "all"
+            },
+            "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": { "proxyConfig": "proxy.conf.json" },
+          "configurations": {
+            "production": { "buildTarget": "ai-sdk-chat:build:production" },
+            "development": { "buildTarget": "ai-sdk-chat:build:development" }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    }
+  }
+}

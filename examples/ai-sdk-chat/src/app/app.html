@@ -1,0 +1,51 @@
+<main>
+  <h1>AI SDK chat</h1>
+  <p class="lede">
+    <code>&#64;ai-sdk/angular</code> streams the answer;
+    <code>ngx-json-render</code> draws the UI the model writes into it.
+  </p>
+
+  @for (message of messages(); track message.id; let last = $last) {
+    <app-chat-message [message]="message" [streaming]="last && busy()" />
+  } @empty {
+    <button
+      class="suggestion"
+      mat-stroked-button
+      type="button"
+      (click)="send('Show me Q3 revenue by region')"
+    >
+      Show me Q3 revenue by region
+    </button>
+  }
+
+  @if (chat.error; as error) {
+    <p class="error" role="alert">{{ error.message }}</p>
+  }
+
+  <form (ngSubmit)="send()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Ask for some UI</mat-label>
+      <input
+        matInput
+        name="draft"
+        autocomplete="off"
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+      />
+    </mat-form-field>
+    @if (busy()) {
+      <button
+        mat-icon-button
+        type="button"
+        aria-label="Stop"
+        (click)="chat.stop()"
+      >
+        <mat-icon>stop</mat-icon>
+      </button>
+    } @else {
+      <button mat-icon-button type="submit" aria-label="Send">
+        <mat-icon>send</mat-icon>
+      </button>
+    }
+  </form>
+</main>

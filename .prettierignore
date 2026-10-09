@@ -9,5 +9,6 @@ node_modules
 docs/agent-tasks/archive
 
 # Written by the Angular CLI, which rewrites them on its own terms.
+.angular
 angular.json
 package-lock.json
