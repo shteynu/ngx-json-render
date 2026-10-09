@@ -8,12 +8,7 @@
 // or an action. So the description here stays short, and each component's
 // props and each action's params go into the input schema, where they are
 // also enforced.
-import {
-  type Catalog,
-  type Spec,
-  formatSpecIssues,
-  validateSpec,
-} from '@json-render/core';
+import { type Catalog, type Spec, validateSpec } from '@json-render/core';
 import { z } from 'zod';
 
 /** Claude cuts a tool description off after roughly this many characters. */
@@ -24,7 +19,7 @@ export const TOOL_DESCRIPTION = `Render an interactive Angular Material UI inlin
 - \`root\` is the key of the top element. \`elements\` is a flat map of key → { type, props, children: [child keys] }; every child key must exist in \`elements\`.
 - \`state\` holds the data. Read it with {"$state":"/path"} rather than repeating values in props. Data-backed UI always needs \`state\`; use realistic sample data.
 - A prop can be dynamic: {"$state":"/p"} reads, {"$bindState":"/p"} binds a form field both ways, {"$template":"Hi \${/name}"} interpolates, {"$cond":{"$state":"/p"},"$then":a,"$else":b} picks.
-- Lists: on a container, "repeat":{"statePath":"/items","key":"id"}; its children render once per item and read {"$item":"field"}.
+- Lists: on a container, "repeat":{"statePath":"/items","key":"id"}; its children render once per item and read {"$item":"field"}, or \${field} inside a $template.
 - \`visible\` and \`on\` sit next to \`props\`, never inside: "visible":{"$state":"/tab","eq":"home"}, "on":{"press":{"action":"setState","params":{"statePath":"/tab","value":"home"}}}.
 - Forms: give inputs props.validation {"checks":[{"type":"required","message":"..."}]} and submit with submitForm, which runs its inner action only when every field is valid.
 - To continue the conversation from a button, use sendMessage: {"action":"sendMessage","params":{"text":"Approve release 2.4.0","data":{"$state":"/release"}}}. The host puts \`text\` (and \`data\` as JSON) in the chat as the user's message, so write it in their voice. For a form: {"action":"submitForm","params":{"action":"sendMessage","params":{"text":"Sign me up","data":{"$state":"/form"}}}}.`;
@@ -222,12 +217,66 @@ function buildSpecInputSchema(catalog: Catalog) {
 
 /**
  * What the input schema cannot express: a root and children that exist,
- * repeat with a template child, valid visibility conditions. Returns the
- * problems as text for the model, or `undefined` when there are none.
+ * repeat with a template child, valid visibility conditions, and `$template`
+ * placeholders that read a repeat item. Returns the problems as text for the
+ * model, or `undefined` when there are none.
  */
 export function specProblems(spec: object): string | undefined {
   // The input schema has already checked the shape `Spec` describes.
   const { issues } = validateSpec(spec as Spec);
   const errors = issues.filter((issue) => issue.severity === 'error');
-  return errors.length > 0 ? formatSpecIssues(errors) : undefined;
+  const messages = [
+    ...errors.map((issue) => issue.message),
+    ...itemTemplateProblems(spec as Spec),
+  ];
+  return messages.length > 0
+    ? [
+        'The generated UI spec has the following errors:',
+        ...messages.map((message) => `- ${message}`),
+      ].join('\n')
+    : undefined;
+}
+
+/**
+ * `${$item/field}` placeholders in a `$template`. A `$template` reads an
+ * absolute `${/path}` from state and a bare `${field}` from the repeat item
+ * first, so `$item/field` is looked up as the state path `/$item/field`,
+ * finds nothing and renders as an empty string, without an error anywhere.
+ */
+function itemTemplateProblems(spec: Spec): string[] {
+  const problems: string[] = [];
+  for (const [key, { props, on, watch }] of Object.entries(spec.elements)) {
+    walk({ props, on, watch }, '', (template, path) => {
+      for (const [, placeholder, field] of template.matchAll(
+        ITEM_PLACEHOLDER,
+      )) {
+        problems.push(
+          `Element "${key}" ${path}: inside $template write \${${field.replaceAll('.', '/')}}, not \${${placeholder}}`,
+        );
+      }
+    });
+  }
+  return problems;
+}
+
+/** `${$item/field}` or `${$item.field}`; the groups are the placeholder and the field. */
+const ITEM_PLACEHOLDER = /\$\{(\$item[/.]([^}]+))\}/g;
+
+/** Calls `visit` with every `$template` string under `value` and where it sits. */
+function walk(
+  value: unknown,
+  path: string,
+  visit: (template: string, path: string) => void,
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => walk(item, `${path}[${index}]`, visit));
+  } else if (value !== null && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      if (key === '$template' && typeof child === 'string') {
+        visit(child, path);
+      } else {
+        walk(child, path ? `${path}.${key}` : key, visit);
+      }
+    }
+  }
 }
