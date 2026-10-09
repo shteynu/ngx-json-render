@@ -578,6 +578,23 @@ The spec renders while the model is still writing the tool call, from the host's
 
 The server side is upstream's `@json-render/mcp`, which serves the view as a single HTML resource. [`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, the build that inlines it into one page, and a server that works around two `createMcpApp` problems.
 
+## Devtools
+
+`ngx-json-render/devtools` is the Angular counterpart of `@json-render/devtools-react` (and its Vue, Svelte and Solid siblings): a floating panel with the spec tree, the live state, every action dispatched, every stream patch with its token usage, and the catalog, plus a picker that finds the element under the pointer. The panel itself is upstream's `@json-render/devtools`, an optional peer. It pins `@json-render/core` exactly, so install the version that matches your core:
+
+```bash
+npm install -D @json-render/devtools@0.21
+```
+
+```html
+<json-render #renderer [spec]="ui.spec()" [registry]="registry" />
+<json-render-devtools [renderer]="renderer" [catalog]="catalog" />
+```
+
+Angular has no provider above `<json-render>` for the panel to read, so the renderer is passed in by template reference. Streams need no wiring: every `injectUIStream` and `injectChatUI` generation in the app shows up in the Stream tab. Pass `[chat]="chat"` and each assistant reply with a spec becomes a generation you can switch between. `Cmd/Ctrl+Shift+J` toggles the panel (`hotkey`), and `(event)` hands every recorded event to your own logging.
+
+It renders nothing outside dev mode, and loads the panel with a dynamic `import()` that a production build removes, so you can leave the tag in your template.
+
 ## Testing
 
 `ngx-json-render/testing` is a separate entry point, so nothing in it can reach
@@ -948,6 +965,8 @@ Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`, and the ca
 Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec`, with no Angular behind them, for a server that defines a catalog.
 
 MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
+
+Devtools (`ngx-json-render/devtools`): `JsonRenderDevtools` (`<json-render-devtools>`), and the types `DevtoolsEvent`, `PanelPosition`. Needs the optional peer `@json-render/devtools`.
 
 Testing (`ngx-json-render/testing`): `renderSpec`, `renderComponent`, `recordedTransport`, `specStream`, `usageLine`.
 

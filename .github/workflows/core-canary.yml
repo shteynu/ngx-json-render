@@ -51,7 +51,7 @@ jobs:
       - name: Install the newest core and directives
         id: install
         continue-on-error: true
-        run: npm install --no-save --no-audit --no-fund @json-render/core@latest @json-render/directives@latest
+        run: npm install --no-save --no-audit --no-fund @json-render/core@latest @json-render/directives@latest @json-render/devtools@latest
 
       - name: Build library
         id: build_lib

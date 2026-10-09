@@ -23,6 +23,15 @@ resolves those globs against `sourceRoot`, so a spec outside `src` is invisible
 without the `../testing/...` pattern, and it fails silently — the run just
 reports fewer tests.
 
+`ngx-json-render/devtools` (sources in `projects/ngx-json-render/devtools/src`)
+is built the same way and needs the same `../devtools/...` patterns. It mounts
+upstream's `@json-render/devtools` panel, an optional peer and a workspace
+devDependency, and fills the Stream tab from `ɵregisterStreamObserver`, a
+private hook in the primary entry point that `injectUIStream` and
+`injectChatUI` call. `@json-render/devtools` pins `@json-render/core` exactly,
+so it moves in lockstep with core: whenever core is reinstalled at another
+version (`core-compat`, the canary, a core bump), devtools goes with it.
+
 ## Skill routing
 
 - Starting, continuing or resuming work, reporting status, saving progress,
@@ -240,11 +249,12 @@ every two or three weeks and a 0.x caret stops below the next minor: `^0.20.0`
 shipped in 0.7.1, and once core 0.21 was out it ERESOLVEd for anyone already on
 0.21 and silently resolved core _down_ on a fresh install. When core publishes
 a new minor: move the workspace (`npm install @json-render/core@^0.x` and the
-same for `@json-render/directives`), widen the peer range in **both** package
-manifests to `>=0.20.0 <0.(x+1).0`, keep the floor in the matrix, and release
-both packages. Locally, the job's steps are
+same for `@json-render/directives` and `@json-render/devtools`), widen the
+peer range in **both** package manifests to `>=0.20.0 <0.(x+1).0` (the
+`@json-render/devtools` peer of `ngx-json-render` too), keep the floor in the
+matrix, and release both packages. Locally, the job's steps are
 
-    npm install --no-save @json-render/core@0.20 @json-render/directives@0.20
+    npm install --no-save @json-render/core@0.20 @json-render/directives@0.20 @json-render/devtools@0.20
     npm run build:lib && npx ng test ngx-json-render
     npm run build:material && npm run test:material
     npm ci   # back to the lockfile
@@ -252,9 +262,9 @@ both packages. Locally, the job's steps are
 `core-canary.yml` is the other half of that: `core-compat` proves the floor of
 the range on every push, the canary proves the newest published core against
 `main` every night (`npm install --no-save @json-render/core@latest
-@json-render/directives@latest`, then the same build and test steps). When the
-newest core is outside the admitted range, or the suite fails against it, the
-run goes red and `scripts/core-canary-report.sh` opens one issue per core
+@json-render/directives@latest @json-render/devtools@latest`, then the same
+build and test steps). When the newest core is outside the admitted range, or
+the suite fails against it, the run goes red and `scripts/core-canary-report.sh` opens one issue per core
 version, labelled `core-canary`, with the outcome and the procedure above; the
 first green run afterwards closes it. The decision logic is a script so that
 `scripts/lib/core-canary-report.test.mjs` can dry-run it with a stubbed `gh`

@@ -1,6 +1,6 @@
 ---
 name: ngx-json-render
-description: Angular renderer for json-render. Use when rendering AI-generated JSON specs as Angular components, working with ngx-json-render, defining Angular catalogs and component registries, streaming specs with injectUIStream or injectChatUI, checking generated specs, or testing catalog components with ngx-json-render/testing.
+description: Angular renderer for json-render. Use when rendering AI-generated JSON specs as Angular components, working with ngx-json-render, defining Angular catalogs and component registries, streaming specs with injectUIStream or injectChatUI, checking generated specs, testing catalog components with ngx-json-render/testing, or inspecting a render with ngx-json-render/devtools.
 ---
 
 # ngx-json-render
@@ -313,6 +313,32 @@ await this.mcp.sendMessage('Approve release 2.4.0', { version: '2.4.0' }); // po
 ```
 
 `spec`, `loading`, `connected`, `connecting` and `error` are signals. The spec streams in from `toolinputpartial` while the model writes the call (`streamPartialInput: false` to wait for the result), and `callServerTool(name, args)` replaces it with another tool's result. The server side is `@json-render/mcp`; a full example lives in `projects/mcp-app` of the repository.
+
+## Devtools (`ngx-json-render/devtools`)
+
+A floating inspector, the counterpart of `@json-render/devtools-react`: Spec, State, Actions, Stream and Catalog tabs plus an element picker. Optional peer `@json-render/devtools`, at the same version as `@json-render/core` (it pins core exactly): `npm install -D @json-render/devtools@0.21`.
+
+```ts
+import { Component } from '@angular/core';
+import { JsonRenderer, injectUIStream } from 'ngx-json-render';
+import { JsonRenderDevtools } from 'ngx-json-render/devtools';
+
+@Component({
+  selector: 'app-inspected',
+  imports: [JsonRenderer, JsonRenderDevtools],
+  template: `
+    <json-render #renderer [spec]="ui.spec()" [registry]="registry" />
+    <json-render-devtools [renderer]="renderer" [catalog]="catalog" />
+  `,
+})
+export class InspectedPage {
+  readonly registry = registry;
+  readonly catalog = catalog;
+  readonly ui = injectUIStream({ api: '/api/generate' });
+}
+```
+
+Pass the renderer by template reference (there is no provider to find it through). Every `injectUIStream` / `injectChatUI` stream in the app reaches the Stream tab without wiring; `[chat]="chat"` lists each assistant reply with a spec as a generation. It renders nothing outside dev mode and a production build drops the panel's dynamic import, so the tag can stay in the template. `Cmd/Ctrl+Shift+J` toggles it.
 
 ## Testing (`ngx-json-render/testing`)
 

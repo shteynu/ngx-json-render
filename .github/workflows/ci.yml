@@ -185,7 +185,7 @@ jobs:
       # proves that end; this one proves the floor of the peer range. --no-save
       # leaves the manifests and the lockfile alone: only node_modules changes.
       - name: Retarget @json-render/core to ${{ matrix.core }}
-        run: npm install --no-save --no-audit --no-fund @json-render/core@${{ matrix.core }} @json-render/directives@${{ matrix.core }}
+        run: npm install --no-save --no-audit --no-fund @json-render/core@${{ matrix.core }} @json-render/directives@${{ matrix.core }} @json-render/devtools@${{ matrix.core }}
 
       - name: Build library
         run: npm run build:lib

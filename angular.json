@@ -31,7 +31,8 @@
             "coverageInclude": [
               "projects/ngx-json-render/src/**",
               "projects/ngx-json-render/testing/src/**",
-              "projects/ngx-json-render/mcp/src/**"
+              "projects/ngx-json-render/mcp/src/**",
+              "projects/ngx-json-render/devtools/src/**"
             ],
             "coverageThresholds": {
               "statements": 94,
@@ -42,7 +43,8 @@
             "include": [
               "**/*.spec.ts",
               "../testing/src/**/*.spec.ts",
-              "../mcp/src/**/*.spec.ts"
+              "../mcp/src/**/*.spec.ts",
+              "../devtools/src/**/*.spec.ts"
             ]
           }
         }

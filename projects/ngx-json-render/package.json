@@ -27,13 +27,17 @@
     "@json-render/core": ">=0.20.0 <0.22.0",
     "zod": "^4.0.0",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@json-render/devtools": ">=0.20.0 <0.22.0"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/ext-apps": {
       "optional": true
     },
     "@modelcontextprotocol/sdk": {
+      "optional": true
+    },
+    "@json-render/devtools": {
       "optional": true
     }
   },

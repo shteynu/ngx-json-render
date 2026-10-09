@@ -10,6 +10,7 @@
     "src/**/*.d.ts",
     "src/**/*.spec.ts",
     "testing/src/**/*.ts",
-    "mcp/src/**/*.ts"
+    "mcp/src/**/*.ts",
+    "devtools/src/**/*.ts"
   ]
 }

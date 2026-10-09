@@ -41,6 +41,7 @@
     "@angular/build": "^21.2.22",
     "@angular/cli": "^21.2.22",
     "@angular/compiler-cli": "^21.2.0",
+    "@json-render/devtools": "^0.21.0",
     "@json-render/directives": "^0.21.0",
     "@json-render/mcp": "^0.21.0",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
