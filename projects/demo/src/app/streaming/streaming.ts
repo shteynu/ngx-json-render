@@ -1,4 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  type OnInit,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { JsonRenderer, injectUIStream } from 'ngx-json-render';
 import { catalog } from '../catalog/catalog';
 import { registry } from '../catalog/registry';
@@ -25,7 +33,7 @@ const LINE_DELAY_MS = 220;
   templateUrl: './streaming.html',
   styleUrl: './streaming.css',
 })
-export class StreamTab {
+export class StreamTab implements OnInit {
   readonly registry = registry;
   readonly recordings = RECORDINGS;
   readonly componentNames = catalog.componentNames;
@@ -66,7 +74,22 @@ export class StreamTab {
     ),
   });
 
+  /**
+   * Replay the first recording as soon as the tab opens, so the demo's first
+   * screen shows a UI assembling rather than a row of buttons. Recorded mode
+   * only: with a key, a generation spends the reader's tokens, so it waits
+   * for a click.
+   */
+  readonly autoplay = input(false);
+  readonly autoplayed = output<void>();
+
   readonly hasOutput = computed(() => this.ui.rawLines().length > 0);
+
+  ngOnInit(): void {
+    if (!this.autoplay()) return;
+    this.autoplayed.emit();
+    if (!this.keys.isLive()) this.generate(RECORDINGS[0].prompt);
+  }
 
   /**
    * A spec that is still streaming is *supposed* to reference children that

@@ -5,7 +5,7 @@ import {
   TestBed,
 } from '@angular/core/testing';
 import type { Spec } from 'ngx-json-render';
-import { App } from './app';
+import { App, INSTALL_COMMAND } from './app';
 
 // Material and CDK components hold live handles; without an explicit teardown
 // the vitest process can stay alive after the suite passes.
@@ -41,16 +41,79 @@ async function render() {
 }
 
 describe('App', () => {
-  it('opens on the playground', async () => {
+  it('opens on the streaming tab and replays the first recording', async () => {
     const fixture = await render();
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('.topbar h1')?.textContent).toContain(
-      'ngx-json-render',
+    expect(host.querySelector('.hero h1')?.textContent).toContain(
+      'Angular renders it',
     );
-    expect(fixture.componentInstance.tab()).toBe('playground');
-    expect(host.querySelector('app-playground')).toBeTruthy();
-    expect(host.textContent).toContain('Release dashboard');
+    expect(host.querySelector('.install code')?.textContent).toBe(
+      INSTALL_COMMAND,
+    );
+    expect(fixture.componentInstance.tab()).toBe('streaming');
+    expect(host.querySelector('app-stream')).toBeTruthy();
+    // The replay started by itself and is spent: a later visit to the tab
+    // leaves whatever it shows alone.
+    expect(fixture.componentInstance.autoplay()).toBe(false);
+  });
+
+  it('opens the tab the URL hash names, and writes the hash on a switch', async () => {
+    history.replaceState(null, '', '#playground');
+    try {
+      const fixture = await render();
+      expect(fixture.componentInstance.tab()).toBe('playground');
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('app-playground'),
+      ).toBeTruthy();
+
+      fixture.componentInstance.select('chat');
+      expect(location.hash).toBe('#chat');
+
+      history.replaceState(null, '', '#interactive');
+      fixture.componentInstance.onHashChange();
+      expect(fixture.componentInstance.tab()).toBe('interactive');
+
+      // A hash that names no tab leaves the current one alone.
+      history.replaceState(null, '', '#nope');
+      fixture.componentInstance.onHashChange();
+      expect(fixture.componentInstance.tab()).toBe('interactive');
+    } finally {
+      history.replaceState(null, '', location.pathname);
+    }
+  });
+
+  it('copies the install command, and survives a missing clipboard', async () => {
+    const fixture = await render();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    try {
+      await fixture.componentInstance.copyInstall();
+      expect(writeText).toHaveBeenCalledWith(INSTALL_COMMAND);
+      expect(fixture.componentInstance.copied()).toBe(true);
+
+      writeText.mockRejectedValueOnce(new Error('denied'));
+      fixture.componentInstance.copied.set(false);
+      await fixture.componentInstance.copyInstall();
+      expect(fixture.componentInstance.copied()).toBe(false);
+    } finally {
+      Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
+
+  it('opens on the playground with the release dashboard', async () => {
+    history.replaceState(null, '', '#playground');
+    try {
+      const fixture = await render();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'Release dashboard',
+      );
+    } finally {
+      history.replaceState(null, '', location.pathname);
+    }
   });
 
   it('renders the interactive demo from the dashboard spec', async () => {
@@ -294,7 +357,7 @@ describe('App interactive demo', () => {
     // called when the interactive pane is not on screen and the viewChild
     // has nothing to resolve. Each one guards for that; none may throw.
     const fixture = await render();
-    expect(fixture.componentInstance.tab()).toBe('playground');
+    expect(fixture.componentInstance.tab()).toBe('streaming');
 
     const { handlers } = fixture.componentInstance;
     expect(() => handlers['increment']({ statePath: '/count' })).not.toThrow();

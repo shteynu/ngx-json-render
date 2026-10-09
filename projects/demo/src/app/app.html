@@ -1,43 +1,47 @@
-<header class="topbar">
-  <div>
-    <h1>ngx-json-render <span class="version">demo</span></h1>
-    <p>Angular renderer for json-render — specs in, components out.</p>
+<header class="hero">
+  <p class="eyebrow">ngx-json-render · Angular renderer for json-render</p>
+  <h1>Your model writes JSON. Angular renders it.</h1>
+  <p class="lede">
+    Give a model a catalog of your components. It streams back a
+    <a href="https://json-render.dev/">json-render</a> spec, and ngx-json-render
+    turns it into real Angular components, progressively, with signals. Same
+    spec as the React, Vue, Svelte and Solid renderers.
+  </p>
+  <ol class="flow" aria-label="How it works">
+    <li><span>1</span> Define a catalog</li>
+    <li><span>2</span> The model streams JSON</li>
+    <li><span>3</span> Angular renders it</li>
+  </ol>
+  <div class="install">
+    <code>{{ installCommand }}</code>
+    <button type="button" (click)="copyInstall()">
+      {{ copied() ? 'Copied' : 'Copy' }}
+    </button>
   </div>
-  <nav class="tabs">
-    <button
-      type="button"
-      [class.active]="tab() === 'playground'"
-      (click)="tab.set('playground')"
+  <nav class="links" aria-label="Project links">
+    <a href="https://github.com/shteynu/ngx-json-render">GitHub</a>
+    <a href="https://www.npmjs.com/package/ngx-json-render">npm</a>
+    <a
+      href="https://github.com/shteynu/ngx-json-render/blob/main/projects/ngx-json-render/README.md"
+      >Docs</a
     >
-      Playground
-    </button>
-    <button
-      type="button"
-      [class.active]="tab() === 'interactive'"
-      (click)="tab.set('interactive')"
+    <a href="https://stackblitz.com/github/shteynu/ngx-json-render"
+      >StackBlitz</a
     >
-      Interactive
-    </button>
-    <button
-      type="button"
-      [class.active]="tab() === 'streaming'"
-      (click)="tab.set('streaming')"
-    >
-      Streaming
-    </button>
-    <button
-      type="button"
-      [class.active]="tab() === 'chat'"
-      (click)="tab.set('chat')"
-    >
-      Chat
-    </button>
   </nav>
 </header>
 
-@if (tab() === 'streaming' || tab() === 'chat') {
-  <app-key-panel />
-}
+<nav class="tabs" aria-label="Demo">
+  @for (t of tabs; track t.id) {
+    <a
+      [href]="'#' + t.id"
+      [class.active]="tab() === t.id"
+      [attr.aria-current]="tab() === t.id ? 'page' : null"
+      (click)="$event.preventDefault(); select(t.id)"
+      >{{ t.label }}</a
+    >
+  }
+</nav>
 
 @if (tab() === 'playground') {
   @defer (on immediate) {
@@ -61,7 +65,7 @@
   }
 } @else if (tab() === 'streaming') {
   @defer (on immediate) {
-    <app-stream />
+    <app-stream [autoplay]="autoplay()" (autoplayed)="autoplay.set(false)" />
   } @placeholder {
     <p class="tab-loading">Loading the stream…</p>
   }
@@ -71,4 +75,8 @@
   } @placeholder {
     <p class="tab-loading">Loading the chat…</p>
   }
+}
+
+@if (tab() === 'streaming' || tab() === 'chat') {
+  <app-key-panel class="after-tab" />
 }

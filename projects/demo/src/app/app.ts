@@ -12,16 +12,70 @@ import { Playground } from './playground/playground';
 import { StreamTab } from './streaming/streaming';
 import { dashboardSpec } from './specs/dashboard';
 
-type Tab = 'playground' | 'interactive' | 'streaming' | 'chat';
+const TABS = ['streaming', 'playground', 'interactive', 'chat'] as const;
+type Tab = (typeof TABS)[number];
+
+/** The tab a URL hash names, so a post can link straight to one. */
+function tabFromHash(hash: string): Tab | null {
+  const name = hash.replace(/^#/, '');
+  return (TABS as readonly string[]).includes(name) ? (name as Tab) : null;
+}
+
+/** What the hero's copy button puts on the clipboard. */
+export const INSTALL_COMMAND = 'ng add ngx-json-render-material';
 
 @Component({
   selector: 'app-root',
   imports: [ChatTab, InteractiveTab, KeyPanel, Playground, StreamTab],
   templateUrl: './app.html',
   styleUrl: './app.css',
+  host: { '(window:hashchange)': 'onHashChange()' },
 })
 export class App {
-  readonly tab = signal<Tab>('playground');
+  /**
+   * Streaming first: a link to the demo should land on the product working,
+   * not on an editor waiting for input.
+   */
+  readonly tab = signal<Tab>(tabFromHash(location.hash) ?? 'streaming');
+
+  /**
+   * The streaming tab replays its first recording on the first visit only;
+   * coming back to the tab later shows whatever was left there.
+   */
+  readonly autoplay = signal(true);
+
+  readonly tabs: readonly { id: Tab; label: string }[] = [
+    { id: 'streaming', label: 'Streaming' },
+    { id: 'playground', label: 'Playground' },
+    { id: 'interactive', label: 'Interactive' },
+    { id: 'chat', label: 'Chat' },
+  ];
+
+  readonly installCommand = INSTALL_COMMAND;
+  readonly copied = signal(false);
+
+  select(tab: Tab): void {
+    this.tab.set(tab);
+    // replaceState, not a hash assignment: switching tabs should not stack up
+    // history entries, and it does not fire `hashchange` back at us.
+    history.replaceState(null, '', `#${tab}`);
+  }
+
+  onHashChange(): void {
+    const tab = tabFromHash(location.hash);
+    if (tab) this.tab.set(tab);
+  }
+
+  async copyInstall(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(INSTALL_COMMAND);
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 1600);
+    } catch {
+      // No clipboard (insecure context, denied permission): the command is
+      // on screen and selectable, which is the fallback.
+    }
+  }
 
   // --- Interactive demo ------------------------------------------------------
 
