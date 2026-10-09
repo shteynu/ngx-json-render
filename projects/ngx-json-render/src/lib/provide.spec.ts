@@ -278,6 +278,36 @@ describe('provideJsonRender', () => {
     error.mockRestore();
   });
 
+  it('warns about a missing root by the resolved validate, bound or not', async () => {
+    // Bare binds no `validate`: unbound is `off`, unless a provider says
+    // otherwise, and then the spec check reports it instead.
+    const missingRoot = {
+      root: 'dashbord',
+      elements: { dashboard: { type: 'Text', props: {}, children: [] } },
+    } as unknown as Spec;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rootWarnings = () =>
+      warn.mock.calls.filter((call) =>
+        String(call[0]).includes('root "dashbord" is not in elements'),
+      );
+
+    await mount(Bare, [provideJsonRender({ registry: REGISTRY })], missingRoot);
+    expect(rootWarnings()).toHaveLength(1);
+
+    TestBed.resetTestingModule();
+    warn.mockClear();
+    await mount(
+      Bare,
+      [provideJsonRender({ registry: REGISTRY, validate: 'warn' })],
+      missingRoot,
+    );
+    expect(rootWarnings()).toEqual([]);
+
+    warn.mockRestore();
+    error.mockRestore();
+  });
+
   describe('nested', () => {
     it('a component-level provider replaces values and merges vocabularies', async () => {
       const calls: string[] = [];

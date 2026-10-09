@@ -287,7 +287,7 @@ export class JsonRenderer {
     // Once per root key, not once per change detection run.
     const warnedRoots = new Set<string>();
     effect(() => {
-      if (this.loading() || this.validate() !== 'off') return;
+      if (this.loading() || this.mode() !== 'off') return;
       const spec = this.checked().spec;
       if (!spec?.root) return;
       const root = spec.root;
