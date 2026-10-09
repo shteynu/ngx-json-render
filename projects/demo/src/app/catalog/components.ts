@@ -5,7 +5,13 @@ import {
   effect,
   viewChild,
 } from '@angular/core';
-import { JrChildren, injectRenderContext } from 'ngx-json-render';
+import type { ValidationConfig } from '@json-render/core';
+import {
+  JrChildren,
+  injectElementKey,
+  injectFieldValidation,
+  injectRenderContext,
+} from 'ngx-json-render';
 import { SparklineComponent, finiteNumbers } from './charts';
 
 /** Layout container that stacks children vertically or horizontally. */
@@ -221,19 +227,61 @@ export class BadgeComponent {
   readonly props = this.ctx.props;
 }
 
-/** Text input, two-way bindable via `$bindState`; emits `submit` on Enter. */
+/**
+ * Text input or text area, two-way bindable via `$bindState`; emits `submit`
+ * on Enter (single line only). A `validation` config registers the field with
+ * the renderer, so `validateForm` and `submitForm` check it. Once the field
+ * has been validated, on blur or on submit, the first failing check's message
+ * shows under it.
+ */
 @Component({
   selector: 'demo-input',
   template: `
-    <input
-      #el
-      class="input"
-      [placeholder]="props().placeholder ?? ''"
-      (input)="onInput($event)"
-      (keydown.enter)="ctx.emit('submit')"
-    />
+    <label class="field">
+      @if (props().label; as label) {
+        <span class="label">
+          {{ label }}
+          @if (required()) {
+            <span class="required" aria-hidden="true">*</span>
+          }
+        </span>
+      }
+      @if (props().multiline) {
+        <textarea
+          #el
+          class="input"
+          rows="4"
+          [placeholder]="props().placeholder ?? ''"
+          [attr.aria-required]="required() || null"
+          [attr.aria-invalid]="invalid() || null"
+          [attr.aria-describedby]="invalid() ? errorId() : null"
+          (input)="onInput($event)"
+          (blur)="onBlur()"
+        ></textarea>
+      } @else {
+        <input
+          #el
+          class="input"
+          [type]="props().type ?? 'text'"
+          [placeholder]="props().placeholder ?? ''"
+          [attr.aria-required]="required() || null"
+          [attr.aria-invalid]="invalid() || null"
+          [attr.aria-describedby]="invalid() ? errorId() : null"
+          (input)="onInput($event)"
+          (blur)="onBlur()"
+          (keydown.enter)="ctx.emit('submit')"
+        />
+      }
+    </label>
+    @if (invalid()) {
+      <p class="error" [id]="errorId()">{{ firstError() }}</p>
+    }
   `,
   styles: `
+    :host { display: block; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .label { font-size: 13px; font-weight: 500; }
+    .required { color: var(--danger); margin-left: 2px; }
     .input {
       font: inherit;
       font-size: 14px;
@@ -246,16 +294,43 @@ export class BadgeComponent {
       color: inherit;
       outline: none;
     }
+    textarea.input { resize: vertical; min-height: 84px; }
     .input:focus { border-color: var(--accent); }
+    .input[aria-invalid='true'] { border-color: var(--danger); }
+    .error { margin: 6px 0 0; font-size: 12px; color: var(--danger); }
   `,
 })
 export class InputComponent {
   readonly ctx = injectRenderContext<{
     value?: string;
     placeholder?: string;
+    label?: string;
+    type?: 'text' | 'email';
+    multiline?: boolean;
+    validation?: ValidationConfig;
   }>();
   readonly props = this.ctx.props;
-  private readonly el = viewChild.required<ElementRef<HTMLInputElement>>('el');
+  // Optional: the control sits inside @if (input or text area), so the
+  // query is empty until that branch has rendered.
+  private readonly el =
+    viewChild<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('el');
+  private readonly key = injectElementKey();
+  private readonly field = injectFieldValidation(
+    () => this.ctx.bindings()?.['value'] ?? '',
+    () => this.props().validation,
+  );
+
+  readonly required = computed(() =>
+    Boolean(
+      this.props().validation?.checks?.some((c) => c.type === 'required'),
+    ),
+  );
+  readonly invalid = computed(
+    () => this.field.state().validated && !this.field.isValid(),
+  );
+  /** One message at a time: the first check that failed says what to fix. */
+  readonly firstError = computed(() => this.field.errors().at(0) ?? '');
+  readonly errorId = computed(() => `${this.key()}-error`);
 
   constructor() {
     // Sync the DOM against the *actual* input value rather than using a
@@ -264,8 +339,8 @@ export class InputComponent {
     // write when the bound value returns to its previously-applied value.
     effect(() => {
       const value = String(this.props().value ?? '');
-      const input = this.el().nativeElement;
-      if (input.value !== value) {
+      const input = this.el()?.nativeElement;
+      if (input && input.value !== value) {
         input.value = value;
       }
     });
@@ -273,6 +348,15 @@ export class InputComponent {
 
   onInput(event: Event): void {
     this.ctx.setBound('value', (event.target as HTMLInputElement).value);
+    // A field already showing an error re-checks as it is corrected.
+    if (this.invalid()) this.field.validate();
+  }
+
+  onBlur(): void {
+    const config = this.props().validation;
+    if (!config || !this.ctx.bindings()?.['value']) return;
+    this.field.touch();
+    if ((config.validateOn ?? 'blur') === 'blur') this.field.validate();
   }
 }
 

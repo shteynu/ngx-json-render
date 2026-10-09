@@ -1,3 +1,4 @@
+import { ValidationConfigSchema } from '@json-render/core';
 import { schema } from 'ngx-json-render';
 import { z } from 'zod';
 
@@ -66,10 +67,16 @@ export const catalog = schema.createCatalog({
       props: z.object({
         value: z.string().optional(),
         placeholder: z.string().optional(),
+        label: z.string().optional(),
+        type: z.enum(['text', 'email']).optional(),
+        multiline: z.boolean().optional(),
+        validation: ValidationConfigSchema.optional(),
       }),
       slots: [],
       description:
-        "Text input; bind value with $bindState, emits 'submit' on Enter",
+        "Text input with an optional label; multiline makes it a text area. Bind value with $bindState; emits 'submit' on Enter (single line only). " +
+        'Validate it with `validation`: {"checks":[{"type":"required","message":"..."}],"validateOn":"blur"}; check types include required, email, minLength (args {"min":n}) and maxLength. ' +
+        'The built-in submitForm action validates every bound field and dispatches its action only if all pass',
     },
     Checkbox: {
       props: z.object({
@@ -157,6 +164,15 @@ export const catalog = schema.createCatalog({
     clearTodos: {
       params: z.object({}),
       description: 'Remove all todos',
+    },
+    sendSupportRequest: {
+      params: z.object({
+        name: z.string(),
+        email: z.string(),
+        message: z.string(),
+      }),
+      description:
+        'Send a support request. Dispatch it through submitForm so the form is validated first',
     },
   },
 });

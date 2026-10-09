@@ -15,6 +15,7 @@ function recording(label: string) {
 }
 
 const SALES = recording('Sales dashboard');
+const SUPPORT = recording('Support form');
 const WEEKLY = recording('Weekly report');
 const ONBOARDING = recording('Onboarding checklist');
 const BROKEN = recording('A bad generation');
@@ -73,6 +74,34 @@ async function drain(fixture: ComponentFixture<StreamTab>) {
   await settle(fixture);
 }
 
+/** A support form field by its label, and the error under it, if any. */
+function field(fixture: ComponentFixture<StreamTab>, label: string) {
+  const host = [
+    ...(fixture.nativeElement as HTMLElement).querySelectorAll('demo-input'),
+  ].find((el) => el.querySelector('.label')?.textContent?.includes(label));
+  if (!host) throw new Error(`No field labelled ${label}`);
+  const control = host.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+    'input, textarea',
+  )!;
+  return {
+    control,
+    error: () => host.querySelector('.error')?.textContent?.trim() ?? null,
+    type(value: string) {
+      control.value = value;
+      control.dispatchEvent(new Event('input'));
+      control.dispatchEvent(new Event('blur'));
+    },
+  };
+}
+
+function sendButton(fixture: ComponentFixture<StreamTab>): HTMLButtonElement {
+  return [
+    ...(
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLButtonElement>('demo-button button'),
+  ].find((b) => b.textContent?.trim() === 'Send request')!;
+}
+
 describe('StreamTab', () => {
   it('renders a recorded generation through injectUIStream', async () => {
     const fixture = await render();
@@ -117,6 +146,80 @@ describe('StreamTab', () => {
     expect(rendered(fixture)).toContain('Q3 figures, streamed as JSON patches');
     // Every component the recording uses is in the catalog.
     expect(checkText(fixture)).toContain('No structural issues');
+  }, 15_000);
+
+  it('shows the support form hint once the form has finished streaming', async () => {
+    const fixture = await render();
+    fixture.componentInstance.generate(SUPPORT.prompt);
+    await settle(fixture);
+    expect(fixture.componentInstance.hint()).toBeNull();
+
+    await drain(fixture);
+    expect(rendered(fixture)).toContain('send the form empty');
+    expect(checkText(fixture)).toContain('No structural issues');
+  }, 15_000);
+
+  it('keeps an invalid support form from sending, and says why', async () => {
+    const fixture = await render();
+    const send = vi.spyOn(
+      fixture.componentInstance.handlers,
+      'sendSupportRequest',
+    );
+    fixture.componentInstance.generate(SUPPORT.prompt);
+    await drain(fixture);
+
+    // Leaving a field validates it, and only the first failing check speaks.
+    const email = field(fixture, 'Email');
+    email.type('');
+    await settle(fixture);
+    expect(email.error()).toBe('We need an email to reply to.');
+    expect(field(fixture, 'Name').error()).toBeNull();
+
+    sendButton(fixture).click();
+    await settle(fixture);
+
+    expect(send).not.toHaveBeenCalled();
+    expect(field(fixture, 'Name').error()).toBe('Tell us your name.');
+    expect(field(fixture, 'What happened?').error()).toBe(
+      'Describe the problem.',
+    );
+    expect(field(fixture, 'Name').control.getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+
+    // A field showing an error re-checks as it is corrected.
+    email.control.value = 'ada@';
+    email.control.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(email.error()).toBe('That does not look like an email address.');
+  }, 15_000);
+
+  it('sends a valid support form once and swaps in the confirmation', async () => {
+    const fixture = await render();
+    const send = vi
+      .spyOn(fixture.componentInstance.handlers, 'sendSupportRequest')
+      .mockResolvedValue(undefined);
+    fixture.componentInstance.generate(SUPPORT.prompt);
+    await drain(fixture);
+
+    field(fixture, 'Name').type('Ada Lovelace');
+    field(fixture, 'Email').type('ada@example.com');
+    field(fixture, 'What happened?').type(
+      'Export to CSV fails on reports with more than 10k rows.',
+    );
+    await settle(fixture);
+    sendButton(fixture).click();
+    await settle(fixture);
+    await settle(fixture);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      message: 'Export to CSV fails on reports with more than 10k rows.',
+    });
+    expect(rendered(fixture)).toContain('Request sent');
+    expect(rendered(fixture)).not.toContain('Support request');
   }, 15_000);
 
   it('reports the usage line as token usage', async () => {

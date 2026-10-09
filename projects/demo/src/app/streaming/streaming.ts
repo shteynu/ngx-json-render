@@ -7,7 +7,11 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { JsonRenderer, injectUIStream } from 'ngx-json-render';
+import {
+  type ActionHandler,
+  JsonRenderer,
+  injectUIStream,
+} from 'ngx-json-render';
 import { JsonRenderDevtools } from 'ngx-json-render/devtools';
 import { catalog } from '../catalog/catalog';
 import { registry } from '../catalog/registry';
@@ -19,6 +23,9 @@ import { recordedTransport } from './recorded-transport';
 
 /** Pace of the replay: slow enough to watch the UI assemble. */
 const LINE_DELAY_MS = 220;
+
+/** How long the support form's pretend request takes. */
+const SEND_DELAY_MS = 600;
 
 /**
  * The Streaming tab, driven by `injectUIStream` — the same client an app
@@ -120,6 +127,23 @@ export class StreamTab implements OnInit {
   readonly note = computed(
     () => RECORDINGS.find((r) => r.prompt === this.prompt())?.note ?? null,
   );
+
+  /** What to try in the running prompt's UI, once it has finished. */
+  readonly hint = computed(() =>
+    this.ui.isStreaming()
+      ? null
+      : (RECORDINGS.find((r) => r.prompt === this.prompt())?.hint ?? null),
+  );
+
+  /**
+   * The app's side of the actions a spec may dispatch. The support form's
+   * request goes nowhere: it waits as a real one would, so the button's
+   * `onSuccess` lands after a visible pause.
+   */
+  readonly handlers: Record<string, ActionHandler> = {
+    sendSupportRequest: () =>
+      new Promise((resolve) => setTimeout(resolve, SEND_DELAY_MS)),
+  };
 
   generate(prompt: string): void {
     this.stopped.set(false);

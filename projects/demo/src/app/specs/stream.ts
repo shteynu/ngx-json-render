@@ -14,6 +14,8 @@ export interface Recording {
   readonly lines: readonly string[];
   /** Shown alongside the run when the recording is deliberately flawed. */
   readonly note?: string;
+  /** What to try once the UI is on screen, for an interactive recording. */
+  readonly hint?: string;
 }
 
 /**
@@ -92,6 +94,30 @@ const ONBOARDING: readonly string[] = [
 ];
 
 /**
+ * A form the model wires up end to end: bound fields with validation, and a
+ * submit button that goes through `submitForm`, so `sendSupportRequest` only
+ * runs once every field passes. Its `onSuccess` swaps the form for a
+ * confirmation.
+ */
+const SUPPORT_FORM: readonly string[] = [
+  '{"op":"add","path":"/root","value":"root"}',
+  '{"op":"add","path":"/elements/root","value":{"type":"Stack","props":{"gap":16},"children":["title","intro","form-card","sent-card"]}}',
+  '{"op":"add","path":"/elements/title","value":{"type":"Heading","props":{"content":"Contact support","level":1},"children":[]}}',
+  '{"op":"add","path":"/elements/intro","value":{"type":"Text","props":{"content":"Tell us what went wrong. We reply within one business day.","tone":"muted"},"children":[]}}',
+  '{"op":"add","path":"/state","value":{"form":{"name":"","email":"","message":""},"sent":false}}',
+  '{"op":"add","path":"/elements/form-card","value":{"type":"Card","props":{"title":"Support request"},"visible":{"$state":"/sent","neq":true},"children":["f-name","f-email","f-message","f-actions"]}}',
+  '{"op":"add","path":"/elements/f-name","value":{"type":"Input","props":{"label":"Name","placeholder":"Ada Lovelace","value":{"$bindState":"/form/name"},"validation":{"checks":[{"type":"required","message":"Tell us your name."}]}},"children":[]}}',
+  '{"op":"add","path":"/elements/f-email","value":{"type":"Input","props":{"label":"Email","type":"email","placeholder":"ada@example.com","value":{"$bindState":"/form/email"},"validation":{"checks":[{"type":"required","message":"We need an email to reply to."},{"type":"email","message":"That does not look like an email address."}]}},"children":[]}}',
+  '{"op":"add","path":"/elements/f-message","value":{"type":"Input","props":{"label":"What happened?","multiline":true,"placeholder":"What you did, what you expected, what you saw instead.","value":{"$bindState":"/form/message"},"validation":{"checks":[{"type":"required","message":"Describe the problem."},{"type":"minLength","args":{"min":20},"message":"A little more detail, please: at least 20 characters."}]}},"children":[]}}',
+  '{"op":"add","path":"/elements/f-actions","value":{"type":"Stack","props":{"direction":"horizontal","justify":"end"},"children":["f-submit"]}}',
+  '{"op":"add","path":"/elements/f-submit","value":{"type":"Button","props":{"label":"Send request","variant":"primary"},"on":{"press":{"action":"submitForm","params":{"action":"sendSupportRequest","params":{"name":{"$state":"/form/name"},"email":{"$state":"/form/email"},"message":{"$state":"/form/message"}}},"onSuccess":{"set":{"/sent":true}}}},"children":[]}}',
+  '{"op":"add","path":"/elements/sent-card","value":{"type":"Card","props":{"title":"Request sent"},"visible":{"$state":"/sent","eq":true},"children":["sent-badge","sent-text"]}}',
+  '{"op":"add","path":"/elements/sent-badge","value":{"type":"Badge","props":{"label":"Ticket opened","color":"green"},"children":[]}}',
+  '{"op":"add","path":"/elements/sent-text","value":{"type":"Text","props":{"content":"Thanks. We will reply to your email within one business day."},"children":[]}}',
+  '{"__meta":"usage","promptTokens":1342,"completionTokens":688,"totalTokens":2030}',
+];
+
+/**
  * A generation that went wrong, in the ways `schema.ts` spends its rules
  * warning models about. Most of the page still renders — that is the point.
  */
@@ -125,6 +151,15 @@ export const RECORDINGS: readonly Recording[] = [
     prompt: 'A Q3 sales dashboard with revenue by week and by region',
     label: 'Sales dashboard',
     lines: SALES_DASHBOARD,
+  },
+  {
+    prompt: 'A support request form with validation',
+    label: 'Support form',
+    lines: SUPPORT_FORM,
+    hint:
+      'Try it: send the form empty, then fill it in. The model wrote the ' +
+      'checks and the submit; submitForm calls sendSupportRequest only once ' +
+      'every field passes.',
   },
   {
     prompt: 'A weekly report for the platform team',

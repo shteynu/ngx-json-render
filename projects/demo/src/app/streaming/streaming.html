@@ -62,6 +62,9 @@
     @if (note(); as note) {
       <p class="banner note">{{ note }}</p>
     }
+    @if (hint(); as hint) {
+      <p class="hint">{{ hint }}</p>
+    }
     @if (ui.error(); as error) {
       <p class="banner error">Generation failed: {{ error.message }}</p>
     }
@@ -72,6 +75,7 @@
       #renderer
       [spec]="ui.spec()"
       [registry]="registry"
+      [handlers]="handlers"
       [loading]="ui.isStreaming()"
     />
     <!-- Dev mode only: the deployed (production) demo never loads the panel. -->

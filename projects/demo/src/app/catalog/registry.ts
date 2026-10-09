@@ -39,5 +39,6 @@ export const { registry } = defineRegistry(catalog, {
     decrement: async () => {},
     syncTodoCount: async () => {},
     clearTodos: async () => {},
+    sendSupportRequest: async () => {},
   },
 });
