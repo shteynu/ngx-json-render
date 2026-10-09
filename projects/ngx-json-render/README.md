@@ -306,6 +306,40 @@ app.post('/api/generate', async (req, res) => {
 
 The patches apply to the `spec` signal as each line arrives, so the UI assembles on screen while the model is still generating — exactly what the [demo's Streaming tab](https://shteynu.github.io/ngx-json-render/) replays. Prefer structured output? `catalog.jsonSchema()` exports a JSON Schema for `streamObject`/tool calls, and `checkSpec(spec, 'strict', { catalog })` checks a finished spec against the catalog, props included — see [Checking what the model produced](#checking-what-the-model-produced) for why that and not `catalog.validate(spec)` alone.
 
+### With Genkit
+
+On Firebase, or anywhere else [Genkit](https://genkit.dev) already runs, the route has the same shape. `ai.generateStream` streams the model's text, and that text is the JSONL the system prompt asked for, so it goes to the browser unchanged:
+
+```ts
+// server.ts — Express with Genkit and its Google AI plugin
+import express from 'express';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+import { buildUserPrompt } from '@json-render/core';
+import { catalog } from './catalog';
+
+const ai = genkit({ plugins: [googleAI()] }); // reads GEMINI_API_KEY
+
+const app = express();
+app.use(express.json());
+
+app.post('/api/generate', async (req, res) => {
+  const { prompt, currentSpec } = req.body; // and `context`, yours to use
+
+  const { stream } = ai.generateStream({
+    model: googleAI.model('gemini-3.5-flash'),
+    system: catalog.prompt(),
+    prompt: buildUserPrompt({ prompt, currentSpec }), // currentSpec: refine, not restart
+  });
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  for await (const chunk of stream) res.write(chunk.text);
+  res.end();
+});
+```
+
+`buildUserPrompt` comes from `@json-render/core`. Given a `currentSpec`, it asks the model for patches to that spec, so `ui.send(prompt, { previousSpec })` refines the UI instead of regenerating it; without one, it adds a reminder of the order to stream in. Another model is another plugin and `model` line, such as `vertexAI` from the same package. Serve the text from a plain route like this one rather than through `expressHandler` from `@genkit-ai/express`: that wraps every chunk in its own server-sent event (`data: {"message": …}`), which `injectUIStream` does not read.
+
 ### Chat + GenUI
 
 When the model answers in prose _and_ renders a UI in the same turn, reach for
