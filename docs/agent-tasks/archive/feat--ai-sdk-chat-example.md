@@ -5,8 +5,8 @@
 - Branch: `main` (repo convention: commits go straight to `main`)
 - Base branch: `main`
 - Base commit: `254b786`
-- Current HEAD: `254b786`
-- Status: done, awaiting the user's commit decision
+- Current HEAD: `b78476c` on main
+- Status: committed and pushed to main 2026-10-09 as `b78476c`
 - Last updated: 2026-10-09
 - Last agent/tool: Claude Code (Opus 5.5)
 
@@ -62,8 +62,8 @@ example lives here. The library already reads AI SDK parts
 
 ## Remaining
 
-- Commit (user's call). `.claude/launch.json` holds machine-local configs
-  for other repos and stays out of the commit.
+- Nothing. `.claude/launch.json` holds machine-local configs for other
+  repos and was left out of the commit.
 
 ## Verification evidence
 
@@ -89,5 +89,4 @@ example lives here. The library already reads AI SDK parts
 
 ## Next concrete step
 
-Propose the commit to the user. Optional follow-up: a CI job that builds
-the example.
+None. Optional follow-up: a CI job that builds the example.
