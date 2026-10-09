@@ -13,7 +13,8 @@
     "testing/src/**/*.ts",
     "schema/src/**/*.ts",
     "mcp/src/**/*.ts",
-    "devtools/src/**/*.ts"
+    "devtools/src/**/*.ts",
+    "router/src/**/*.ts"
   ],
   "exclude": ["**/*.spec.ts"]
 }

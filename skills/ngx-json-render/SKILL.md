@@ -160,6 +160,32 @@ export class Page {
 
 `defineRegistry` is typed against the catalog: an unknown component key is a compile error, and when the catalog declares actions the `actions` map is required (`(params, setState, state) => Promise<void>` each). The renderer runs the handlers passed to `[handlers]`; `defineRegistry` also returns `handlers(getSetState, getState)` to adapt its typed map and `executeAction(name, params, setState)` for imperative use.
 
+### App-wide defaults
+
+`provideJsonRender` sets any option input once for everything below it, so a chat can render `<json-render [spec]="m.spec" />` per message. The function form runs in an injection context, so handlers can `inject()` services:
+
+```ts
+import type { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideJsonRender } from 'ngx-json-render';
+import { injectRouterNavigate } from 'ngx-json-render/router';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter([]),
+    provideJsonRender(() => ({
+      registry,
+      handlers: { refresh: async () => {} },
+      navigate: injectRouterNavigate({ allow: ['/thanks', /^\/orders\/\d+$/] }),
+    })),
+  ],
+};
+```
+
+Every option input can be provided (`registry`, `fallback`, `validate`, `renderLimits`, `catalog`, `handlers`, `onAction`, `navigate`, `validationFunctions`, `functions`, `directives`); `spec`, `loading`, `state` and `store` stay per element. An input bound on the element wins, and one left `null`/`undefined` falls through. `handlers`, `functions`, `validationFunctions` and `directives` merge by name (the element wins a name both define); everything else replaces. Works in application, route and component `providers`; a nested provider extends the outer one by the same rules. With no registry bound or provided, the renderer throws.
+
+`injectRouterNavigate({ allow })` (from `ngx-json-render/router`, optional peer `@angular/router`) passes a spec's `onSuccess: { navigate }` path to `router.navigateByUrl` only if it starts with a single `/` and `allow` lets its path through (exact string, `RegExp`, or a predicate); anything else is refused with a warning. Use it rather than handing spec paths to the router yourself.
+
 ## Spec structure
 
 - Flat: `elements` is a map keyed by element key, `children` lists keys, `root` names the top. Every element has a `children` array, `[]` for leaves.
@@ -172,7 +198,7 @@ export class Page {
 | Input                 | Type                                 | Purpose                                                              |
 | --------------------- | ------------------------------------ | -------------------------------------------------------------------- |
 | `spec`                | `Spec \| null`                       | The spec; may be partial while streaming                             |
-| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                                     |
+| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component; required unless provided           |
 | `loading`             | `boolean`                            | Suppress missing-element warnings while streaming                    |
 | `fallback`            | `Type<unknown>`                      | Component for unknown types                                          |
 | `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)                 |
@@ -229,7 +255,7 @@ Operators: `eq`, `neq`, `gt`, `gte`, `lt`, `lte` (a number or `{ "$state": "/pat
 
 ## State
 
-Each `<json-render>` owns a JSON-Pointer store. Seeding order: `store` input (controlled) → `state` input → `spec.state`. Share one store across renderers, or drive it from your own state management, with a core `StateStore` (`createStateStore()`, or an adapter such as `@json-render/redux`) on `store`; `createStoreSetState(store)` adapts a whole-state updater to path writes. Uncontrolled mode reports writes through `(stateChange)`. A spec chooses its own state paths and `navigate` targets: scope the store to the generated view and match `navigate` paths against known routes.
+Each `<json-render>` owns a JSON-Pointer store. Seeding order: `store` input (controlled) → `state` input → `spec.state`. Share one store across renderers, or drive it from your own state management, with a core `StateStore` (`createStateStore()`, or an adapter such as `@json-render/redux`) on `store`; `createStoreSetState(store)` adapts a whole-state updater to path writes. Uncontrolled mode reports writes through `(stateChange)`. A spec chooses its own state paths and `navigate` targets: scope the store to the generated view and match `navigate` paths against known routes (`injectRouterNavigate` does that).
 
 ## Streaming
 

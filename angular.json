@@ -32,7 +32,8 @@
               "projects/ngx-json-render/src/**",
               "projects/ngx-json-render/testing/src/**",
               "projects/ngx-json-render/mcp/src/**",
-              "projects/ngx-json-render/devtools/src/**"
+              "projects/ngx-json-render/devtools/src/**",
+              "projects/ngx-json-render/router/src/**"
             ],
             "coverageThresholds": {
               "statements": 94,
@@ -44,7 +45,8 @@
               "**/*.spec.ts",
               "../testing/src/**/*.spec.ts",
               "../mcp/src/**/*.spec.ts",
-              "../devtools/src/**/*.spec.ts"
+              "../devtools/src/**/*.spec.ts",
+              "../router/src/**/*.spec.ts"
             ]
           }
         }

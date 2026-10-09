@@ -29,6 +29,12 @@ import {
 } from './confirm-tokens';
 import { JrElement } from './element.component';
 import type { RenderLimits, SpecCatalog } from './render-limits';
+import {
+  JSON_RENDER_CONFIG,
+  type JsonRenderConfig,
+  mergeByName,
+  mergeDirectives,
+} from './provide';
 import { JsonRenderRootContext } from './root-context';
 import {
   type SpecValidationMode,
@@ -91,8 +97,11 @@ import { JsonRenderValidationService } from './validation.service';
 export class JsonRenderer {
   /** The UI spec to render (may be partial while streaming). */
   readonly spec = input.required<Spec | null>();
-  /** Component registry mapping catalog type names to Angular components. */
-  readonly registry = input.required<ComponentRegistry>();
+  /**
+   * Component registry mapping catalog type names to Angular components.
+   * Required unless a {@link provideJsonRender} above supplies one.
+   */
+  readonly registry = input<ComponentRegistry | undefined>(undefined);
   /** Whether the spec is currently loading/streaming. */
   readonly loading = input(false);
   /** Fallback component for unknown types. */
@@ -109,7 +118,7 @@ export class JsonRenderer {
    * The check is skipped while `loading` is true: a spec that is still
    * arriving is expected to reference children that have not streamed in yet.
    */
-  readonly validate = input<SpecValidationMode>('off');
+  readonly validate = input<SpecValidationMode | undefined>(undefined);
 
   /**
    * Caps on what the spec may cost the browser: `maxElements`, `maxDepth` and
@@ -185,14 +194,32 @@ export class JsonRenderer {
   protected readonly actions: JsonRenderActionsService;
 
   /**
+   * The nearest {@link provideJsonRender}'s defaults. Every option input
+   * falls through to these when left `null` or `undefined`; see
+   * {@link JsonRenderConfig} for the merge rules.
+   */
+  private readonly config: JsonRenderConfig =
+    inject(JSON_RENDER_CONFIG, { optional: true }) ?? {};
+
+  private readonly mode = computed<SpecValidationMode>(
+    () => this.validate() ?? this.config.validate ?? 'off',
+  );
+  private readonly limits = computed(
+    () => this.renderLimits() ?? this.config.renderLimits ?? null,
+  );
+  private readonly specCatalog = computed(
+    () => this.catalog() ?? this.config.catalog ?? null,
+  );
+
+  /**
    * The spec as checked, and what the check found. While `loading`, the mode
    * is forced off: the spec is still arriving, and the missing children it
    * refers to are the normal state of a stream, not a defect.
    */
   private readonly checked = computed(() =>
-    checkSpec(this.spec(), this.loading() ? 'off' : this.validate(), {
-      limits: this.renderLimits(),
-      catalog: this.catalog(),
+    checkSpec(this.spec(), this.loading() ? 'off' : this.mode(), {
+      limits: this.limits(),
+      catalog: this.specCatalog(),
     }),
   );
 
@@ -201,22 +228,39 @@ export class JsonRenderer {
     // The fixed spec, not the input: a `visible` the check moved out of
     // `props` has to be the one the tree renders, or the fix is cosmetic.
     root.spec = computed(() => this.checked().spec);
-    root.registry = this.registry;
+    const config = this.config;
+    // Read only once an element needs a component, like a required input:
+    // a renderer with no spec yet has no use for one.
+    root.registry = computed(() => {
+      const registry = this.registry() ?? config.registry;
+      if (!registry) {
+        throw new Error(
+          '[ngx-json-render] <json-render> has no registry. Bind [registry], or supply one for the whole app with provideJsonRender({ registry }).',
+        );
+      }
+      return registry;
+    });
     root.loading = this.loading;
-    root.fallback = this.fallback;
-    root.limits = this.renderLimits;
-    root.catalog = this.catalog;
+    root.fallback = computed(() => this.fallback() ?? config.fallback ?? null);
+    root.limits = this.limits;
+    root.catalog = this.specCatalog;
     root.store = this.store;
     root.initialState = computed(
       () => this.state() ?? this.spec()?.state ?? {},
     );
-    root.handlers = this.handlers;
-    root.onAction = this.onAction;
-    root.navigate = this.navigate;
-    root.validationFunctions = this.validationFunctions;
-    root.functions = this.functions;
+    root.handlers = computed(() =>
+      mergeByName(config.handlers, this.handlers()),
+    );
+    root.onAction = computed(() => this.onAction() ?? config.onAction ?? null);
+    root.navigate = computed(() => this.navigate() ?? config.navigate ?? null);
+    root.validationFunctions = computed(() =>
+      mergeByName(config.validationFunctions, this.validationFunctions()),
+    );
+    root.functions = computed(() =>
+      mergeByName(config.functions, this.functions()),
+    );
     root.directiveRegistry = computed(() => {
-      const definitions = this.directives();
+      const definitions = mergeDirectives(config.directives, this.directives());
       return definitions ? createDirectiveRegistry(definitions) : undefined;
     });
     root.emitStateChange = (changes) => this.stateChange.emit(changes);
@@ -233,7 +277,7 @@ export class JsonRenderer {
     // that describes the finished spec.
     effect(() => {
       if (this.loading()) return;
-      reportSpecCheck(this.checked(), this.validate());
+      reportSpecCheck(this.checked(), this.mode());
     });
 
     // With validation off, a `root` that names no element renders nothing and
@@ -264,7 +308,7 @@ export class JsonRenderer {
     // A spec whose errors survived the fixes does not render under `strict`.
     // Reporting it and drawing half of it anyway is the behaviour the mode
     // exists to refuse.
-    if (this.validate() === 'strict' && checked.hasErrors) return null;
+    if (this.mode() === 'strict' && checked.hasErrors) return null;
     const spec = checked.spec;
     return spec?.root && spec.elements?.[spec.root] ? spec.root : null;
   });

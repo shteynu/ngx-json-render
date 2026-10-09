@@ -250,6 +250,38 @@ export class Page {
 }
 ```
 
+### Defaults for the whole app
+
+A chat renders a spec in every message, and binding the same registry and handlers on each one gets old. `provideJsonRender` sets them once:
+
+```ts
+bootstrapApplication(App, {
+  providers: [
+    provideJsonRender(() => {
+      const orders = inject(OrderService); // the function form runs in an injection context
+      return {
+        registry,
+        catalog,
+        handlers: { cancelOrder: (params) => orders.cancel(params['id']) },
+      };
+    }),
+  ],
+});
+```
+
+```html
+<json-render [spec]="m.spec" />
+```
+
+Every option input can be provided: `registry`, `fallback`, `validate`, `renderLimits`, `catalog`, `handlers`, `onAction`, `navigate`, `validationFunctions`, `functions` and `directives`. Per-instance inputs (`spec`, `loading`, `state`, `store`) cannot. The rules:
+
+- An input bound on the element wins over the provided value. One left `null` or `undefined` falls through to it.
+- `handlers`, `functions`, `validationFunctions` and `directives` merge by name instead, the element's entry winning a name both define. A chat can provide app-wide handlers and still add one for a single message.
+- Everything else replaces. A `registry` belongs to its catalog, so two are never mixed behind your back; to combine them, spread them yourself (`{ ...registry, ...extraRegistry }`).
+- It works in application, route and component `providers`. A provider below another extends it by the same rules.
+
+With no registry bound and none provided, the renderer throws, naming both ways to supply one.
+
 ## Streaming a UI from an LLM
 
 Specs stream as JSONL patch lines (RFC 6902). Render partial specs as they arrive — the renderer tolerates missing elements while `loading` is true:
@@ -391,15 +423,16 @@ import { JsonRenderer, injectChatUI } from 'ngx-json-render';
     @for (m of chat.messages(); track m.id) {
       <p>{{ m.text }}</p>
       @if (m.spec) {
-        <json-render [spec]="m.spec" [registry]="registry" />
+        <json-render [spec]="m.spec" />
       }
     }
     <button (click)="chat.send('show me revenue for the quarter')">Ask</button>
   `,
 })
 export class ChatPage {
+  // The registry comes from provideJsonRender({ registry }) in the app's
+  // providers: see "Defaults for the whole app".
   readonly chat = injectChatUI({ api: '/api/chat' });
-  readonly registry = registry;
 }
 ```
 
@@ -965,7 +998,26 @@ rather than the one holding session, entitlement or billing state.
 **A spec chooses the navigation target.** `onSuccess: { navigate }` passes its
 string to the `navigate` callback you provide, verbatim. Treat it as untrusted:
 match it against known routes, and never hand it to `window.location` or
-`router.navigateByUrl` unchecked.
+`router.navigateByUrl` unchecked. `ngx-json-render/router` does the checking
+for an app on the Angular `Router`:
+
+```ts
+import { injectRouterNavigate } from 'ngx-json-render/router';
+
+provideJsonRender(() => ({
+  registry,
+  navigate: injectRouterNavigate({ allow: ['/thanks', /^\/orders\/\d+$/] }),
+}));
+```
+
+It passes a path to `router.navigateByUrl` only when `allow` lets it through
+(strings match the path exactly, before any `?` or `#`; a `RegExp` is tested
+against it; a function decides). `allow` is required, because only the app
+knows which of its routes a generated UI may open. Whatever `allow` says, a
+path that does not start with a single `/` is refused: no other origin, no
+`javascript:` or other scheme, no relative path, no backslash or control
+character. A refused path, or a navigation the router rejects, is reported
+with `console.warn` and goes nowhere.
 
 **A spec cannot render forever.** Two elements naming each other as children,
 or one naming itself, would recurse until the tab died. The renderer refuses to
@@ -1013,6 +1065,8 @@ Components: `JsonRenderer` (`<json-render>`), `JrChildren`, `JrConfirmDialog`, `
 
 Injectables/helpers: `injectRenderContext`, `injectElementKey`, `injectRepeatScope`, `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`, `injectActions`, `injectAction`, `injectValidation`, `injectFieldValidation`, `injectUIStream`, `injectChatUI`, `injectDevtoolsActive`, `injectConfirmContext`, `jsonRenderMessage`, `isActionCancelled`, `checkSpec`.
 
+App-wide defaults: `provideJsonRender`, the `JSON_RENDER_CONFIG` token it fills, and the type `JsonRenderConfig`.
+
 Tokens: `JR_CONFIRM_DIALOG` (replace the confirmation dialog), `JR_CONFIRM_LABELS` (its two words), `CONFIRM_CONTEXT`, `RENDER_CONTEXT`, `REPEAT_SCOPE`.
 
 Spec checking: `checkSpec`, `formatSpecCheckIssues`, and the types
@@ -1031,6 +1085,8 @@ Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec
 
 MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
 
+Router (`ngx-json-render/router`): `injectRouterNavigate`, and the type `RouterNavigateOptions`. Needs the optional peer `@angular/router`, which an Angular app on the router already has.
+
 Devtools (`ngx-json-render/devtools`): `JsonRenderDevtools` (`<json-render-devtools>`), and the types `DevtoolsEvent`, `PanelPosition`. Needs the optional peer `@json-render/devtools`.
 
 Testing (`ngx-json-render/testing`): `renderSpec`, `renderComponent`, `recordedTransport`, `specStream`, `usageLine`.
@@ -1042,7 +1098,7 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 | Input                 | Type                                 | Purpose                                                 |
 | --------------------- | ------------------------------------ | ------------------------------------------------------- |
 | `spec`                | `Spec \| null`                       | The UI spec (may be partial while streaming)            |
-| `registry`            | `ComponentRegistry`                  | Catalog type → Angular component                        |
+| `registry`            | `ComponentRegistry`                  | Catalog type → component; required unless provided      |
 | `loading`             | `boolean`                            | Suppress missing-element warnings while streaming       |
 | `fallback`            | `Type<unknown>`                      | Component for unknown types                             |
 | `validate`            | `'off' \| 'warn' \| 'strict'`        | Check the settled spec's structure (default `'off'`)    |
@@ -1058,6 +1114,8 @@ Everything from `@json-render/core` (types, `createStateStore`, `nestedToFlat`, 
 | `directives`          | `DirectiveDefinition[]`              | Custom `$`-prefixed expressions                         |
 
 Output: `(stateChange)` — batched `{ path, value }[]` in uncontrolled mode.
+
+Every input but `spec`, `loading`, `state` and `store` can come from `provideJsonRender` instead; see [Defaults for the whole app](#defaults-for-the-whole-app).
 
 ## License
 

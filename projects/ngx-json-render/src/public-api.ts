@@ -17,6 +17,13 @@ export {
   type ConfirmLabels,
 } from './lib/confirm-tokens';
 
+// App-wide defaults
+export {
+  JSON_RENDER_CONFIG,
+  provideJsonRender,
+  type JsonRenderConfig,
+} from './lib/provide';
+
 // Render context / DI
 export {
   ELEMENT_KEY,

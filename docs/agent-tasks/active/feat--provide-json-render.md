@@ -3,95 +3,76 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Base commit: `169578e` (Release ngx-json-render 0.8.2)
-- Status: **not started**: recorded 2026-10-09 as a future task
+- Base commit: `2f7d188`
+- Status: **implemented and committed** (2026-10-09), not released
 - Last updated: 2026-10-09
 - Last agent/tool: Claude Code (Opus 5.5)
 
 ## Objective
 
 Add `provideJsonRender({...})` so an app can set renderer defaults once in
-its providers, instead of binding them on every `<json-render>`.
+its providers, instead of binding them on every `<json-render>`; plus a
+router-backed `navigate` that checks spec paths.
 
-## User-visible outcome
+## What was built
 
-In a chat that renders a spec in every message, the template shrinks to
-`<json-render [spec]="m.spec" />`. Registry, handlers and the rest come from
-DI. An input set on the element still wins over the provided default.
-
-## Context
-
-Both other Angular json-render renderers have this:
-
-- `@threadplane/render` has `provideRender({ registry, store, functions, handlers })`.
-- `@ng-json-render/core` has `provideJsonRender`.
-
-They were compared on 2026-10-09.
-
-ngx-json-render has no `provide*` function in its public API. Every option is
-an input on `JsonRenderer` (`projects/ngx-json-render/src/lib/renderer.component.ts:93-174`):
-`registry` (required), `fallback`, `validate`, `renderLimits`, `catalog`,
-`handlers`, `onAction`, `navigate`, `validationFunctions`, `functions`,
-`directives`. Confirm-dialog labels and component already go through DI
-(`JR_CONFIRM_LABELS`, `JR_CONFIRM_DIALOG`).
-
-## Scope
-
-- Add an `InjectionToken` plus `provideJsonRender(options)` that returns
-  `EnvironmentProviders`, covering the options above that make sense
-  app-wide.
-- `registry` becomes optional on the element when a provider supplies one.
-  With neither, give a clear error. Keep the type ergonomic.
-- Precedence: element input, then nearest provider, then built-in default.
-  Decide whether objects such as `handlers` and `functions` merge or
-  replace, and document the choice.
-- A router-backed `navigate`, since `navigate` is the option an app sets
-  once: something like `withRouterNavigation({ allow })` (name open) that
-  injects `Router` and calls `navigateByUrl` only for a path that passes the
-  check, warning and doing nothing otherwise. Default check: the path
-  matches a route in the `Router` config; `allow` (list or predicate)
-  narrows it further. Absolute URLs, `javascript:` and other schemes are
-  always refused. This is the README Security rule ("never hand it to
-  `router.navigateByUrl` unchecked") turned into code, so apps stop
-  writing the check by hand.
-- Update the README quick start and the chat example, the agent skill
-  (`skills/ngx-json-render/SKILL.md`, `npm run check:skills`), and the
-  `ng add` schematic if it writes a registry binding.
-
-## Non-goals
-
-- Per-instance state (`state`, `store`, `spec`, `loading`). These stay
-  inputs.
-- Syncing `push`/`pop` screens with the URL (deep links, browser Back
-  popping `/navStack`). Decided 2026-10-09: not until someone asks.
-  Generated UIs are short-lived, and a deep link would have to rebuild the
-  spec.
-- Registry composition helpers (`withViews`, `mergeRegistries`). The
-  registry is a plain object, so spreading already works; at most add a
-  README line.
-
-## Acceptance criteria
-
-- An app with `provideJsonRender({ registry })` renders
-  `<json-render [spec]>` with no registry input.
-- An element input overrides the provided value, tested for `registry`,
-  `handlers` and `fallback`.
-- A nested provider (route or component level) overrides the root one.
-- Existing apps with no provider behave exactly as before.
-- The router `navigate` reaches `Router` for a configured route, and refuses
-  an unknown path, an absolute URL and a `javascript:` one, each tested.
-- The full project matrix from `AGENTS.md` passes.
+- `lib/provide.ts`: `JsonRenderConfig`, `JSON_RENDER_CONFIG`,
+  `provideJsonRender(config | () => config)` returning `Provider[]`. The
+  factory merges with the nearest outer provider (`skipSelf`).
+- `lib/renderer.component.ts`: `registry` is no longer `input.required`;
+  `validate` defaults to `undefined`. Every option input resolves as
+  element ?? provided ?? built-in default. Missing registry throws a named
+  error when first read (like a required input).
+- `router/` secondary entry point `ngx-json-render/router`:
+  `injectRouterNavigate({ allow })`, `RouterNavigateOptions`. Optional peer
+  `@angular/router >=19.0.0`. Registered in `angular.json` (coverage +
+  test include), `tsconfig.json` paths, `tsconfig.lib.json`,
+  `tsconfig.spec.json`.
+- Docs: README "Defaults for the whole app" (end of Quick start), chat
+  example without `[registry]`, Security navigate paragraph with the router
+  helper, inputs table, API surface; skill "App-wide defaults" with a
+  compiled `appConfig` block.
+- Tests: `lib/provide.spec.ts` (10), `router/src/router-navigate.spec.ts`
+  (12).
 
 ## Decisions made
 
-- 2026-10-09: the router `navigate` helper belongs in this task.
-- Open: merge or replace for `handlers` and `functions`; the helper's name,
-  and whether it ships from the main entry point or a secondary one
-  (`@angular/router` is not a peer today; a secondary entry point keeps it
-  optional).
+- Returns `Provider[]`, not `EnvironmentProviders`, so it also works in
+  component `providers` (acceptance asked for component-level nesting).
+- Function form runs in an injection context: handlers can `inject()`
+  services, and it is how `injectRouterNavigate` gets the `Router`.
+- `null`/`undefined` on the element falls through to the provided value.
+  So `[fallback]="null"` cannot switch a provided fallback off.
+- Merge: `handlers`, `functions`, `validationFunctions`, `directives` merge
+  by name, inner/element wins. Everything else, including `registry` and
+  `renderLimits`, replaces whole.
+- Router helper: `allow` is **required**, and there is no "matches the
+  Router config" default. Deviation from the original scope: Angular has
+  no public synchronous "does this URL match a route" check, lazy children
+  are not loaded, and most apps have a `**` route, so such a default would
+  allow everything. Always refused: anything not starting with a single
+  `/`, backslashes, control characters. Router rejection is caught and
+  warned.
+- Name `injectRouterNavigate` (inject-prefixed, needs an injection context).
+- Templates lose the compile-time "registry is required" check; it is now
+  the runtime error.
+
+## Non-goals
+
+- Per-instance state (`state`, `store`, `spec`, `loading`).
+- Syncing `push`/`pop` screens with the URL. Decided 2026-10-09: not until
+  someone asks.
+- Registry composition helpers; README says to spread.
+
+## Verification (2026-10-09, before commit)
+
+- `npm run build` — pass; dist has `./router`, `@angular/router` only in
+  `fesm2022/ngx-json-render-router.mjs`.
+- `npm test` — pass: ngx-json-render 438/438 with coverage thresholds,
+  demo 73/73, mcp-app 17/17, Material 78/78, schematics.
+- `npm run check:skills` — all 10 snippet modules compile.
+- `node scripts/consumer-smoke.mjs 19` — still running at commit time; result not recorded here yet.
 
 ## Next concrete step
 
-Read `renderer.component.ts` (inputs, and the wiring into `root` around
-line 200) and `root-context.ts`. Then write the token and the precedence
-test.
+Get the Angular 19 consumer smoke result, then release. Additive only, so 0.9.1 keeps the catalog peer as it is; 0.10.0 would need it widened again.

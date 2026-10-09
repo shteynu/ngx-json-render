@@ -11,6 +11,7 @@
     "src/**/*.spec.ts",
     "testing/src/**/*.ts",
     "mcp/src/**/*.ts",
-    "devtools/src/**/*.ts"
+    "devtools/src/**/*.ts",
+    "router/src/**/*.ts"
   ]
 }
