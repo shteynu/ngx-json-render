@@ -29,6 +29,7 @@ export {
   JrmChip,
   JrmHeading,
   JrmIcon,
+  JrmImage,
   JrmList,
   JrmListItem,
   JrmMetric,

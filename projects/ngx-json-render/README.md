@@ -62,7 +62,7 @@ the Material catalog has one too (`--skill ngx-json-render-material`).
 
 Writing a catalog is the honest first step, but you do not have to take it to
 see a spec render. [`ngx-json-render-material`](https://www.npmjs.com/package/ngx-json-render-material)
-ships 28 Angular Material components already registered, so a generated spec
+ships 29 Angular Material components already registered, so a generated spec
 renders with nothing else wired up:
 
 ```bash
@@ -119,7 +119,7 @@ against `@hashbrownai/angular` 0.6.1, as published on 2026-09-30:
 | What the model emits | A json-render spec, streamed as RFC 6902 patches — the format the React, Vue, Svelte and Solid renderers read, so a catalog and a spec move between frameworks unchanged | Hashbrown's own JSON, generated against a schema built from the components you expose; read by Hashbrown's Angular and React clients                 |
 | Server               | Anything that streams text: the [AI SDK](https://ai-sdk.dev) in a few lines, or your own endpoint; `catalog.prompt()` writes the system prompt                           | An [AG-UI](https://docs.ag-ui.com) endpoint, built with Hashbrown's adapters (OpenAI, Anthropic, Google, Azure, Bedrock, Ollama) or your own mapping |
 | Angular              | 20, 21 and 22, each tested in CI                                                                                                                                         | 22 only since 0.6 (0.5 supported 20 and 21)                                                                                                          |
-| Components           | Your own, or 28 ready-made Angular Material ones ([`ngx-json-render-material`](https://www.npmjs.com/package/ngx-json-render-material))                                  | Your own (`exposeComponent`, UI kits)                                                                                                                |
+| Components           | Your own, or 29 ready-made Angular Material ones ([`ngx-json-render-material`](https://www.npmjs.com/package/ngx-json-render-material))                                  | Your own (`exposeComponent`, UI kits)                                                                                                                |
 | Beyond rendering     | Rendering-focused: state and two-way bindings in the spec, actions, visibility, repeat, watch, confirmation dialogs                                                      | An agent toolkit: client-side tools, a QuickJS sandbox for model-written code, shared agent state, interrupts, streaming Markdown                    |
 | License              | Apache-2.0                                                                                                                                                               | MIT                                                                                                                                                  |
 

@@ -70,6 +70,52 @@ export class JrmIcon {
   readonly props = this.ctx.props;
 }
 
+/**
+ * An image from an absolute `https:` URL. Any other src renders nothing: it
+ * comes from a model, and the catalog's schema cannot check a src bound to an
+ * expression, so the component checks the resolved value itself. No referrer
+ * is sent, so the image host does not learn which page generated the UI.
+ */
+@Component({
+  selector: 'jrm-image',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (src(); as src) {
+      <img
+        class="jrm-image"
+        [src]="src"
+        [alt]="props().alt"
+        [style.width.px]="props().width ?? null"
+        [style.height.px]="props().height ?? null"
+        [style.object-fit]="props().fit ?? 'cover'"
+        loading="lazy"
+        decoding="async"
+        referrerpolicy="no-referrer"
+      />
+    }
+  `,
+  styles: `
+    :host { display: block; }
+    .jrm-image { display: block; max-width: 100%; }
+  `,
+})
+export class JrmImage {
+  private readonly ctx = injectRenderContext<MaterialProps<'Image'>>();
+  readonly props = this.ctx.props;
+  readonly src = computed(() => httpsUrl(this.props().src));
+}
+
+/** `value` normalised if it is an absolute `https:` URL, otherwise null. */
+function httpsUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Key metric tile with an optional delta and trend direction. */
 @Component({
   selector: 'jrm-metric',

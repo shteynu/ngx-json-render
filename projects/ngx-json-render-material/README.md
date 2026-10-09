@@ -4,7 +4,7 @@
 
 Angular Material catalog for [`ngx-json-render`](https://www.npmjs.com/package/ngx-json-render) — a ready-made component vocabulary an LLM can generate UI against, so you don't have to write one before your first generated screen.
 
-`ngx-json-render` gives you the renderer. This gives you the 28 components it renders.
+`ngx-json-render` gives you the renderer. This gives you the 29 components it renders.
 
 ## Install
 
@@ -90,7 +90,7 @@ import { materialCatalog } from 'ngx-json-render-material/catalog';
 | Group        | Components                                                                                               |
 | ------------ | -------------------------------------------------------------------------------------------------------- |
 | Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider`                           |
-| Typography   | `Heading`, `Text`, `Icon`                                                                                |
+| Typography   | `Heading`, `Text`, `Icon`, `Image`                                                                       |
 | Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                            |
 | Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
 | Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                      |
@@ -209,6 +209,7 @@ export class BrandedCard {
 
 - `Tabs` discovers its tabs from `Tab` children in the spec rather than through `@ContentChildren`, which a spec-driven tree cannot satisfy. Each `Tab` hands its label and body to the parent, which replays them into real `<mat-tab>` elements.
 - `Table` takes `columns` and `rows` as props. Bind `rows` to a state array with `{"$state": "/path"}` rather than using `repeat`.
+- `Image` renders only an absolute `https:` URL and nothing for any other `src` — `javascript:`, `data:`, `http:` and relative URLs included. The schema says so too, so `checkSpec` reports such a `src`; the component checks again at render time, because a `src` bound to `$state` is only known then. It sends no referrer. `alt` is required; `""` marks a decorative image.
 - `List` requires `ListItem` children, and `Tabs` requires `Tab` children; the catalog descriptions say so, and the prompt carries them through to the model.
 
 ## Known issue: the test runner does not exit
