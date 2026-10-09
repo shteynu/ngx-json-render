@@ -85,7 +85,9 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
 - `server/tool.ts`: what the model sees of the tool. A short description, and
   an input schema with each component's props and each action's params,
   which the SDK also enforces. A spec whose children or root are missing is
-  sent back to the model as an error.
+  sent back to the model as an error, and so is a `$template` that reads a
+  repeat item as `${$item/field}`: it would render as an empty string, and the
+  error tells the model to write `${field}`.
 - `server/catalog.ts`: the catalog the tool describes to the model, the
   Material catalog plus a `sendMessage` action (below). The published catalog
   stays host-neutral; the action needs the view's handler.

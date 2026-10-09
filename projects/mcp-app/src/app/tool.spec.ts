@@ -126,4 +126,51 @@ describe('render-ui tool', () => {
       'Element "card" references child "ghost"',
     );
   });
+
+  it('tells the model to write ${field}, not ${$item/field}, in a $template', () => {
+    const list = (text: string, label: string) => ({
+      root: 'list',
+      state: { reps: [{ id: 'a', name: 'Ada', attainment: 92 }] },
+      elements: {
+        list: {
+          type: 'List',
+          props: {},
+          repeat: { statePath: '/reps', key: 'id' },
+          children: ['row'],
+        },
+        row: {
+          type: 'ListItem',
+          props: { title: { $template: text } },
+          on: {
+            press: {
+              action: 'sendMessage',
+              params: { text: { $template: label } },
+            },
+          },
+          children: [],
+        },
+      },
+    });
+
+    expect(
+      specProblems(list('${name}: ${attainment}%', 'Open ${name}')),
+    ).toBeUndefined();
+
+    const problems = specProblems(
+      list('${$item/name}: ${$item.attainment}%', 'Open ${$item/name}'),
+    );
+    expect(problems).toContain(
+      'Element "row" props.title: inside $template write ${name}, not ${$item/name}',
+    );
+    expect(problems).toContain(
+      'Element "row" props.title: inside $template write ${attainment}, not ${$item.attainment}',
+    );
+    expect(problems).toContain(
+      'Element "row" on.press.params.text: inside $template write ${name}, not ${$item/name}',
+    );
+  });
+
+  it('keeps the $template hint in the tool description', () => {
+    expect(TOOL_DESCRIPTION).toContain('${field} inside a $template');
+  });
 });
