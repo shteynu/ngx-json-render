@@ -122,6 +122,12 @@ export {
 
 // Devtools
 export { injectDevtoolsActive } from './lib/devtools';
+// Private API for ngx-json-render/devtools; may change in any release.
+export {
+  ɵregisterStreamObserver,
+  type StreamObserver,
+  type StreamObserverUsage,
+} from './lib/streaming';
 
 // Core re-exports (for convenience)
 export type {

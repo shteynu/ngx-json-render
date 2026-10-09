@@ -11,6 +11,7 @@ import {
   formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
+import { notifyStreamObservers } from './observer';
 import { applyPatch } from './patch';
 import {
   createLineConsumer,
@@ -231,6 +232,8 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
         ? { ...previousSpec, elements: { ...previousSpec.elements } }
         : { root: '', elements: {} };
     spec.set(currentSpec);
+    notifyStreamObservers('onStart');
+    let failed = false;
 
     const handleLine = (line: string) => {
       const parsed = parseLine(line);
@@ -238,11 +241,13 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       gate.commit(() => {
         if (parsed.type === 'usage') {
           usage.set(parsed.usage);
+          notifyStreamObservers('onUsage', parsed.usage);
           return;
         }
         rawLines.update((prev) => [...prev, line]);
         currentSpec = applyPatch(currentSpec, parsed.patch);
         spec.set(currentSpec);
+        notifyStreamObservers('onPatch', parsed.patch);
       });
     };
 
@@ -281,6 +286,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
           const invalid = new Error(
             `Generated spec failed validation:\n${formatSpecCheckIssues(check.issues)}`,
           );
+          failed = true;
           error.set(invalid);
           options.onError?.(invalid);
           return;
@@ -289,6 +295,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       });
     } catch (err) {
       if (isAbortError(err)) return;
+      failed = true;
       const resolvedError = err instanceof Error ? err : new Error(String(err));
       gate.commit(() => {
         error.set(resolvedError);
@@ -296,6 +303,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       });
     } finally {
       gate.commit(() => isStreaming.set(false));
+      notifyStreamObservers('onEnd', !failed);
     }
   };
 

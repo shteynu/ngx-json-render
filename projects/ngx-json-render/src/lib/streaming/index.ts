@@ -8,6 +8,11 @@
  */
 export { applyPatch } from './patch';
 export {
+  ɵregisterStreamObserver,
+  type StreamObserver,
+  type StreamObserverUsage,
+} from './observer';
+export {
   buildSpecFromParts,
   flatToTree,
   getTextFromParts,

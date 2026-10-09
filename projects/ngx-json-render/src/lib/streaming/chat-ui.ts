@@ -12,6 +12,7 @@ import {
   formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
+import { notifyStreamObservers } from './observer';
 import { applyPatch } from './patch';
 import { createStreamSession, isAbortError, streamRequest } from './transport';
 
@@ -196,6 +197,8 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
     messages.update((prev) => [...prev, userMessage, assistantMessage]);
     isStreaming.set(true);
     error.set(null);
+    notifyStreamObservers('onStart');
+    let failed = false;
 
     // Mutable state for accumulating the assistant response
     let accumulatedText = '';
@@ -209,24 +212,26 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
         // touch, so the message can hold it directly — no snapshot copy.
         currentSpec = applyPatch(currentSpec, patch);
         const snapshot = currentSpec;
-        gate.commit(() =>
+        gate.commit(() => {
           messages.update((prev) =>
             prev.map((m) =>
               m.id === assistantId ? { ...m, spec: snapshot } : m,
             ),
-          ),
-        );
+          );
+          notifyStreamObservers('onPatch', patch);
+        });
       },
       onText(line) {
         accumulatedText += (accumulatedText ? '\n' : '') + line;
         const snapshot = accumulatedText;
-        gate.commit(() =>
+        gate.commit(() => {
           messages.update((prev) =>
             prev.map((m) =>
               m.id === assistantId ? { ...m, text: snapshot } : m,
             ),
-          ),
-        );
+          );
+          notifyStreamObservers('onText', line);
+        });
       },
     });
 
@@ -274,6 +279,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
           const invalid = new Error(
             `Generated spec failed validation:\n${formatSpecCheckIssues(check.issues)}`,
           );
+          failed = true;
           error.set(invalid);
           options.onError?.(invalid);
           return;
@@ -287,6 +293,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       // replaced would otherwise leave the placeholder behind.
       dropEmptyPlaceholder();
       if (isAbortError(err)) return;
+      failed = true;
       const resolvedError = err instanceof Error ? err : new Error(String(err));
       gate.commit(() => {
         error.set(resolvedError);
@@ -294,6 +301,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       });
     } finally {
       gate.commit(() => isStreaming.set(false));
+      notifyStreamObservers('onEnd', !failed);
     }
   };
 
