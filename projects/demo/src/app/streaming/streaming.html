@@ -69,10 +69,13 @@
       <p class="hint">Pick a prompt to generate a UI.</p>
     }
     <json-render
+      #renderer
       [spec]="ui.spec()"
       [registry]="registry"
       [loading]="ui.isStreaming()"
     />
+    <!-- Dev mode only: the deployed (production) demo never loads the panel. -->
+    <json-render-devtools [renderer]="renderer" [catalog]="catalog" />
   </section>
 
   <aside class="pane side">

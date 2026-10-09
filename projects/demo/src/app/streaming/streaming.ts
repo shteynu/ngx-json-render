@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { JsonRenderer, injectUIStream } from 'ngx-json-render';
+import { JsonRenderDevtools } from 'ngx-json-render/devtools';
 import { catalog } from '../catalog/catalog';
 import { registry } from '../catalog/registry';
 import { ApiKeyStore } from '../live/api-key';
@@ -29,12 +30,13 @@ const LINE_DELAY_MS = 220;
  */
 @Component({
   selector: 'app-stream',
-  imports: [JsonRenderer, SpecCheck],
+  imports: [JsonRenderDevtools, JsonRenderer, SpecCheck],
   templateUrl: './streaming.html',
   styleUrl: './streaming.css',
 })
 export class StreamTab implements OnInit {
   readonly registry = registry;
+  readonly catalog = catalog;
   readonly recordings = RECORDINGS;
   readonly componentNames = catalog.componentNames;
   readonly keys = inject(ApiKeyStore);
