@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Reshoot docs/streaming.gif — the demo's Streaming tab assembling a dashboard.
+ * Reshoot docs/streaming.gif — the demo's Streaming tab assembling the sales
+ * dashboard, its first recording, which the tab replays on its own.
  *
  * Both READMEs embed that GIF, and it went stale across several UI versions
  * before anyone noticed, because reshooting it was an undocumented pile of
@@ -8,7 +9,7 @@
  *
  * It drives a headless Chrome over the DevTools Protocol rather than any
  * interactive screenshot tool. The recorded transport emits a patch line every
- * 220ms and the whole stream lasts about 3.5s, so frames have to land at known
+ * 220ms and the whole stream lasts about 7s, so frames have to land at known
  * points on a fixed clock; a round trip through a screenshot tool blurs
  * several patches into one frame and the UI appears to jump.
  *
@@ -50,17 +51,20 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 /** Width of the README's image column at 2x — the GIF is shown scaled down. */
 const WIDTH = 1568;
 /**
- * Capture height. The page measures taller than this (its scrollHeight was
- * 1018 when this was written); the shipped GIF is 965 because the tail is
- * empty padding below the dashboard. The script reports both, so a page that
- * grows past the frame is visible rather than silently clipped.
+ * Capture height: the sales dashboard down to its footer line, measured on
+ * 2026-10-09 (the page itself is taller — the stream panel and padding sit
+ * below). The script reports both, so a page that grows past the frame is
+ * visible rather than silently clipped.
  */
-const HEIGHT = 965;
+const HEIGHT = 1060;
 
 /** Frames taken while the stream runs, and the gap between them. */
-const SHOTS = 13;
+const SHOTS = 24;
 const EVERY_MS = 300;
-/** How long the finished GIF rests on the idle frame and on the result. */
+/**
+ * How long the finished GIF rests on its first frame (the stream just
+ * started) and on the result.
+ */
 const IDLE_HOLD_S = 0.9;
 const RESULT_HOLD_S = 2.2;
 
@@ -242,31 +246,35 @@ try {
     mobile: false,
   });
 
-  await page('Page.navigate', { url: origin });
+  // Open on another tab: the Streaming tab replays its first recording the
+  // moment it mounts, so landing on it directly would start the stream
+  // before the first frame.
+  await page('Page.navigate', { url: `${origin}/#playground` });
 
   await waitFor(
-    `[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Streaming')`,
+    `[...document.querySelectorAll('.tabs a')].some((a) => a.textContent.trim() === 'Streaming')`,
     'the demo shell',
   );
 
-  // Land on the Streaming tab and let it settle before the first frame.
+  // The READMEs say what the package is; the GIF only shows it working, so
+  // the landing hero above the tabs and the key panel below them stay out of
+  // the frame.
   await evaluate(`
-    [...document.querySelectorAll('button')]
-      .find((b) => b.textContent.trim() === 'Streaming').click();
+    const style = document.createElement('style');
+    style.textContent = '.hero, app-key-panel { display: none !important; }';
+    document.head.append(style);
+  `);
+  await sleep(1200);
+
+  // Switching to the tab starts the replay; sample it on a fixed clock.
+  await evaluate(`
+    [...document.querySelectorAll('.tabs a')]
+      .find((a) => a.textContent.trim() === 'Streaming').click();
   `);
   await waitFor(
     `!!document.querySelector('.switch button')`,
     'the prompt picker',
   );
-  await sleep(1200);
-
-  await shot('idle');
-
-  // Start the generation, then sample it on a fixed clock.
-  await evaluate(`
-    [...document.querySelectorAll('.switch button')]
-      .find((b) => /Weekly/.test(b.textContent)).click();
-  `);
 
   for (let i = 0; i < SHOTS; i++) {
     await sleep(EVERY_MS);
@@ -292,7 +300,7 @@ try {
   if (scrollHeight > height) {
     console.warn(
       `Note: the page is ${scrollHeight - height}px taller than the frame. ` +
-        'That tail was empty padding when this was written — check the last ' +
+        'That tail was below the dashboard when this was written — check the last ' +
         'frame, and pass --height if the dashboard is now clipped.',
     );
   }
