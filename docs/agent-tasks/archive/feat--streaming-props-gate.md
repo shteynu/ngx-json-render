@@ -4,7 +4,7 @@
 
 - Branch: `main` (this repo commits straight to main)
 - Base commit: `cba4ec0`
-- Status: **implemented and committed** (2026-10-09), not released
+- Status: **released** in ngx-json-render 0.9.0 (with ngx-json-render-material 0.3.12), 2026-10-09
 - Last updated: 2026-10-09
 - Last agent/tool: Claude Code (Opus 5.5)
 
@@ -74,4 +74,4 @@ of half-filled. In this repo nothing does: the demo binds `catalog` only on
 
 ## Next concrete step
 
-Release with the behaviour change in the notes (tags are the user's).
+None. Archived after the 0.9.0 release; the follow-ups above are not queued.
