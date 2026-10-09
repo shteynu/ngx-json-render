@@ -5,8 +5,8 @@
 - Branch: feat/material-image
 - Base branch: main
 - Base commit: 11efc05
-- Current HEAD: 11efc05 (nothing committed on the branch yet)
-- Status: implemented and verified; uncommitted, awaiting the user's go to commit
+- Current HEAD: 587d6b2 on main (squash of #10)
+- Status: merged 2026-10-09 as #10; issue #1 closed
 - Last updated: 2026-10-09
 - Last agent/tool: Claude Code
 
@@ -97,5 +97,5 @@ this task; it is not part of this change.
 
 ## Next concrete step
 
-Commit on the user's go (message proposed in chat), then push and open a PR
-that closes #1.
+None on this branch. `Image` reaches npm with the next release of both
+packages; the MCP App CSP question stays open.
