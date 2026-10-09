@@ -45,6 +45,15 @@ an input on `JsonRenderer` (`projects/ngx-json-render/src/lib/renderer.component
 - Precedence: element input, then nearest provider, then built-in default.
   Decide whether objects such as `handlers` and `functions` merge or
   replace, and document the choice.
+- A router-backed `navigate`, since `navigate` is the option an app sets
+  once: something like `withRouterNavigation({ allow })` (name open) that
+  injects `Router` and calls `navigateByUrl` only for a path that passes the
+  check, warning and doing nothing otherwise. Default check: the path
+  matches a route in the `Router` config; `allow` (list or predicate)
+  narrows it further. Absolute URLs, `javascript:` and other schemes are
+  always refused. This is the README Security rule ("never hand it to
+  `router.navigateByUrl` unchecked") turned into code, so apps stop
+  writing the check by hand.
 - Update the README quick start and the chat example, the agent skill
   (`skills/ngx-json-render/SKILL.md`, `npm run check:skills`), and the
   `ng add` schematic if it writes a registry binding.
@@ -53,6 +62,10 @@ an input on `JsonRenderer` (`projects/ngx-json-render/src/lib/renderer.component
 
 - Per-instance state (`state`, `store`, `spec`, `loading`). These stay
   inputs.
+- Syncing `push`/`pop` screens with the URL (deep links, browser Back
+  popping `/navStack`). Decided 2026-10-09: not until someone asks.
+  Generated UIs are short-lived, and a deep link would have to rebuild the
+  spec.
 - Registry composition helpers (`withViews`, `mergeRegistries`). The
   registry is a plain object, so spreading already works; at most add a
   README line.
@@ -65,11 +78,17 @@ an input on `JsonRenderer` (`projects/ngx-json-render/src/lib/renderer.component
   `handlers` and `fallback`.
 - A nested provider (route or component level) overrides the root one.
 - Existing apps with no provider behave exactly as before.
+- The router `navigate` reaches `Router` for a configured route, and refuses
+  an unknown path, an absolute URL and a `javascript:` one, each tested.
 - The full project matrix from `AGENTS.md` passes.
 
 ## Decisions made
 
-None yet. Open question: merge or replace for `handlers` and `functions`.
+- 2026-10-09: the router `navigate` helper belongs in this task.
+- Open: merge or replace for `handlers` and `functions`; the helper's name,
+  and whether it ships from the main entry point or a secondary one
+  (`@angular/router` is not a peer today; a secondary entry point keeps it
+  optional).
 
 ## Next concrete step
 

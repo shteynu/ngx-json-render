@@ -744,6 +744,37 @@ value it derives updates when that state does.
 `projects/ngx-json-render/src/lib/directives.spec.ts` renders every one of
 them through the renderer, which is what keeps this paragraph honest.
 
+### Switching language
+
+Where a spec's text comes from decides how it follows a language switch.
+
+**Keys, translated on the client.** A spec that says
+`{ "$t": "greeting", "params": { "name": { "$state": "/name" } } }` instead of
+the words themselves switches in place. Derive `directives` from your locale
+signal, and every prop re-resolves when it changes, with no new spec and
+nothing remounted:
+
+```ts
+readonly locale = signal('en');
+readonly directives = computed(() => [
+  ...standardDirectives,
+  createI18nDirective({ locale: this.locale(), messages }),
+]);
+```
+
+`$format` takes a `locale` the same way, for numbers, currency and dates.
+
+**Words, written by the model.** Most generated UIs are this kind: the model
+writes "Save" or "Сохранить" straight into the props. Tell it the language
+through `context` (`ui.send(prompt, { context: { locale } })`) and say what to
+do with it in your server's prompt. Text already on screen stays in the
+language it was written in; switching means asking again, and
+`previousSpec` keeps the layout while the model rewrites the words.
+
+Text inside your catalog components is your app's own i18n, as it would be
+anywhere else. The confirm dialog's two default words are `JR_CONFIRM_LABELS`
+(see [Confirmation dialogs](#confirmation-dialogs)).
+
 ## State
 
 Each `<json-render>` owns a state store (JSON Pointer addressed). Seeding order: `store` input (controlled) → `state` input → `spec.state`.

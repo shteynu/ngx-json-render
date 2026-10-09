@@ -199,6 +199,35 @@ describe('@json-render/directives', () => {
     expect(text(fixture)).toBe('Hola, Ada!');
   });
 
+  // The README's language-switch recipe rests on this: a new `directives`
+  // array re-resolves every prop on the spot, with no new spec and no
+  // remount.
+  it('re-translates when the directives input switches locale', async () => {
+    const messages = {
+      en: { greeting: 'Hello, {{name}}!' },
+      es: { greeting: 'Hola, {{name}}!' },
+    };
+    const withLocale = (locale: string) => [
+      ...standardDirectives,
+      createI18nDirective({ locale, messages }),
+    ];
+
+    const fixture = await render(
+      { $t: 'greeting', params: { name: { $state: '/name' } } },
+      { state: { name: 'Ada' }, directives: withLocale('es') },
+    );
+    const span = (fixture.nativeElement as HTMLElement).querySelector('.text');
+    expect(text(fixture)).toBe('Hola, Ada!');
+
+    (fixture.componentInstance as Host).directives.set(withLocale('en'));
+    await settle(fixture);
+
+    expect(text(fixture)).toBe('Hello, Ada!');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.text')).toBe(
+      span,
+    );
+  });
+
   it('re-resolves when the state a directive reads changes', async () => {
     const fixture = await render(
       { $math: 'add', a: { $state: '/count' }, b: 1 },
