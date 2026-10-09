@@ -20,6 +20,22 @@ function respond(lines: string[], status = 200): typeof globalThis.fetch {
   };
 }
 
+/**
+ * A transport whose first request hangs until it is aborted, and whose later
+ * requests answer with `lines` — a generation that gets superseded.
+ */
+function hangThenRespond(lines: string[]): typeof globalThis.fetch {
+  let calls = 0;
+  return async (input, init) => {
+    if (calls++ > 0) return respond(lines)(input, init);
+    return new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('Aborted', 'AbortError')),
+      );
+    });
+  };
+}
+
 /** Records every observer call as `name(args)`. */
 function recorder() {
   const calls: string[] = [];
@@ -134,6 +150,68 @@ describe('stream observers', () => {
     await chat.send('hi');
 
     expect(calls).toEqual(['start', 'end false']);
+  });
+
+  it('ends a superseded generation before the next one starts', async () => {
+    const calls = observe();
+    const ui = inContext(() =>
+      injectUIStream({
+        api: '/api/generate',
+        fetch: hangThenRespond([
+          '{"op":"add","path":"/root","value":"main"}\n',
+        ]),
+      }),
+    );
+
+    const first = ui.send('first');
+    await ui.send('second');
+    await first;
+
+    // One end per start, in order: the late settle of the aborted request
+    // does not close the second generation.
+    expect(calls).toEqual([
+      'start',
+      'end true',
+      'start',
+      'patch /root',
+      'end true',
+    ]);
+  });
+
+  it('ends a generation the moment it is stopped', async () => {
+    const calls = observe();
+    const ui = inContext(() =>
+      injectUIStream({ api: '/api/generate', fetch: hangThenRespond([]) }),
+    );
+
+    const pending = ui.send('go');
+    ui.stop();
+    expect(calls).toEqual(['start', 'end true']);
+
+    await pending;
+    expect(calls).toEqual(['start', 'end true']);
+  });
+
+  it('ends a superseded chat turn before the next one starts', async () => {
+    const calls = observe();
+    const chat = inContext(() =>
+      injectChatUI({
+        api: '/api/chat',
+        fetch: hangThenRespond(['Hello\n']),
+      }),
+    );
+
+    const first = chat.send('one');
+    await chat.send('two');
+    await first;
+
+    expect(calls).toEqual([
+      'start',
+      'end true',
+      'start',
+      'text Hello',
+      'end true',
+    ]);
   });
 
   it('keeps a generation alive when an observer throws', async () => {

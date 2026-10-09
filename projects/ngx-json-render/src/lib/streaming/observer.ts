@@ -56,3 +56,40 @@ export function notifyStreamObservers<K extends keyof StreamObserver>(
     }
   }
 }
+
+/**
+ * The start and end of one hook's generations, as observers see them.
+ *
+ * A superseded or stopped request only settles once its abort has gone
+ * through, after the next generation may already have started. Reporting its
+ * end from there would close the new generation instead of the old one, so a
+ * generation ends here the moment it is superseded or stopped, and its own
+ * late end is dropped.
+ */
+export function createObservedRuns(): {
+  /** Start a generation, ending any still open. Returns its end. */
+  start: () => (ok: boolean) => void;
+  /** End the open generation, if any, as a stop. */
+  stop: () => void;
+} {
+  let endOpen: (() => void) | null = null;
+  return {
+    start() {
+      endOpen?.();
+      let ended = false;
+      const end = (ok: boolean) => {
+        if (ended) return;
+        ended = true;
+        if (endOpen === stop) endOpen = null;
+        notifyStreamObservers('onEnd', ok);
+      };
+      const stop = () => end(true);
+      endOpen = stop;
+      notifyStreamObservers('onStart');
+      return end;
+    },
+    stop() {
+      endOpen?.();
+    },
+  };
+}

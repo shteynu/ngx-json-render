@@ -11,7 +11,7 @@ import {
   formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
-import { notifyStreamObservers } from './observer';
+import { createObservedRuns, notifyStreamObservers } from './observer';
 import { applyPatch } from './patch';
 import {
   createLineConsumer,
@@ -198,11 +198,13 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
     catalog: options.catalog ?? null,
   };
   const session = createStreamSession();
+  const runs = createObservedRuns();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
 
   const stop = () => {
     session.cancel();
+    runs.stop();
     isStreaming.set(false);
   };
 
@@ -232,7 +234,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
         ? { ...previousSpec, elements: { ...previousSpec.elements } }
         : { root: '', elements: {} };
     spec.set(currentSpec);
-    notifyStreamObservers('onStart');
+    const end = runs.start();
     let failed = false;
 
     const handleLine = (line: string) => {
@@ -303,7 +305,7 @@ export function injectUIStream(options: UIStreamOptions): UIStreamReturn {
       });
     } finally {
       gate.commit(() => isStreaming.set(false));
-      notifyStreamObservers('onEnd', !failed);
+      end(!failed);
     }
   };
 

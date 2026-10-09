@@ -12,7 +12,7 @@ import {
   formatSpecCheckIssues,
   reportSpecCheck,
 } from '../spec-validation';
-import { notifyStreamObservers } from './observer';
+import { createObservedRuns, notifyStreamObservers } from './observer';
 import { applyPatch } from './patch';
 import { createStreamSession, isAbortError, streamRequest } from './transport';
 
@@ -129,11 +129,13 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
     catalog: options.catalog ?? null,
   };
   const session = createStreamSession();
+  const runs = createObservedRuns();
 
   inject(DestroyRef).onDestroy(() => session.cancel());
 
   const stop = () => {
     session.cancel();
+    runs.stop();
     isStreaming.set(false);
   };
 
@@ -197,7 +199,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
     messages.update((prev) => [...prev, userMessage, assistantMessage]);
     isStreaming.set(true);
     error.set(null);
-    notifyStreamObservers('onStart');
+    const end = runs.start();
     let failed = false;
 
     // Mutable state for accumulating the assistant response
@@ -301,7 +303,7 @@ export function injectChatUI(options: ChatUIOptions): ChatUIReturn {
       });
     } finally {
       gate.commit(() => isStreaming.set(false));
-      notifyStreamObservers('onEnd', !failed);
+      end(!failed);
     }
   };
 
