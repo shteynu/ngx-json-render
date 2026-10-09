@@ -113,12 +113,12 @@ describe('Playground', () => {
       JSON.stringify({
         root: 'root',
         elements: {
-          root: { type: 'Grid', props: {}, children: [] },
+          root: { type: 'Toolbar', props: {}, children: [] },
         },
       }),
     );
 
-    expect(checkText(fixture)).toContain('"Grid" is not in this catalog');
+    expect(checkText(fixture)).toContain('"Toolbar" is not in this catalog');
   });
 
   it('switches catalog, starter spec and prompt together', async () => {

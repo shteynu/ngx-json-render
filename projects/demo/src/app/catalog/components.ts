@@ -6,6 +6,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { JrChildren, injectRenderContext } from 'ngx-json-render';
+import { SparklineComponent, finiteNumbers } from './charts';
 
 /** Layout container that stacks children vertically or horizontally. */
 @Component({
@@ -306,9 +307,10 @@ export class CheckboxComponent {
   }
 }
 
-/** Key metric tile. */
+/** Key metric tile, with a sparkline when the spec gives a trend. */
 @Component({
   selector: 'demo-metric',
+  imports: [SparklineComponent],
   template: `
     <div class="metric">
       <span class="metric-label">{{ props().label }}</span>
@@ -316,6 +318,7 @@ export class CheckboxComponent {
       @if (props().delta != null) {
         <span class="metric-delta" [class.down]="isDown()">{{ props().delta }}</span>
       }
+      <demo-sparkline [values]="trend()" />
     </div>
   `,
   styles: `
@@ -328,6 +331,7 @@ export class CheckboxComponent {
       border-radius: 10px;
       background: var(--surface);
       min-width: 110px;
+      height: 100%;
     }
     .metric-label { font-size: 12px; color: var(--muted); }
     .metric-value { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
@@ -340,8 +344,10 @@ export class MetricComponent {
     label?: unknown;
     value?: unknown;
     delta?: string | null;
+    trend?: unknown;
   }>();
   readonly props = this.ctx.props;
+  readonly trend = computed(() => finiteNumbers(this.props().trend));
   readonly isDown = computed(() =>
     String(this.props().delta ?? '').startsWith('-'),
   );

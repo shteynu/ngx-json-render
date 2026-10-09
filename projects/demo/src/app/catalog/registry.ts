@@ -13,6 +13,7 @@ import {
   StackComponent,
   TextComponent,
 } from './components';
+import { BarChartComponent, GridComponent, LineChartComponent } from './charts';
 
 const components: Components<typeof catalog> = {
   Stack: StackComponent,
@@ -26,6 +27,9 @@ const components: Components<typeof catalog> = {
   Metric: MetricComponent,
   Progress: ProgressComponent,
   Divider: DividerComponent,
+  Grid: GridComponent,
+  LineChart: LineChartComponent,
+  BarChart: BarChartComponent,
 };
 
 export const { registry } = defineRegistry(catalog, {

@@ -7,6 +7,18 @@ afterEach(() => {
   TestBed.resetTestingModule();
 });
 
+/** A recording by its picker label, so reordering the picker moves nothing. */
+function recording(label: string) {
+  const found = RECORDINGS.find((r) => r.label === label);
+  if (!found) throw new Error(`No recording labelled ${label}`);
+  return found;
+}
+
+const SALES = recording('Sales dashboard');
+const WEEKLY = recording('Weekly report');
+const ONBOARDING = recording('Onboarding checklist');
+const BROKEN = recording('A bad generation');
+
 async function settle(fixture: ComponentFixture<unknown>) {
   await fixture.whenStable();
   fixture.detectChanges();
@@ -66,12 +78,12 @@ describe('StreamTab', () => {
     const fixture = await render();
     const globalFetch = vi.spyOn(globalThis, 'fetch');
 
-    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    fixture.componentInstance.generate(WEEKLY.prompt);
     await drain(fixture);
 
     const ui = fixture.componentInstance.ui;
     // The patch lines, minus the usage line, which is not a patch.
-    expect(ui.rawLines().length).toBe(RECORDINGS[0].lines.length - 1);
+    expect(ui.rawLines().length).toBe(WEEKLY.lines.length - 1);
     expect(ui.error()).toBeNull();
     expect(ui.spec()?.root).toBe('root');
     expect(rendered(fixture)).toContain('Weekly report');
@@ -81,9 +93,35 @@ describe('StreamTab', () => {
     expect(globalFetch).not.toHaveBeenCalled();
   });
 
+  it('streams the sales dashboard into charts, one point per patch', async () => {
+    const fixture = await render();
+    fixture.componentInstance.generate(SALES.prompt);
+    await drain(fixture);
+
+    const ui = fixture.componentInstance.ui;
+    expect(ui.error()).toBeNull();
+    expect(ui.rawLines().length).toBe(SALES.lines.length - 1);
+
+    // The line was appended to with `/values/-` patches and ends with all
+    // thirteen weeks, next to the untouched "last year" series.
+    const chart = ui.spec()?.elements['revenue-chart'];
+    const series = chart?.props['series'] as { values: number[] }[];
+    expect(series[0].values).toHaveLength(13);
+    expect(series[1].values).toHaveLength(13);
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelectorAll('demo-line-chart path.line')).toHaveLength(2);
+    expect(host.querySelectorAll('demo-bar-chart .bar-row')).toHaveLength(5);
+    expect(host.querySelectorAll('demo-metric svg.spark')).toHaveLength(4);
+    expect(rendered(fixture)).toContain('North America');
+    expect(rendered(fixture)).toContain('Q3 figures, streamed as JSON patches');
+    // Every component the recording uses is in the catalog.
+    expect(checkText(fixture)).toContain('No structural issues');
+  }, 15_000);
+
   it('reports the usage line as token usage', async () => {
     const fixture = await render();
-    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    fixture.componentInstance.generate(WEEKLY.prompt);
     await drain(fixture);
 
     expect(fixture.componentInstance.ui.usage()).toEqual({
@@ -99,7 +137,7 @@ describe('StreamTab', () => {
   it('surfaces a failed request and keeps the tab usable', async () => {
     const fixture = await render();
     fixture.componentInstance.failNext.set(true);
-    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    fixture.componentInstance.generate(WEEKLY.prompt);
     await drain(fixture);
 
     const host = fixture.nativeElement as HTMLElement;
@@ -111,7 +149,7 @@ describe('StreamTab', () => {
 
     // The next generation recovers.
     fixture.componentInstance.failNext.set(false);
-    fixture.componentInstance.generate(RECORDINGS[1].prompt);
+    fixture.componentInstance.generate(ONBOARDING.prompt);
     await drain(fixture);
 
     expect(fixture.componentInstance.ui.error()).toBeNull();
@@ -120,7 +158,7 @@ describe('StreamTab', () => {
 
   it('renders around a bad generation instead of blanking', async () => {
     const fixture = await render();
-    const broken = RECORDINGS[2];
+    const broken = BROKEN;
 
     fixture.componentInstance.generate(broken.prompt);
     await drain(fixture);
@@ -145,7 +183,7 @@ describe('StreamTab', () => {
 
   it('holds the check until the stream finishes', async () => {
     const fixture = await render();
-    fixture.componentInstance.generate(RECORDINGS[2].prompt);
+    fixture.componentInstance.generate(BROKEN.prompt);
     await new Promise((resolve) => setTimeout(resolve, 500));
     await settle(fixture);
 
@@ -160,7 +198,7 @@ describe('StreamTab', () => {
 
   it('names what is wrong with a bad generation', async () => {
     const fixture = await render();
-    fixture.componentInstance.generate(RECORDINGS[2].prompt);
+    fixture.componentInstance.generate(BROKEN.prompt);
     await drain(fixture);
 
     const check = checkText(fixture);
@@ -176,12 +214,12 @@ describe('StreamTab', () => {
     const fixture = await render();
     const ui = fixture.componentInstance.ui;
 
-    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    fixture.componentInstance.generate(WEEKLY.prompt);
     // Let a few lines land, then switch prompts mid-stream.
     await new Promise((resolve) => setTimeout(resolve, 500));
     expect(ui.isStreaming()).toBe(true);
 
-    fixture.componentInstance.generate(RECORDINGS[1].prompt);
+    fixture.componentInstance.generate(ONBOARDING.prompt);
     await settle(fixture);
     // The replacement is still running: the aborted request must not have
     // cleared the flag on its way out.
@@ -190,7 +228,7 @@ describe('StreamTab', () => {
     await drain(fixture);
 
     expect(ui.error()).toBeNull();
-    expect(ui.rawLines().length).toBe(RECORDINGS[1].lines.length - 1);
+    expect(ui.rawLines().length).toBe(ONBOARDING.lines.length - 1);
     expect(rendered(fixture)).toContain('Getting started');
     // The superseded generation left nothing behind.
     expect(rendered(fixture)).not.toContain('Weekly report');
@@ -201,7 +239,7 @@ describe('StreamTab', () => {
     const ui = fixture.componentInstance.ui;
     const host = fixture.nativeElement as HTMLElement;
 
-    fixture.componentInstance.generate(RECORDINGS[0].prompt);
+    fixture.componentInstance.generate(WEEKLY.prompt);
     // Long enough for the heading to land, far short of the whole recording.
     await new Promise((resolve) => setTimeout(resolve, 900));
     await settle(fixture);
@@ -213,7 +251,7 @@ describe('StreamTab', () => {
     // Counted after the click, so no line can slip in between the two.
     const applied = ui.rawLines().length;
     expect(applied).toBeGreaterThanOrEqual(3);
-    expect(applied).toBeLessThan(RECORDINGS[0].lines.length - 1);
+    expect(applied).toBeLessThan(WEEKLY.lines.length - 1);
 
     expect(ui.isStreaming()).toBe(false);
     expect(ui.error()).toBeNull();
@@ -239,7 +277,7 @@ describe('StreamTab', () => {
     expect(ui.error()).toBeNull();
 
     // And the tab still works: the next generation clears the stopped state.
-    fixture.componentInstance.generate(RECORDINGS[1].prompt);
+    fixture.componentInstance.generate(ONBOARDING.prompt);
     await drain(fixture);
 
     expect(fixture.componentInstance.stopped()).toBe(false);

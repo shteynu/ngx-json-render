@@ -85,9 +85,11 @@ export const catalog = schema.createCatalog({
         label: z.string(),
         value: z.union([z.string(), z.number()]),
         delta: z.string().optional(),
+        trend: z.array(z.number()).optional(),
       }),
       slots: [],
-      description: 'Key metric tile with an optional delta',
+      description:
+        'Key metric tile with an optional delta and an optional sparkline of recent values (trend)',
     },
     Progress: {
       props: z.object({
@@ -101,6 +103,38 @@ export const catalog = schema.createCatalog({
       props: z.object({}),
       slots: [],
       description: 'Horizontal divider',
+    },
+    Grid: {
+      props: z.object({
+        minColumnWidth: z.number().optional(),
+        gap: z.number().optional(),
+      }),
+      slots: ['default'],
+      description:
+        'Responsive grid: as many equal columns as fit at minColumnWidth px (default 220), one column on narrow screens. Use for rows of metrics or cards',
+    },
+    LineChart: {
+      props: z.object({
+        labels: z.array(z.string()),
+        series: z.array(
+          z.object({ name: z.string(), values: z.array(z.number()) }),
+        ),
+        format: z.enum(['number', 'currency', 'percent']).optional(),
+        height: z.number().optional(),
+      }),
+      slots: [],
+      description:
+        'Line chart over shared x labels, up to 4 series; values[i] belongs to labels[i]. Append points with an add patch to /series/<n>/values/- to draw the line as it streams',
+    },
+    BarChart: {
+      props: z.object({
+        labels: z.array(z.string()),
+        values: z.array(z.number()),
+        format: z.enum(['number', 'currency', 'percent']).optional(),
+      }),
+      slots: [],
+      description:
+        'Horizontal bar chart for a ranking, one bar per label, in the order given',
     },
   },
   actions: {

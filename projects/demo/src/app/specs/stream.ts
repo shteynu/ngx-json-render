@@ -16,6 +16,46 @@ export interface Recording {
   readonly note?: string;
 }
 
+/**
+ * The demo's first screen: KPI tiles with sparklines, then a revenue line
+ * that grows one point per patch while the region bars fill in beside it.
+ */
+const SALES_DASHBOARD: readonly string[] = [
+  '{"op":"add","path":"/root","value":"root"}',
+  '{"op":"add","path":"/elements/root","value":{"type":"Stack","props":{"gap":16},"children":["title","intro","kpis","charts","footer"]}}',
+  '{"op":"add","path":"/elements/title","value":{"type":"Heading","props":{"content":"Q3 sales","level":1},"children":[]}}',
+  '{"op":"add","path":"/elements/intro","value":{"type":"Text","props":{"content":"Revenue, orders and where they came from, week by week.","tone":"muted"},"children":[]}}',
+  '{"op":"add","path":"/state","value":{"quarter":"Q3"}}',
+  '{"op":"add","path":"/elements/kpis","value":{"type":"Grid","props":{"minColumnWidth":130,"gap":10},"children":["k-revenue","k-orders","k-conversion","k-aov"]}}',
+  '{"op":"add","path":"/elements/k-revenue","value":{"type":"Metric","props":{"label":"Revenue","value":"$1.24M","delta":"+14.5%","trend":[82,88,85,91,94,90,97,99,96,103,101,108,106]},"children":[]}}',
+  '{"op":"add","path":"/elements/k-orders","value":{"type":"Metric","props":{"label":"Orders","value":"8,412","delta":"+6%","trend":[590,612,605,640,655,630,668,681,660,702,690,735,724]},"children":[]}}',
+  '{"op":"add","path":"/elements/k-conversion","value":{"type":"Metric","props":{"label":"Conversion","value":"3.4%","delta":"-0.2pt","trend":[3.7,3.6,3.6,3.5,3.6,3.5,3.4,3.5,3.4,3.3,3.4,3.4,3.4]},"children":[]}}',
+  '{"op":"add","path":"/elements/k-aov","value":{"type":"Metric","props":{"label":"Avg. order","value":"$147","delta":"+7.7%","trend":[139,141,140,142,143,143,145,145,146,147,146,148,147]},"children":[]}}',
+  '{"op":"add","path":"/elements/charts","value":{"type":"Grid","props":{"minColumnWidth":320,"gap":12},"children":["revenue-card","regions-card"]}}',
+  '{"op":"add","path":"/elements/revenue-card","value":{"type":"Card","props":{"title":"Weekly revenue","subtitle":"This year against last"},"children":["revenue-chart"]}}',
+  '{"op":"add","path":"/elements/revenue-chart","value":{"type":"LineChart","props":{"labels":["W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","W11","W12","W13"],"series":[{"name":"This year","values":[82000,88000]},{"name":"Last year","values":[74000,77000,79000,76000,82000,84000,81000,86000,88000,85000,90000,92000,89000]}],"format":"currency"},"children":[]}}',
+  '{"op":"add","path":"/elements/regions-card","value":{"type":"Card","props":{"title":"Revenue by region","subtitle":"Quarter to date"},"children":["regions-chart"]}}',
+  '{"op":"add","path":"/elements/regions-chart","value":{"type":"BarChart","props":{"labels":["North America","Europe","Asia-Pacific","Latin America","Middle East"],"values":[],"format":"currency"},"children":[]}}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":85000}',
+  '{"op":"add","path":"/elements/regions-chart/props/values/-","value":512000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":91000}',
+  '{"op":"add","path":"/elements/regions-chart/props/values/-","value":368000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":94000}',
+  '{"op":"add","path":"/elements/regions-chart/props/values/-","value":214000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":90000}',
+  '{"op":"add","path":"/elements/regions-chart/props/values/-","value":98000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":97000}',
+  '{"op":"add","path":"/elements/regions-chart/props/values/-","value":48000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":99000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":96000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":103000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":101000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":108000}',
+  '{"op":"add","path":"/elements/revenue-chart/props/series/0/values/-","value":106000}',
+  '{"op":"add","path":"/elements/footer","value":{"type":"Text","props":{"content":{"$template":"${/quarter} figures, streamed as JSON patches and drawn by Angular components."},"tone":"muted"},"children":[]}}',
+  '{"__meta":"usage","promptTokens":1512,"completionTokens":934,"totalTokens":2446}',
+];
+
 const WEEKLY_REPORT: readonly string[] = [
   '{"op":"add","path":"/root","value":"root"}',
   '{"op":"add","path":"/elements/root","value":{"type":"Stack","props":{"gap":16},"children":["title","intro","metrics-card","progress-card","footer"]}}',
@@ -81,6 +121,11 @@ const BROKEN_PRICING: readonly string[] = [
 ];
 
 export const RECORDINGS: readonly Recording[] = [
+  {
+    prompt: 'A Q3 sales dashboard with revenue by week and by region',
+    label: 'Sales dashboard',
+    lines: SALES_DASHBOARD,
+  },
   {
     prompt: 'A weekly report for the platform team',
     label: 'Weekly report',
