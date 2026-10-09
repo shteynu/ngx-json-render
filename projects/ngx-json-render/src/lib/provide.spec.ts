@@ -8,6 +8,7 @@ import {
   inject,
   input,
   provideZonelessChangeDetection,
+  signal,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { ActionHandler, Spec } from '@json-render/core';
@@ -203,10 +204,10 @@ describe('provideJsonRender', () => {
 
     @Component({
       imports: [JsonRenderer],
-      template: `<json-render [spec]="spec" [handlers]="handlers" />`,
+      template: `<json-render [spec]="spec()" [handlers]="handlers" />`,
     })
     class Host {
-      spec = button('save');
+      readonly spec = signal(button('save'));
       readonly handlers: Record<string, ActionHandler> = {
         save: () => void calls.push('element save'),
       };
@@ -217,8 +218,7 @@ describe('provideJsonRender', () => {
     ]);
     await press(fixture);
 
-    fixture.componentInstance.spec = button('share');
-    fixture.changeDetectorRef.markForCheck();
+    fixture.componentInstance.spec.set(button('share'));
     await settle(fixture);
     await press(fixture);
 
@@ -329,10 +329,10 @@ describe('provideJsonRender', () => {
 
       @Component({
         imports: [Section],
-        template: `<p-section [spec]="spec" />`,
+        template: `<p-section [spec]="spec()" />`,
       })
       class Host {
-        spec: Spec = TEXT;
+        readonly spec = signal<Spec>(TEXT);
       }
 
       const fixture = await mount(Host, [
@@ -343,13 +343,11 @@ describe('provideJsonRender', () => {
       ]);
       expect(find(fixture, '.p-loud')).not.toBeNull();
 
-      fixture.componentInstance.spec = button('share');
-      fixture.changeDetectorRef.markForCheck();
+      fixture.componentInstance.spec.set(button('share'));
       await settle(fixture);
       await press(fixture);
 
-      fixture.componentInstance.spec = button('save');
-      fixture.changeDetectorRef.markForCheck();
+      fixture.componentInstance.spec.set(button('save'));
       await settle(fixture);
       await press(fixture);
 
@@ -359,6 +357,7 @@ describe('provideJsonRender', () => {
     it('a route-level (environment) provider extends the root one', () => {
       TestBed.configureTestingModule({
         providers: [
+          provideZonelessChangeDetection(),
           provideJsonRender({
             registry: REGISTRY,
             validate: 'warn',
