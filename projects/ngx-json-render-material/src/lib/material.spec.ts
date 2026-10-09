@@ -96,7 +96,7 @@ describe('material catalog', () => {
   });
 
   it('holds each element to its own component’s props under checkSpec', () => {
-    // With 28 components, core's `materialCatalog.validate` checks no props at
+    // With this many components, core's `materialCatalog.validate` checks no props at
     // all. The renderer's check does — `validation` included — and leaves the
     // expressions in them alone.
     const spec = {
@@ -144,6 +144,26 @@ describe('material catalog', () => {
       'elements.broken.props.validation.checks',
       'elements.broken.props.validation.validateOn',
     ]);
+    expect(check.hasErrors).toBe(true);
+  });
+
+  it('reports an Image without alt or with a non-https src under checkSpec', () => {
+    const spec = {
+      root: 'image',
+      elements: {
+        image: {
+          type: 'Image',
+          props: { src: 'http://example.com/a.png' },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+
+    const check = checkSpec(spec, 'strict', { catalog: materialCatalog });
+
+    expect(
+      check.issues.map((issue) => issue.message.split(':')[0]).sort(),
+    ).toEqual(['elements.image.props.alt', 'elements.image.props.src']);
     expect(check.hasErrors).toBe(true);
   });
 });
@@ -902,6 +922,102 @@ describe('material content components', () => {
         .querySelector('mat-icon')
         ?.textContent?.trim(),
     ).toBe('check_circle');
+  });
+
+  it('renders an https Image with its alt, size and fit', async () => {
+    const fixture = await render({
+      root: 'image',
+      elements: {
+        image: {
+          type: 'Image',
+          props: {
+            src: 'https://example.com/cover.png',
+            alt: 'Book cover',
+            width: 120,
+            height: 80,
+            fit: 'contain',
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const img = (fixture.nativeElement as HTMLElement).querySelector(
+      'img',
+    ) as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe('https://example.com/cover.png');
+    expect(img.alt).toBe('Book cover');
+    expect(img.style.width).toBe('120px');
+    expect(img.style.height).toBe('80px');
+    expect(img.style.objectFit).toBe('contain');
+    expect(img.getAttribute('referrerpolicy')).toBe('no-referrer');
+  });
+
+  it('crops an Image to its box by default and leaves an unset size to the image', async () => {
+    const fixture = await render({
+      root: 'image',
+      elements: {
+        image: {
+          type: 'Image',
+          props: { src: 'https://example.com/a.png', alt: '' },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const img = (fixture.nativeElement as HTMLElement).querySelector(
+      'img',
+    ) as HTMLImageElement;
+    expect(img.alt).toBe('');
+    expect(img.style.width).toBe('');
+    expect(img.style.height).toBe('');
+    expect(img.style.objectFit).toBe('cover');
+  });
+
+  it('renders nothing for an Image whose src is not an absolute https URL', async () => {
+    for (const src of [
+      'javascript:alert(1)',
+      'data:image/png;base64,iVBORw0KGgo=',
+      'http://example.com/a.png',
+      '//example.com/a.png',
+      '/a.png',
+      'not a url',
+      42,
+    ]) {
+      const fixture = await render({
+        root: 'image',
+        elements: {
+          image: {
+            type: 'Image',
+            props: { src, alt: 'x' },
+            children: [],
+          },
+        },
+      } as unknown as Spec);
+
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('img'),
+      ).toBeNull();
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('checks an Image src bound to state when it resolves, not only in the schema', async () => {
+    const fixture = await render({
+      root: 'image',
+      state: { photo: 'javascript:alert(1)' },
+      elements: {
+        image: {
+          type: 'Image',
+          props: { src: { $state: '/photo' }, alt: 'Profile photo' },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('img'),
+    ).toBeNull();
   });
 
   it('gives a Metric an arrow that matches its trend', async () => {

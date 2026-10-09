@@ -13,9 +13,14 @@ export const sendMessageParams = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
+// Image is left out: `VIEW_CSP` in `app.ts` admits no image origin, so the
+// host would block every picture a model put in the view.
+const { Image: _image, ...components } = materialCatalog.data.components;
+
 /** Material components plus the MCP Apps actions the view handles. */
 export const mcpCatalog = defineCatalog(materialCatalog.schema, {
   ...materialCatalog.data,
+  components,
   actions: {
     sendMessage: {
       params: sendMessageParams,

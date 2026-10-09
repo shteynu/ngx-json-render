@@ -139,6 +139,21 @@ export const materialCatalog = schema.createCatalog({
       description:
         'Material Symbols icon. `name` is the ligature, e.g. "home", "check_circle", "warning".',
     },
+    Image: {
+      props: z.object({
+        src: z.string().startsWith('https://'),
+        alt: z.string(),
+        width: z.number().positive().optional(),
+        height: z.number().positive().optional(),
+        fit: z.enum(['cover', 'contain']).optional(),
+      }),
+      slots: [],
+      description:
+        'An image. `src` must be an absolute https:// URL; any other src renders nothing. ' +
+        '`alt` is required: describe what the image shows, or use "" for a purely decorative one. ' +
+        '`width` and `height` are CSS pixels; it never grows wider than its container. ' +
+        'With both set, `fit` decides whether the image fills the box and is cropped ("cover") or fits inside it ("contain"); the default is "cover".',
+    },
 
     // ----------------------------------------------------------- data display
     Metric: {

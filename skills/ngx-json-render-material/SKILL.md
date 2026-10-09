@@ -5,7 +5,7 @@ description: Angular Material catalog for ngx-json-render. Use when rendering js
 
 # ngx-json-render-material
 
-28 Angular Material components registered for `ngx-json-render`, plus the catalog that describes them to a model. Drop `materialRegistry` into `<json-render>`, feed `materialCatalog.prompt()` to the model, and a generated spec renders with nothing else wired up.
+29 Angular Material components registered for `ngx-json-render`, plus the catalog that describes them to a model. Drop `materialRegistry` into `<json-render>`, feed `materialCatalog.prompt()` to the model, and a generated spec renders with nothing else wired up.
 
 ## Installation
 
@@ -93,6 +93,7 @@ Prop names are renderer-neutral (`variant`, not `mat-raised-button`), so a spec 
 - **Heading** — `content` (required), `level` (1–3).
 - **Text** — `content` (required), `tone` (`default` | `muted` | `strong`).
 - **Icon** — `name` (a Material Symbols ligature such as `check_circle`), `color`.
+- **Image** — `src` (an absolute `https://` URL; any other renders nothing), `alt` (required; `""` for a decorative image), `width` and `height` in CSS pixels, `fit` (`cover` | `contain`, default `cover`). Never wider than its container.
 
 ### Data display
 

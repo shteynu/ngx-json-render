@@ -66,6 +66,18 @@ describe('render-ui tool', () => {
     expect(json.length).toBeLessThan(45_000);
   });
 
+  it("offers no Image, which the view's CSP would block", () => {
+    expect(mcpCatalog.componentNames).not.toContain('Image');
+    expect(
+      errors(
+        spec({
+          type: 'Image',
+          props: { src: 'https://example.com/a.png', alt: 'A' },
+        }),
+      ),
+    ).not.toEqual([]);
+  });
+
   it('accepts a spec with dynamic props and fills in missing children', () => {
     const result = schema.parse(
       spec({ props: { label: { $template: 'Approve ${/release/version}' } } }),

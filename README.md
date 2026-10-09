@@ -34,7 +34,7 @@ packages (`npm run check:skills`), so a skill cannot silently fall behind.
 ## Workspace layout
 
 - [`projects/ngx-json-render`](projects/ngx-json-render) — the renderer (published as `ngx-json-render`).
-- [`projects/ngx-json-render-material`](projects/ngx-json-render-material) — a ready-made Angular Material catalog of 28 components (published as `ngx-json-render-material`), so a spec can be generated and rendered without writing a catalog first.
+- [`projects/ngx-json-render-material`](projects/ngx-json-render-material) — a ready-made Angular Material catalog of 29 components (published as `ngx-json-render-material`), so a spec can be generated and rendered without writing a catalog first.
 - [`skills`](skills) — agent skills, one per published package (see below).
 - [`projects/mcp-app`](projects/mcp-app) — prototype: the Material catalog as an [MCP App](https://modelcontextprotocol.io/docs/extensions/apps), rendered inline in Claude, ChatGPT, VS Code or Cursor. It uses upstream's `@json-render/mcp` for the server side and adds the Angular view (`injectJsonRenderApp` from `ngx-json-render/mcp`, the counterpart of its React `useJsonRenderApp`); `npm run build:mcp-app`.
 - [`projects/demo`](projects/demo) — demo app, four tabs: a playground (edit a spec live, switch catalogs, read `catalog.prompt()`), an interactive spec (state bindings, repeat, confirm, watch), a SpecStream on `injectUIStream` with a stop button, and a chat on `injectChatUI` where prose and patches share one stream. The two streaming tabs swap only their transport between a recorded generation and a live model, so what you watch is the real client either way; the key is held in `sessionStorage` and goes straight from the browser to the provider.

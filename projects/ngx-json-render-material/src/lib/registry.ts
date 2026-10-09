@@ -26,6 +26,7 @@ import {
   JrmChip,
   JrmHeading,
   JrmIcon,
+  JrmImage,
   JrmList,
   JrmListItem,
   JrmMetric,
@@ -54,6 +55,7 @@ export const materialComponents: Components<typeof materialCatalog> = {
   Heading: JrmHeading,
   Text: JrmText,
   Icon: JrmIcon,
+  Image: JrmImage,
   // data display
   Metric: JrmMetric,
   Chip: JrmChip,
