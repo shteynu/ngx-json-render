@@ -235,6 +235,24 @@ export class JsonRenderer {
       if (this.loading()) return;
       reportSpecCheck(this.checked(), this.validate());
     });
+
+    // With validation off, a `root` that names no element renders nothing and
+    // nothing says why — the first mistake a hand-written spec tends to have.
+    // Skipped while loading (a stream sends `/root` before its element) and
+    // under `warn`/`strict`, where the check already reports `root_not_found`.
+    // Once per root key, not once per change detection run.
+    const warnedRoots = new Set<string>();
+    effect(() => {
+      if (this.loading() || this.validate() !== 'off') return;
+      const spec = this.checked().spec;
+      if (!spec?.root) return;
+      const root = spec.root;
+      if (spec.elements?.[root] || warnedRoots.has(root)) return;
+      warnedRoots.add(root);
+      console.warn(
+        `[ngx-json-render] root "${root}" is not in elements; nothing is rendered.`,
+      );
+    });
   }
 
   protected readonly rootKey = computed(() => {

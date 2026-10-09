@@ -864,6 +864,64 @@ describe('spec validation', () => {
     info.mockRestore();
   });
 
+  describe('a root that is not in elements', () => {
+    const MISSING_ROOT: Spec = {
+      root: 'dashbord',
+      elements: {
+        dashboard: { type: 'Text', props: { content: 'hi' } },
+      },
+    } as unknown as Spec;
+
+    const rootWarnings = (warn: { mock: { calls: unknown[][] } }) =>
+      warn.mock.calls.filter((call) =>
+        String(call[0]).includes('root "dashbord" is not in elements'),
+      );
+
+    it('warns once while validation is off', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = await setup(MISSING_ROOT);
+
+      expect(text(fixture, '.t-text')).toEqual([]);
+      expect(rootWarnings(warn)).toHaveLength(1);
+
+      // A new spec object with the same missing root does not warn again.
+      fixture.componentInstance.spec.set({ ...MISSING_ROOT });
+      await settle(fixture);
+      expect(rootWarnings(warn)).toHaveLength(1);
+      warn.mockRestore();
+    });
+
+    it('does not warn while the spec is still streaming', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = await setup(
+        { root: 'dashbord', elements: {} } as unknown as Spec,
+        (host) => host.loading.set(true),
+      );
+
+      expect(rootWarnings(warn)).toEqual([]);
+
+      // The element arrives before the stream ends: never a false alarm.
+      fixture.componentInstance.spec.set({
+        root: 'dashbord',
+        elements: { dashbord: { type: 'Text', props: { content: 'hi' } } },
+      } as unknown as Spec);
+      fixture.componentInstance.loading.set(false);
+      await settle(fixture);
+
+      expect(text(fixture, '.t-text')).toEqual(['hi']);
+      expect(rootWarnings(warn)).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('leaves the report to the spec check under warn', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await setup(MISSING_ROOT, (host) => host.validate.set('warn'));
+
+      expect(rootWarnings(warn)).toEqual([]);
+      warn.mockRestore();
+    });
+  });
+
   it('holds its judgement while the spec is still streaming', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const fixture = await setup(BROKEN, (host) => {
