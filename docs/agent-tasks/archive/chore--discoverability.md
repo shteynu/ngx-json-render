@@ -6,9 +6,9 @@
 - Base branch: `main`
 - Base commit: `4330734`
 - Current HEAD: `d114902` (`main` and `chore/discoverability`), plus the commit adding this file
-- Status: code and releases done; Search Console step open, needs a local session
-- Last updated: 2026-10-10
-- Last agent/tool: Claude Code (cloud session)
+- Status: done — code, releases and Search Console steps complete; archived
+- Last updated: 2026-10-11
+- Last agent/tool: Claude Code (local session, Claude in Chrome)
 
 ## Objective
 
@@ -58,17 +58,36 @@ competitor for "generative UI Angular" is hashbrown.
   refused with 403 by the cloud session's git proxy); both created their tags
   (`v0.9.9`, `material-v0.3.16`), published, and made GitHub releases.
 
+- Search Console, 2026-10-11, in the owner's Chrome (property
+  `https://shteynu.github.io/ngx-json-render/` present and verified; no
+  settings changed):
+  1. Sitemaps: `sitemap.xml` resubmitted ("Файл Sitemap отправлен"). The row
+     now reads submitted 11 Oct 2026, type unknown, status "Не получено"
+     (couldn't fetch), 0 pages, the same status the 9 Oct submission had. The
+     file itself is fine: `curl` gets 200, `application/xml`, both URLs listed.
+  2. URL Inspection, home page: already "URL есть в индексе Google". Found via
+     the dev.to article (the sitemap source shows "Временная ошибка при
+     обработке"), last crawled 9 Oct 2026 12:37 by Googlebot smartphone,
+     canonical is the user-declared one. Indexing requested ("Отправлен запрос
+     на индексирование") so Google recrawls with the JSON-LD.
+  3. URL Inspection, `/mcp/`: "URL нет в индексе Google — URL неизвестен
+     Google", no sitemap or referring page known, never crawled. Indexing
+     requested ("Отправлен запрос на индексирование").
+  4. Rich Results Test on the home page: "Ничего не обнаружено". That is
+     expected: `SoftwareSourceCode` is not a Google rich-result type, so the
+     tool never lists it. The crawled HTML it shows (fetched 11 Oct 2026
+     01:34) contains the `application/ld+json` block. The Schema Markup
+     Validator (validator.schema.org) on the same URL detects
+     `SoftwareSourceCode` with 0 errors and 0 warnings, all fields read
+     (name, description, url, codeRepository, programmingLanguage,
+     runtimePlatform, license, keywords, both npm `sameAs`).
+
 ## Remaining
 
-- Google Search Console for the property
-  `https://shteynu.github.io/ngx-json-render/` (ownership is already verified
-  through the `google-site-verification` meta tag in `index.html`):
-  1. Sitemaps → submit `sitemap.xml`.
-  2. URL Inspection → request indexing for
-     `https://shteynu.github.io/ngx-json-render/` and
-     `https://shteynu.github.io/ngx-json-render/mcp/`.
-- Check the live page in https://search.google.com/test/rich-results to confirm
-  Google reads the JSON-LD.
+None in this task. To watch later: the sitemap's "Не получено" status
+(normal for a few days on a new property; if it persists past a week,
+re-check from the Sitemaps report), and `/mcp/` showing up under
+`site:shteynu.github.io`.
 
 ## Changed files
 
@@ -93,10 +112,9 @@ competitor for "generative UI Angular" is hashbrown.
 
 ### Blocked or not run
 
-- The deployed demo page was not fetched: the cloud session's proxy refuses
-  `shteynu.github.io`.
-- Search Console: needs the owner's Google sign-in, so it cannot run in a
-  cloud session.
+- Nothing left blocked. (The cloud session could not fetch
+  `shteynu.github.io` or sign in to Search Console; the local session on
+  2026-10-11 did both. Results are under Completed.)
 
 ## Approval gates
 
@@ -105,7 +123,5 @@ competitor for "generative UI Angular" is hashbrown.
 
 ## Next concrete step
 
-In a local Claude session (Claude Desktop with the Claude in Chrome extension
-connected, signed in to Google), open Google Search Console for
-`https://shteynu.github.io/ngx-json-render/`, submit `sitemap.xml`, and request
-indexing for the home page and `/mcp/`; then archive this task file.
+None, the task is archived. Optionally check in about a week whether the
+sitemap status has left "Не получено" and whether `/mcp/` is indexed.
