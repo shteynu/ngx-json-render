@@ -62,6 +62,15 @@ lint script and no separate typecheck script in this workspace: **the builds
 are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 `noPropertyAccessFromIndexSignature` and friends are on in `tsconfig.json`.
 
+Formatting is checked, whatever the row: CI's first gate is
+`npm run format:check` (`prettier --check .`), and a misformatted file turns
+the whole run red and skips the demo deploy. Before handing over a commit,
+check the tracked files the way CI sees them:
+`git ls-files -z | xargs -0 npx prettier --check --ignore-unknown` (fix with
+`npx prettier --write <file>`). A plain local `npm run format:check` also
+reads gitignored `*.local*` files and other sessions' uncommitted edits, which
+CI never sees, so its noise is not a signal.
+
 | Changed area                                               | Commands                                                                                                                                                                                                                                                                                     |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `projects/ngx-json-render`                                 | `npm run build:lib` then `npx ng test ngx-json-render --coverage`; when the public API changed, also `npm run build:material` and `npx ng build demo`                                                                                                                                        |
