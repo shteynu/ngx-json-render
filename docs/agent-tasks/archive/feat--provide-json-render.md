@@ -4,8 +4,8 @@
 
 - Branch: `main` (this repo commits straight to main)
 - Base commit: `2f7d188`
-- Status: **implemented and committed** (2026-10-09), not released
-- Last updated: 2026-10-09
+- Status: **released** in ngx-json-render 0.9.1 (2026-10-10); catalog unchanged at 0.3.12
+- Last updated: 2026-10-10
 - Last agent/tool: Claude Code (Opus 5.5)
 
 ## Objective
@@ -64,15 +64,26 @@ router-backed `navigate` that checks spec paths.
   someone asks.
 - Registry composition helpers; README says to spread.
 
-## Verification (2026-10-09, before commit)
+## Verification
 
 - `npm run build` — pass; dist has `./router`, `@angular/router` only in
   `fesm2022/ngx-json-render-router.mjs`.
 - `npm test` — pass: ngx-json-render 438/438 with coverage thresholds,
   demo 73/73, mcp-app 17/17, Material 78/78, schematics.
 - `npm run check:skills` — all 10 snippet modules compile.
-- `node scripts/consumer-smoke.mjs 19` — still running at commit time; result not recorded here yet.
+- `node scripts/consumer-smoke.mjs 19` — pass (build with `skipLibCheck: false`, render, setState, visibility, repeat, pushState).
+- After rebasing onto #17 (`dcb8199`): its missing-root warning read the
+  now-optional `validate` input and never fired unbound; fixed to read the
+  resolved mode (`ba116e0`), with a test shown to fail without the fix.
+- First CI on `ba116e0` failed Angular 20/22 compat on test-only issues
+  (no zoneless provider in the route-level case; field-based host `spec`
+  not re-rendering on 22). Fixed in `ba3ea38`; the `angular-compat` steps
+  passed for 20 and 22 in scratchpad clones (442/442 each), then CI was
+  green on every job.
+- Release run: publish green; post-publish verify red on registry lag
+  (300 s). npm served 0.9.1 minutes later; local `check:published`
+  resolved 0.9.1 + 0.3.12.
 
 ## Next concrete step
 
-Get the Angular 19 consumer smoke result, then release. Additive only, so 0.9.1 keeps the catalog peer as it is; 0.10.0 would need it widened again.
+None. Archived after the 0.9.1 release.
