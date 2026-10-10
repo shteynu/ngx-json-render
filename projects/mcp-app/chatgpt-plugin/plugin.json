@@ -38,6 +38,7 @@
         "logo": "./assets/icon.png"
       },
       "review": {
+        "demo_recording_url": "https://shteynu.github.io/ngx-json-render/mcp/chatgpt-review.mp4",
         "test_cases": {
           "positive": [
             {
