@@ -19,7 +19,12 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 // The catalog alone, from `ngx-json-render-material/catalog`, so the server
 // does not load the Angular components (and Angular) along with it.
 import { mcpCatalog } from './catalog';
-import { TOOL_DESCRIPTION, specInputSchema, specProblems } from './tool';
+import {
+  TOOL_DESCRIPTION,
+  specInputSchema,
+  specOutputSchema,
+  specProblems,
+} from './tool';
 
 export const TOOL_NAME = 'render-ui';
 export const RESOURCE_URI = `ui://${TOOL_NAME}/view.html`;
@@ -61,6 +66,7 @@ export function createServerInstance(
       title: 'Render UI',
       description: TOOL_DESCRIPTION,
       inputSchema: { spec: specInputSchema(catalog) },
+      outputSchema: { spec: specOutputSchema },
       // It only echoes the spec back for the view to draw: nothing is read
       // from or written to any system.
       annotations: {
@@ -74,12 +80,16 @@ export function createServerInstance(
     },
     // The SDK has already parsed `spec` against the input schema; what is
     // left is the structure between elements. A rejected spec goes back to
-    // the model as an error it can fix.
+    // the model as an error it can fix. The text keeps upstream's shape, the
+    // bare spec, which is what views built on `@json-render/mcp/app` read.
     async ({ spec }) => {
       const problems = specProblems(spec);
       return problems
         ? { isError: true, content: [{ type: 'text', text: problems }] }
-        : { content: [{ type: 'text', text: JSON.stringify(spec) }] };
+        : {
+            content: [{ type: 'text', text: JSON.stringify(spec) }],
+            structuredContent: { spec },
+          };
     },
   );
   registerAppResource(

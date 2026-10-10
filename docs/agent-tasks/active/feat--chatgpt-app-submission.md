@@ -6,7 +6,7 @@
 - Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed)
 - Status: **parked 2026-10-07: OpenAI verification needs a payment method,
   which the user declined to add**
-- Last updated: 2026-10-07
+- Last updated: 2026-10-10
 - Last agent/tool: Claude Code (Opus 5.5)
 
 ## Objective
@@ -123,9 +123,24 @@ developer mode.
    challenge token as `projects/mcp-app/server/openai-apps-challenge.txt`,
    deploy, Verify Domain.
 3. User: demo video URL; Submit, then Publish after approval.
-4. Optional: `outputSchema` on render-ui; MCP Inspector run. (The Text line
-   breaks and the empty Card actions row found in testing shipped in
-   `ngx-json-render-material` 0.3.8, `fccbcca`.)
+4. Optional: MCP Inspector run. (The Text line breaks and the empty Card
+   actions row found in testing shipped in `ngx-json-render-material` 0.3.8,
+   `fccbcca`.)
+5. Once deployed, refresh the plugin in ChatGPT and check the "Output schema
+   recommended" note is gone.
+
+## Done 2026-10-10 (while parked)
+
+- `render-ui` declares an `outputSchema` (`specOutputSchema` in
+  `server/tool.ts`): only the spec's outline, 746 characters, since the
+  catalog already makes the input schema about 39 000. A valid call returns
+  `structuredContent: { spec }` beside the unchanged text block (the bare
+  spec, which the view reads); an error returns no structured content.
+- `src/app/server.spec.ts` drives the server through an SDK client over an
+  in-memory transport (`tsconfig.spec.json` gains `node` types for it).
+- Checked: `npx ng test mcp-app` 20/20 (the new tests fail on the old
+  `app.ts`); `tsc -p tsconfig.server.json`; the Vercel build; the built `dist/mcp-app/server.mjs` called over stdio with an
+  SDK client lists the schema and returns structured content.
 
 ## Approval gates
 

@@ -139,6 +139,28 @@ export function specInputSchema(catalog: Catalog) {
   return schema;
 }
 
+/**
+ * What `render-ui` returns as `structuredContent`: the spec it was given,
+ * after the input schema filled in missing `children`. Only its outline,
+ * since the input schema already carries the catalog and a second copy would
+ * double what every `tools/list` sends the model. ChatGPT flags a tool
+ * without an output schema ("Output schema recommended").
+ */
+export const specOutputSchema = z
+  .looseObject({
+    root: z.string(),
+    elements: z.record(
+      z.string(),
+      z.looseObject({
+        type: z.string(),
+        props: z.record(z.string(), z.unknown()),
+        children: z.array(z.string()),
+      }),
+    ),
+    state: z.record(z.string(), z.unknown()).optional(),
+  })
+  .describe('The json-render spec that was rendered.');
+
 // The server is stateless, so it is created for every request; build each
 // catalog's schema once.
 const inputSchemas = new WeakMap<
