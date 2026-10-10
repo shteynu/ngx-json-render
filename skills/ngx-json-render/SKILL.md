@@ -378,6 +378,8 @@ providers: [
 ];
 ```
 
+The activity renderer is loading while the agent's run streams that activity, so `validate` checks each spec once, when its run ends; an activity already on screen stays checked during later runs.
+
 Server side: parse the model's text with `createMixedStreamParser` from `@json-render/core` (prose with ` ```spec ` fences, `catalog.prompt({ mode: 'inline' })`), send prose as `TEXT_MESSAGE_CONTENT`, open the surface with an `ACTIVITY_SNAPSHOT` of `{ root: '', elements: {} }`, and send each patch as an `ACTIVITY_DELTA` with `patch: [patch]`, encoded by `EventEncoder` from `@ag-ui/encoder`. The README's "From an AG-UI agent" section has the full route.
 
 ## Devtools (`ngx-json-render/devtools`)

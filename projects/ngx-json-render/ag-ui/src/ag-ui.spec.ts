@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { type BaseEvent, EventType, HttpAgent } from '@ag-ui/client';
 import type {
   ActivityDeltaEvent,
@@ -25,6 +26,7 @@ import { z } from 'zod';
 import {
   type AgUiAgent,
   type AgUiEvent,
+  type AgUiSubscriber,
   type AgUiSurface,
   JSON_RENDER_ACTIVITY_TYPE,
   JsonRenderActivity,
@@ -447,6 +449,215 @@ describe('rendering', () => {
     fixture.componentInstance.inputs.update((i) => ({ ...i, content: 'junk' }));
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).not.toContain('Hello');
+  });
+
+  describe('JsonRenderActivity while its run streams', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    // A spec a stream leaves half-built: `hello` names a child that has not
+    // arrived. Strict rejects it as finished; while loading it renders.
+    const partial: Spec = {
+      root: 'hello',
+      elements: {
+        hello: {
+          type: 'Text',
+          props: { content: 'Hello' },
+          children: ['next'],
+        },
+      },
+    };
+
+    /**
+     * An agent CopilotKit could hand over, driven by hand. Like
+     * `@ag-ui/client`, a run calls only the subscribers it started with: one
+     * that subscribes mid-run hears nothing of that run.
+     */
+    function fakeAgent(
+      init: {
+        isRunning?: boolean;
+        messages?: { id: string; role: string }[];
+      } = {},
+    ) {
+      const subscribers = new Set<AgUiSubscriber>();
+      let run: AgUiSubscriber[] = [];
+      const agent = {
+        isRunning: init.isRunning ?? false,
+        messages: init.messages ?? [],
+        subscribe(subscriber: AgUiSubscriber) {
+          subscribers.add(subscriber);
+          return { unsubscribe: () => subscribers.delete(subscriber) };
+        },
+      };
+      const live = () => run.filter((s) => subscribers.has(s));
+      return {
+        agent,
+        subscribers,
+        start() {
+          agent.isRunning = true;
+          run = [...subscribers];
+          live().forEach((s) => s.onRunInitialized?.());
+        },
+        stream(messageId: string) {
+          live().forEach((s) => s.onEvent?.({ event: delta(messageId, []) }));
+        },
+        finish() {
+          agent.isRunning = false;
+          live().forEach((s) => s.onRunFinalized?.());
+          run = [];
+        },
+      };
+    }
+
+    const pollPassed = () => new Promise((resolve) => setTimeout(resolve, 300));
+
+    function mount(inputs: Record<string, unknown>) {
+      @Component({
+        imports: [NgComponentOutlet],
+        template: `<ng-container
+          *ngComponentOutlet="component; inputs: inputs()"
+        />`,
+      })
+      class Host {
+        readonly component = jsonRenderActivityRenderer().component;
+        readonly inputs = signal<Record<string, unknown>>({
+          activityType: JSON_RENDER_ACTIVITY_TYPE,
+          content: partial,
+          message: { id: 'm1', role: 'activity' },
+          agent: undefined,
+          ...inputs,
+        });
+      }
+
+      TestBed.configureTestingModule({
+        providers: [
+          provideZonelessChangeDetection(),
+          provideJsonRender({ registry, catalog, validate: 'strict' }),
+        ],
+      });
+      const fixture = TestBed.createComponent(Host);
+      const loading = () =>
+        fixture.debugElement
+          .query(By.directive(JsonRenderer))
+          .componentInstance.loading() as boolean;
+      const text = () => fixture.nativeElement.textContent as string;
+      return { fixture, loading, text };
+    }
+
+    it('loads while the run streams into it, then checks the finished spec', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const run = fakeAgent({ messages: [{ id: 'm1', role: 'activity' }] });
+      const { fixture, loading, text } = mount({ agent: run.agent });
+      await fixture.whenStable();
+      expect(loading()).toBe(false);
+      expect(text()).not.toContain('Hello');
+
+      run.start();
+      await fixture.whenStable();
+      expect(loading()).toBe(false);
+
+      run.stream('m1');
+      await fixture.whenStable();
+      expect(loading()).toBe(true);
+      expect(text()).toContain('Hello');
+
+      run.finish();
+      await fixture.whenStable();
+      expect(loading()).toBe(false);
+      expect(text()).not.toContain('Hello');
+    });
+
+    it('stays checked while a later run streams another activity', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const run = fakeAgent({ messages: [{ id: 'm1', role: 'activity' }] });
+      const { fixture, loading, text } = mount({ agent: run.agent });
+      await fixture.whenStable();
+      run.start();
+      run.stream('m2');
+      await fixture.whenStable();
+      expect(loading()).toBe(false);
+      expect(text()).not.toContain('Hello');
+    });
+
+    it('counts a mid-run mount as streaming, unless an earlier turn made it', async () => {
+      const current = fakeAgent({
+        isRunning: true,
+        messages: [
+          { id: 'u1', role: 'user' },
+          { id: 'm1', role: 'activity' },
+        ],
+      });
+      const first = mount({ agent: current.agent });
+      await first.fixture.whenStable();
+      expect(first.loading()).toBe(true);
+      expect(first.text()).toContain('Hello');
+
+      // The run ends without a word to a subscriber that joined it late;
+      // only `isRunning` says so.
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      current.finish();
+      await pollPassed();
+      await first.fixture.whenStable();
+      expect(first.loading()).toBe(false);
+      expect(first.text()).not.toContain('Hello');
+
+      TestBed.resetTestingModule();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const later = fakeAgent({
+        isRunning: true,
+        messages: [
+          { id: 'm1', role: 'activity' },
+          { id: 'u2', role: 'user' },
+        ],
+      });
+      const second = mount({ agent: later.agent });
+      await second.fixture.whenStable();
+      expect(second.loading()).toBe(false);
+    });
+
+    it('checks a copy of the same content only once', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture } = mount({});
+      await fixture.whenStable();
+      expect(error).toHaveBeenCalledTimes(1);
+
+      for (let i = 0; i < 3; i++) {
+        fixture.componentInstance.inputs.update((inputs) => ({
+          ...inputs,
+          content: structuredClone(partial),
+        }));
+        await fixture.whenStable();
+      }
+      expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    it('never loads without an agent, and lets go of the agents it had', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture, loading } = mount({ agent: { not: 'an agent' } });
+      await fixture.whenStable();
+      expect(loading()).toBe(false);
+
+      const a = fakeAgent({ isRunning: true });
+      const b = fakeAgent();
+      fixture.componentInstance.inputs.update((i) => ({
+        ...i,
+        agent: a.agent,
+      }));
+      await fixture.whenStable();
+      expect(a.subscribers.size).toBe(1);
+      expect(loading()).toBe(true);
+
+      fixture.componentInstance.inputs.update((i) => ({
+        ...i,
+        agent: b.agent,
+      }));
+      await fixture.whenStable();
+      expect(a.subscribers.size).toBe(0);
+      expect(b.subscribers.size).toBe(1);
+      expect(loading()).toBe(false);
+
+      fixture.destroy();
+      expect(b.subscribers.size).toBe(0);
+    });
   });
 
   it('validates content through the config schema', () => {
