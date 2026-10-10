@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "ngx-json-render MCP App builder",
+  "description": "Builds an MCP App view into one view.html and bundles its server into server.mjs.",
+  "type": "object",
+  "properties": {
+    "buildTarget": {
+      "type": "string",
+      "description": "The view's @angular/build:application target, such as \"my-app:build:production\" or \":build:production\" for this project."
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "Directory for view.html and server.mjs, relative to the workspace root."
+    },
+    "server": {
+      "type": "string",
+      "description": "The server's entry file, bundled into server.mjs. Leave it out to build the view only."
+    },
+    "tsConfig": {
+      "type": "string",
+      "description": "The tsconfig esbuild reads for the server (paths, decorators). By default, the nearest one to each file."
+    },
+    "externalPackages": {
+      "type": "boolean",
+      "default": false,
+      "description": "Leave node_modules packages out of server.mjs, to be installed next to it. By default the server is one self-contained file."
+    }
+  },
+  "required": ["buildTarget", "outputPath"],
+  "additionalProperties": false
+}

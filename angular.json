@@ -209,6 +209,15 @@
           },
           "defaultConfiguration": "production"
         },
+        "mcp": {
+          "builder": "./dist/ngx-json-render:mcp-app",
+          "options": {
+            "buildTarget": "mcp-app:build:production",
+            "outputPath": "dist/mcp-app",
+            "server": "projects/mcp-app/server/server.ts",
+            "tsConfig": "projects/mcp-app/tsconfig.server.json"
+          }
+        },
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {

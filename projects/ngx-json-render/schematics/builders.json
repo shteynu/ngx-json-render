@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../node_modules/@angular-devkit/architect/src/builders-schema.json",
+  "builders": {
+    "mcp-app": {
+      "implementation": "./mcp-app-builder/index.cjs",
+      "schema": "./mcp-app-builder/schema.json",
+      "description": "Builds an MCP App: the view as one view.html, the server as server.mjs."
+    }
+  }
+}

@@ -52,6 +52,7 @@
   },
   "sideEffects": false,
   "schematics": "./schematics/collection.json",
+  "builders": "./schematics/builders.json",
   "ng-add": {
     "save": "dependencies"
   }

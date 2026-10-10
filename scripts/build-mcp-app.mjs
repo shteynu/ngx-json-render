@@ -1,9 +1,12 @@
-// Builds the MCP App example into dist/mcp-app:
+// Builds the MCP App example into dist/mcp-app with `ng run mcp-app:mcp`,
+// the `ngx-json-render:mcp-app` builder (taken from dist/, since this
+// workspace does not install its own package):
 //
 //   view.html   the Angular view as one self-contained page — MCP hosts load a
 //               `ui://` resource as a single HTML document, so scripts and
 //               styles are inlined
-//   server.mjs  the MCP server, for stdio or a local HTTP server
+//   server.mjs  the MCP server, for stdio or a local HTTP server, with its
+//               dependencies bundled in
 //
 // With --vercel it also writes .vercel/output (Vercel's Build Output API): the
 // hosted /mcp endpoint as one Node.js function with every dependency and the
@@ -24,53 +27,19 @@ import { join } from 'node:path';
 import { build } from 'esbuild';
 
 const out = join('dist', 'mcp-app');
-const browser = join(out, 'angular', 'browser');
 const require = createRequire(import.meta.url);
 const run = (bin, args) =>
   execFileSync(process.execPath, [require.resolve(bin), ...args], {
     stdio: 'inherit',
   });
 
-run('@angular/cli/bin/ng.js', ['build', 'mcp-app']);
 // esbuild does not type-check; the server gets its own tsc pass.
 run('typescript/bin/tsc', ['-p', 'projects/mcp-app/tsconfig.server.json']);
+run('@angular/cli/bin/ng.js', ['run', 'mcp-app:mcp']);
 
-// Angular splits the app into chunks; fold them back into one module.
-const bundled = await build({
-  entryPoints: [join(browser, 'main.js')],
-  bundle: true,
-  format: 'esm',
-  minify: true,
-  write: false,
-  logLevel: 'warning',
-});
-const js = bundled.outputFiles[0].text.replaceAll('</script', '<\\/script');
-const css = readFileSync(join(browser, 'styles.css'), 'utf8').replaceAll(
-  '</style',
-  '<\\/style',
-);
-
-let html = readFileSync(join(browser, 'index.html'), 'utf8');
-const replace = (pattern, value) => {
-  if (!pattern.test(html)) {
-    throw new Error(`build-mcp-app: ${pattern} not found in index.html`);
-  }
-  html = html.replace(pattern, () => value);
-};
-replace(/<link rel="modulepreload"[^>]*>/g, '');
-replace(
-  /<link rel="stylesheet" href="styles\.css"[^>]*>(<noscript>.*?<\/noscript>)?/,
-  `<style>${css}</style>`,
-);
-replace(
-  /<script src="main\.js" type="module"><\/script>/,
-  `<script type="module">${js}</script>`,
-);
-writeFileSync(join(out, 'view.html'), html);
-
-// The server takes the catalog and the `render-ui` tool from the built
-// packages' Angular-free entry points, as an app's server would from npm; `packages: 'external'` would
-// otherwise leave them for Node to resolve, and they are not in node_modules.
+// The Vercel function takes the catalog and the `render-ui` tool from the
+// built packages' Angular-free entry points, as an app's server would from
+// npm; they are not in node_modules.
 const alias = {
   'ngx-json-render/schema':
     './dist/ngx-json-render/fesm2022/ngx-json-render-schema.mjs',
@@ -79,17 +48,6 @@ const alias = {
   'ngx-json-render-material/catalog':
     './dist/ngx-json-render-material/fesm2022/ngx-json-render-material-catalog.mjs',
 };
-
-await build({
-  entryPoints: ['projects/mcp-app/server/server.ts'],
-  outfile: join(out, 'server.mjs'),
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  packages: 'external',
-  alias,
-  logLevel: 'warning',
-});
 
 if (process.argv.includes('--vercel')) {
   const output = join('.vercel', 'output');
@@ -153,7 +111,3 @@ if (process.argv.includes('--vercel')) {
   );
   console.log(`Built ${output} for Vercel`);
 }
-
-console.log(
-  `Built ${join(out, 'view.html')} (${Math.round(html.length / 1024)} kB) and ${join(out, 'server.mjs')}`,
-);
