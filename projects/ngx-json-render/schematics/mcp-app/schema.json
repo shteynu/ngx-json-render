@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "ngx-json-render-mcp-app",
+  "title": "ngx-json-render MCP App schematic",
+  "description": "Generates an MCP App for a catalog: an Angular view project, its MCP server, and an mcp target that builds both.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the view's application project; the build lands in dist/<name>.",
+      "default": "mcp-app",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      }
+    },
+    "catalog": {
+      "type": "string",
+      "description": "The catalog the model may use, as <file>#<export> relative to the workspace root, such as \"src/app/catalog.ts#catalog\". The server imports it in Node, so the file must not import Angular. Leave it out for the Angular Material catalog when ngx-json-render-material is installed, or a starter catalog otherwise."
+    },
+    "registry": {
+      "type": "string",
+      "description": "The registry that renders the catalog, as <file>#<export>, such as \"src/app/registry.ts#registry\". Required with --catalog."
+    }
+  },
+  "required": []
+}

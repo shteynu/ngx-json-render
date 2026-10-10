@@ -4,6 +4,11 @@
     "ng-add": {
       "description": "Adds ngx-json-render's peer dependencies (@json-render/core and zod) to the workspace.",
       "factory": "./ng-add/index.cjs#ngAdd"
+    },
+    "mcp-app": {
+      "description": "Generates an MCP App for a catalog: an Angular view project, its MCP server, and an mcp target that builds both into one view.html and server.mjs.",
+      "factory": "./mcp-app/index.cjs#mcpApp",
+      "schema": "./mcp-app/schema.json"
     }
   }
 }
