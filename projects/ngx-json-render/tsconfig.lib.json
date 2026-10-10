@@ -14,7 +14,8 @@
     "schema/src/**/*.ts",
     "mcp/src/**/*.ts",
     "devtools/src/**/*.ts",
-    "router/src/**/*.ts"
+    "router/src/**/*.ts",
+    "ag-ui/src/**/*.ts"
   ],
   "exclude": ["**/*.spec.ts"]
 }

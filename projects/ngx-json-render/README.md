@@ -450,6 +450,117 @@ this package's, and both silent when you get them wrong:
 writes the chunks a server route would, reads the message a client would —
 and asserts both of these, so this section cannot quietly go stale.
 
+### From an AG-UI agent
+
+[AG-UI](https://docs.ag-ui.com) is the event protocol CopilotKit, LangGraph and
+others speak between an agent and its frontend. A json-render spec travels on
+it as an **activity** with `activityType: "json-render-spec"`
+(`JSON_RENDER_ACTIVITY_TYPE`): `ACTIVITY_SNAPSHOT` carries a whole spec in
+`content`, and `ACTIVITY_DELTA` carries RFC 6902 patches against it in `patch`
+— the same patches a JSONL stream is made of. `ngx-json-render/ag-ui` reads
+that, and needs nothing from `@ag-ui/*` at runtime: it accepts any agent and
+event of the right shape.
+
+With an `@ag-ui/client` agent, `injectAgentUI` gives the signals `injectUIStream`
+gives. The app keeps running the agent; the hook only listens, so it sees every
+run whoever starts it, and checks each spec when the run ends:
+
+```ts
+import { Component } from '@angular/core';
+import { HttpAgent } from '@ag-ui/client';
+import { JsonRenderer } from 'ngx-json-render';
+import { injectAgentUI } from 'ngx-json-render/ag-ui';
+import { catalog } from './catalog';
+
+@Component({
+  imports: [JsonRenderer],
+  template: `
+    <json-render [spec]="ui.spec()" [loading]="ui.isStreaming()" />
+    <button (click)="ask('show me revenue for the quarter')">Ask</button>
+  `,
+})
+export class AgentPage {
+  readonly agent = new HttpAgent({ url: '/api/agent' });
+  readonly ui = injectAgentUI({ agent: this.agent, catalog, validate: 'warn' });
+
+  ask(text: string) {
+    this.agent.addMessage({ id: crypto.randomUUID(), role: 'user', content: text });
+    this.agent.runAgent();
+  }
+}
+```
+
+`ui.surfaces()` lists every spec the agent has built, keyed by the activity's
+`messageId`, for a run that opens more than one; `ui.spec()` is the latest.
+Elements a delta does not touch keep their identity, so the renderer skips
+them. Without the hook, `applyAgUiEvent(surfaces, event)` is the same fold as a
+pure function.
+
+**In a CopilotKit Angular app**, register the ready-made activity renderer.
+It draws the spec with the registry and catalog from `provideJsonRender`:
+
+```ts
+import { provideJsonRender } from 'ngx-json-render';
+import { jsonRenderActivityRenderer } from 'ngx-json-render/ag-ui';
+
+providers: [
+  provideJsonRender({ registry }),
+  provideCopilotKit({
+    runtimeUrl: '/api/copilotkit',
+    renderActivityMessages: [jsonRenderActivityRenderer()],
+  }),
+];
+```
+
+**On the server**, the model's output — prose with ` ```spec ` fenced JSONL,
+as `catalog.prompt({ mode: 'inline' })` asks for — splits into text-message
+events and activity deltas with `createMixedStreamParser` from
+`@json-render/core`, and `EventEncoder` from `@ag-ui/encoder` writes the
+server-sent events:
+
+```ts
+// server.ts — an AG-UI endpoint (Express)
+import { EventType, type BaseEvent, type RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { createMixedStreamParser } from '@json-render/core';
+
+app.post('/api/agent', async (req, res) => {
+  const { threadId, runId, messages } = req.body as RunAgentInput;
+  const encoder = new EventEncoder({ accept: req.headers.accept });
+  const send = (event: BaseEvent) => res.write(encoder.encode(event));
+  res.setHeader('Content-Type', encoder.getContentType());
+
+  const textId = crypto.randomUUID();
+  const uiId = crypto.randomUUID();
+  send({ type: EventType.RUN_STARTED, threadId, runId } as BaseEvent);
+  send({ type: EventType.TEXT_MESSAGE_START, messageId: textId, role: 'assistant' } as BaseEvent);
+  send({ type: EventType.ACTIVITY_SNAPSHOT, messageId: uiId, activityType: 'json-render-spec',
+         content: { root: '', elements: {} } } as BaseEvent);
+
+  const parser = createMixedStreamParser({
+    onText: (line) => send({ type: EventType.TEXT_MESSAGE_CONTENT, messageId: textId,
+                             delta: line + '\n' } as BaseEvent),
+    onPatch: (patch) => send({ type: EventType.ACTIVITY_DELTA, messageId: uiId,
+                               activityType: 'json-render-spec', patch: [patch] } as BaseEvent),
+  });
+  const result = streamText({
+    model: anthropic('claude-sonnet-5'),
+    system: catalog.prompt({ mode: 'inline' }),
+    messages: toModelMessages(messages), // AG-UI user/assistant messages → your model's format
+  });
+  for await (const chunk of result.textStream) parser.push(chunk);
+  parser.flush();
+
+  send({ type: EventType.TEXT_MESSAGE_END, messageId: textId } as BaseEvent);
+  send({ type: EventType.RUN_FINISHED, threadId, runId } as BaseEvent);
+  res.end();
+});
+```
+
+`projects/ngx-json-render/ag-ui/src/ag-ui.spec.ts` runs a real `HttpAgent`
+against a replayed server-sent stream, through AG-UI's own decoder and event
+checks, and renders the result.
+
 ### Supplying the transport
 
 By default the request goes through the global `fetch`. Pass your own to add
@@ -1066,6 +1177,8 @@ Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec
 MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
 
 Router (`ngx-json-render/router`): `injectRouterNavigate`, and the type `RouterNavigateOptions`. Needs the optional peer `@angular/router`, which an Angular app on the router already has.
+
+AG-UI (`ngx-json-render/ag-ui`): `injectAgentUI`, `applyAgUiEvent`, `surfacesFromMessages`, `isJsonRenderSpec`, `JsonRenderActivity` (`<json-render-activity>`), `jsonRenderActivityRenderer`, `JSON_RENDER_ACTIVITY_TYPE`, and the types `AgUiAgent`, `AgUiEvent`, `AgUiMessage`, `AgUiSubscriber`, `AgUiSurface`, `AgentUIOptions`, `AgentUIReturn`, `JsonRenderActivityRendererConfig`, `JsonRenderActivityRendererOptions`. No peer: any agent and event of the right shape will do.
 
 Devtools (`ngx-json-render/devtools`): `JsonRenderDevtools` (`<json-render-devtools>`), and the types `DevtoolsEvent`, `PanelPosition`. Needs the optional peer `@json-render/devtools`.
 
