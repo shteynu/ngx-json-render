@@ -1,6 +1,6 @@
 {
   "name": "ngx-json-render-material",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "Angular Material catalog for ngx-json-render: a ready-made component vocabulary for generative UI in Angular.",
   "keywords": [
     "angular",
