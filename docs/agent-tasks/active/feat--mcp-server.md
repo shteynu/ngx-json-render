@@ -5,9 +5,9 @@
 - Branch: feat/mcp-server (worktree `.claude/worktrees/mcp-server`; the main
   checkout is busy with the AG-UI work in another session)
 - Base branch: main
-- Base commit: f999a02 (chore: release 0.9.5)
-- Current HEAD: f999a02; step 2 (builder) uncommitted in this worktree
-- Status: step 1 released as 0.9.5, upstream issue vercel-labs/json-render#393 posted; step 2 (builder) done and verified, uncommitted
+- Base commit: 8b640d8 (chore: release 0.9.6)
+- Current HEAD: release 0.9.7 bump on top of abc027d, 5fa73b3, 65d5a1e
+- Status: step 1 released as 0.9.5, upstream issue vercel-labs/json-render#393 posted; step 2 (builder) released as 0.9.6; step 3 committed, released as 0.9.7
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -45,11 +45,7 @@ catalog in one command" (builder and schematic come later).
 
 ## Non-goals
 
-- Angular builder for the single-file view, `ng generate` schematic.
-- Moving the `sendMessage` action definition or its view handler into the
-  library (a catalog importing the server entry would pull the MCP server SDK
-  into the browser bundle; it needs its own Angular-free home, decided with
-  the schematic).
+- (Step 1 only) builder and schematic: done as steps 2 and 3 below.
 
 ## Decisions made
 
@@ -142,8 +138,42 @@ catalog in one command" (builder and schematic come later).
   npm 10.9 fails `ng new` installs on jsdom's optional `canvas` peer
   (`edgesOut`); `--legacy-peer-deps` works around it, unrelated to us.
 
+## Step 3: `sendMessage` in the library, `ng generate ngx-json-render:mcp-app`
+
+- Server (`mcp/server/src/actions.ts`): `sendMessageAction` (text as the
+  example had it) and `withSendMessage(catalog)` (memoised per catalog);
+  `createRenderUiServer({ sendMessage: true })` describes the extended
+  catalog. The catalog itself stays host-neutral, so no browser bundle pulls
+  the server SDK.
+- View (`mcp/src/json-render-app.ts`): `handlers.sendMessage` (validates text,
+  drops non-object data, rethrows for `onError`) and the `lastMessage` signal
+  (`MessageOutcome`). Example switched to both and to `withSendMessage`; its
+  handler test moved into the library spec.
+- Schematic `schematics/mcp-app/{index.cts,schema.json,index.test.mjs}`:
+  `--name` (default `mcp-app`), `--catalog`/`--registry` as `file#export`
+  (together, export checked, warns when the catalog imports Angular), else
+  Material when `ngx-json-render-material` is declared (scss theme, fonts,
+  icon font set, fonts CSP), else a starter catalog + registry. Runs
+  `@schematics/angular:application`, replaces `src/app`, `main.ts`,
+  `index.html`, styles; writes `server.ts` (stdio, `--http` on 3001/PORT);
+  drops zone.js polyfills and `public/favicon.ico`; raises the initial budget
+  to 3 MB/5 MB (Material view is 1.6 MB, error at 1 MB otherwise); adds the
+  `mcp` target and missing peers at the manifest's ranges.
+- Docs: README "In one command" + "Building it" intro + API surface lines,
+  example README, skill (+ plugin sync), AGENTS.md end-to-end recipe.
+- Verified: `npm test` (library specs incl. new `actions.spec.ts`, handler and
+  server-option tests; schematics), `build:mcp-app` + `--vercel`, example
+  `tools/list`/resources/meta byte-identical to the 0.9.6 dump
+  (`mcp/after-builder.json` vs `after-step3.json`), `check:skills`,
+  `check:plugin`, `check:zoneless`, prettier. End to end in the scratchpad
+  Angular 21.2 app with packed tarballs: starter, own catalog and Material
+  modes generate and build with no warnings; each `server.mjs` lists
+  `render-ui` with `sendMessage` and answers a call; starter and Material
+  views render in basic-host, and Approve reaches the handler (basic-host
+  declares no `message` capability, so the view shows that error; posting
+  itself is covered by the AppBridge spec).
+
 ## Next concrete step
 
-User decides: commit step 2 and fast-forward `main`, release as a patch
-(0.9.6). Then step 3: `sendMessage` in the library and the `mcp-app`
-schematic.
+After the 0.9.7 release (`check:published`, release notes): archive this
+task file; the goal "MCP App from your catalog in one command" is met.
