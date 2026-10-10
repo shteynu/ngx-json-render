@@ -5,8 +5,8 @@
 - Branch: main (repo rule: commit straight on `main`, no feature branch)
 - Base branch: main
 - Base commit: 2a0eb15 (chore: release 0.9.3)
-- Current HEAD: c2a00d1 (plus this task file's own commit)
-- Status: committed on local `main` (21b4181 deps, 754fbca feature, c2a00d1 skill); not pushed, not released
+- Current HEAD: 1f481f8 on main, in sync with origin/main
+- Status: done; released as v0.9.4 (renderer-only patch, no catalog release)
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -120,10 +120,8 @@ without depending on any one agent framework.
 
 ## Remaining
 
-1. Push `main` (the user runs it) and release a minor in lockstep with the
-   Material catalog.
-2. Optional: an example against a real CopilotKit Angular runtime.
-3. Follow-up candidates: structural sharing inside `JsonRenderActivity` (on the
+1. Optional: an example against a real CopilotKit Angular runtime.
+2. Follow-up candidates (none scheduled): structural sharing inside `JsonRenderActivity` (on the
    CopilotKit path every delta arrives as a fresh deep clone, so the whole spec
    re-renders); devtools Stream tab for AG-UI runs (`notifyStreamObservers` is
    private to the primary entry); `TOOL_CALL_ARGS`; `STATE_*` ↔ `$state`;
@@ -210,5 +208,4 @@ without depending on any one agent framework.
 
 ## Next concrete step
 
-The user pushes `main` (`git push origin main`); then the minor release in
-lockstep with the Material catalog, when the user asks for it.
+None: archived. A follow-up from Remaining starts as a new task.
