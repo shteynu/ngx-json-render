@@ -12,6 +12,7 @@
       "ngx-json-render/testing": ["./dist/ngx-json-render/testing"],
       "ngx-json-render/schema": ["./dist/ngx-json-render/schema"],
       "ngx-json-render/mcp": ["./dist/ngx-json-render/mcp"],
+      "ngx-json-render/mcp/server": ["./dist/ngx-json-render/mcp/server"],
       "ngx-json-render/devtools": ["./dist/ngx-json-render/devtools"],
       "ngx-json-render/router": ["./dist/ngx-json-render/router"],
       "ngx-json-render/ag-ui": ["./dist/ngx-json-render/ag-ui"],

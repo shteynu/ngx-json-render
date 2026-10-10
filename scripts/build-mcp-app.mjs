@@ -68,12 +68,14 @@ replace(
 );
 writeFileSync(join(out, 'view.html'), html);
 
-// The server takes the catalog from the built packages' Angular-free entry
-// points, as an app's server would from npm; `packages: 'external'` would
+// The server takes the catalog and the `render-ui` tool from the built
+// packages' Angular-free entry points, as an app's server would from npm; `packages: 'external'` would
 // otherwise leave them for Node to resolve, and they are not in node_modules.
 const alias = {
   'ngx-json-render/schema':
     './dist/ngx-json-render/fesm2022/ngx-json-render-schema.mjs',
+  'ngx-json-render/mcp/server':
+    './dist/ngx-json-render/fesm2022/ngx-json-render-mcp-server.mjs',
   'ngx-json-render-material/catalog':
     './dist/ngx-json-render-material/fesm2022/ngx-json-render-material-catalog.mjs',
 };

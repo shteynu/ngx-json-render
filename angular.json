@@ -32,6 +32,7 @@
               "projects/ngx-json-render/src/**",
               "projects/ngx-json-render/testing/src/**",
               "projects/ngx-json-render/mcp/src/**",
+              "projects/ngx-json-render/mcp/server/src/**",
               "projects/ngx-json-render/devtools/src/**",
               "projects/ngx-json-render/router/src/**",
               "projects/ngx-json-render/ag-ui/src/**"
@@ -46,6 +47,7 @@
               "**/*.spec.ts",
               "../testing/src/**/*.spec.ts",
               "../mcp/src/**/*.spec.ts",
+              "../mcp/server/src/**/*.spec.ts",
               "../devtools/src/**/*.spec.ts",
               "../router/src/**/*.spec.ts",
               "../ag-ui/src/**/*.spec.ts"

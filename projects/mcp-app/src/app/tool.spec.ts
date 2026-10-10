@@ -2,12 +2,15 @@ import { z } from 'zod';
 import { mcpCatalog } from '../../server/catalog';
 import {
   DESCRIPTION_LIMIT,
-  TOOL_DESCRIPTION,
+  renderUiDescription,
   specInputSchema,
   specProblems,
-} from '../../server/tool';
+} from 'ngx-json-render/mcp/server';
 
 const schema = specInputSchema(mcpCatalog);
+const TOOL_DESCRIPTION = renderUiDescription(mcpCatalog, {
+  ui: 'Angular Material UI',
+});
 
 /** A card with an Approve button; `button` overrides the button element. */
 function spec(button: Record<string, unknown> = {}) {

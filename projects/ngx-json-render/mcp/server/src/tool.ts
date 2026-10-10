@@ -14,15 +14,41 @@ import { z } from 'zod';
 /** Claude cuts a tool description off after roughly this many characters. */
 export const DESCRIPTION_LIMIT = 2000;
 
-export const TOOL_DESCRIPTION = `Render an interactive Angular Material UI inline in the chat. Pass \`spec\`: one complete json-render spec object (not JSON Patch lines). The input schema lists every component, its props and allowed values, and every action; use only those.
+/** Options for {@link renderUiDescription}. */
+export interface RenderUiDescriptionOptions {
+  /** What the tool draws, as the first sentence names it. Default `'UI'`. */
+  ui?: string;
+}
 
-- \`root\` is the key of the top element. \`elements\` is a flat map of key → { type, props, children: [child keys] }; every child key must exist in \`elements\`.
-- \`state\` holds the data. Read it with {"$state":"/path"} rather than repeating values in props. Data-backed UI always needs \`state\`; use realistic sample data.
-- A prop can be dynamic: {"$state":"/p"} reads, {"$bindState":"/p"} binds a form field both ways, {"$template":"Hi \${/name}"} interpolates, {"$cond":{"$state":"/p"},"$then":a,"$else":b} picks.
-- Lists: on a container, "repeat":{"statePath":"/items","key":"id"}; its children render once per item and read {"$item":"field"}, or \${field} inside a $template.
-- \`visible\` and \`on\` sit next to \`props\`, never inside: "visible":{"$state":"/tab","eq":"home"}, "on":{"press":{"action":"setState","params":{"statePath":"/tab","value":"home"}}}.
-- Forms: give inputs props.validation {"checks":[{"type":"required","message":"..."}]} and submit with submitForm, which runs its inner action only when every field is valid.
-- To continue the conversation from a button, use sendMessage: {"action":"sendMessage","params":{"text":"Approve release 2.4.0","data":{"$state":"/release"}}}. The host puts \`text\` (and \`data\` as JSON) in the chat as the user's message, so write it in their voice. For a form: {"action":"submitForm","params":{"action":"sendMessage","params":{"text":"Sign me up","data":{"$state":"/form"}}}}.`;
+/**
+ * The `render-ui` tool description for `catalog`: how a spec is put
+ * together, in under {@link DESCRIPTION_LIMIT} characters. The components,
+ * props and actions are left to the input schema. The paragraph on
+ * `sendMessage` is included only when the catalog defines that action, since
+ * the view has to handle it.
+ */
+export function renderUiDescription(
+  catalog: Catalog,
+  { ui = 'UI' }: RenderUiDescriptionOptions = {},
+): string {
+  const actions = (catalog.data as CatalogData).actions ?? {};
+  const lines = [
+    `Render an interactive ${ui} inline in the chat. Pass \`spec\`: one complete json-render spec object (not JSON Patch lines). The input schema lists every component, its props and allowed values, and every action; use only those.`,
+    '',
+    '- `root` is the key of the top element. `elements` is a flat map of key → { type, props, children: [child keys] }; every child key must exist in `elements`.',
+    '- `state` holds the data. Read it with {"$state":"/path"} rather than repeating values in props. Data-backed UI always needs `state`; use realistic sample data.',
+    '- A prop can be dynamic: {"$state":"/p"} reads, {"$bindState":"/p"} binds a form field both ways, {"$template":"Hi ${/name}"} interpolates, {"$cond":{"$state":"/p"},"$then":a,"$else":b} picks.',
+    '- Lists: on a container, "repeat":{"statePath":"/items","key":"id"}; its children render once per item and read {"$item":"field"}, or ${field} inside a $template.',
+    '- `visible` and `on` sit next to `props`, never inside: "visible":{"$state":"/tab","eq":"home"}, "on":{"press":{"action":"setState","params":{"statePath":"/tab","value":"home"}}}.',
+    '- Forms: give inputs props.validation {"checks":[{"type":"required","message":"..."}]} and submit with submitForm, which runs its inner action only when every field is valid.',
+  ];
+  if ('sendMessage' in actions) {
+    lines.push(
+      '- To continue the conversation from a button, use sendMessage: {"action":"sendMessage","params":{"text":"Approve release 2.4.0","data":{"$state":"/release"}}}. The host puts `text` (and `data` as JSON) in the chat as the user\'s message, so write it in their voice. For a form: {"action":"submitForm","params":{"action":"sendMessage","params":{"text":"Sign me up","data":{"$state":"/form"}}}}.',
+    );
+  }
+  return lines.join('\n');
+}
 
 /** The parts of a catalog's data this file reads. */
 interface CatalogData {

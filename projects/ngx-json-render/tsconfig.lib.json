@@ -13,6 +13,7 @@
     "testing/src/**/*.ts",
     "schema/src/**/*.ts",
     "mcp/src/**/*.ts",
+    "mcp/server/src/**/*.ts",
     "devtools/src/**/*.ts",
     "router/src/**/*.ts",
     "ag-ui/src/**/*.ts"
