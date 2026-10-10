@@ -42,11 +42,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { classifyPairResolution } from './lib/resolution-verdict.mjs';
+import { waitForPublish } from './lib/wait-for-publish.mjs';
 
 const REGISTRY = 'https://registry.npmjs.org/';
-/** How long to let the registry catch up before calling a publish missing. */
-const PROPAGATION_TRIES = 30;
-const PROPAGATION_WAIT_MS = 10_000;
 
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
@@ -91,32 +89,47 @@ const npm = (args, opts = {}) =>
     ...opts,
   }).trim();
 
-const sleep = (ms) =>
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-
-// The registry can lag a publish by a few seconds; a missing version here is
-// only news once it has stayed missing.
+// npm lists a publish only minutes after it, and serves its tarball minutes
+// after that; an install in between fails. A missing version is only news
+// once it has stayed missing past both — see wait-for-publish.mjs.
 const target = expected.get(released);
-let servedByRegistry = false;
-for (let i = 0; i < PROPAGATION_TRIES; i++) {
-  try {
-    if (npm(['view', `${released}@${target}`, 'version']) === target) {
-      servedByRegistry = true;
-      break;
+const spec = `${released}@${target}`;
+const { stage, waitedMs } = await waitForPublish({
+  probe: async () => {
+    let tarball;
+    try {
+      tarball = npm(['view', spec, 'dist.tarball']);
+    } catch {
+      return 'missing';
     }
-  } catch {
-    /* not published yet */
-  }
-  if (i === 0) {
-    console.log(`Waiting for ${released}@${target} to appear on the registry…`);
-  }
-  sleep(PROPAGATION_WAIT_MS);
-}
+    if (!tarball) return 'missing';
+    try {
+      return (await fetch(tarball, { method: 'HEAD' })).ok ? 'ready' : 'listed';
+    } catch {
+      return 'listed';
+    }
+  },
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  now: () => Date.now(),
+  onStage: (seen) => {
+    if (seen === 'missing') {
+      console.log(`Waiting for ${spec} to appear on the registry…`);
+    } else if (seen === 'listed') {
+      console.log(`${spec} is listed; waiting for its tarball to be served…`);
+    }
+  },
+});
 
-if (!servedByRegistry) {
+if (stage !== 'ready') {
+  const minutes = Math.round(waitedMs / 60_000);
   console.error(
-    `${released}@${target} is still not on the registry after ` +
-      `${(PROPAGATION_TRIES * PROPAGATION_WAIT_MS) / 1000}s. The publish did not take.`,
+    stage === 'missing'
+      ? `${spec} is still not on the registry after ${minutes} min. ` +
+          'The publish did not take.'
+      : `${spec} is listed on the registry, but its tarball is still not ` +
+          `served after ${minutes} min. If "Publish to npm" succeeded, do ` +
+          'not re-run the release (it fails with E403): run ' +
+          `\`npm run check:published -- ${released}\` again later.`,
   );
   process.exit(1);
 }
