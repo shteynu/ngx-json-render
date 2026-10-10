@@ -5,8 +5,8 @@
 - Branch: main (repo rule: commit straight on `main`, no feature branch)
 - Base branch: main
 - Base commit: 2a0eb15 (chore: release 0.9.3)
-- Current HEAD: 2a0eb15 (prototype uncommitted)
-- Status: implementation and verification done, uncommitted; commit split proposed
+- Current HEAD: c2a00d1 (plus this task file's own commit)
+- Status: committed on local `main` (21b4181 deps, 754fbca feature, c2a00d1 skill); not pushed, not released
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -120,14 +120,14 @@ without depending on any one agent framework.
 
 ## Remaining
 
-1. Commit (user's call; split proposed in chat).
+1. Push `main` (the user runs it) and release a minor in lockstep with the
+   Material catalog.
 2. Optional: an example against a real CopilotKit Angular runtime.
 3. Follow-up candidates: structural sharing inside `JsonRenderActivity` (on the
    CopilotKit path every delta arrives as a fresh deep clone, so the whole spec
    re-renders); devtools Stream tab for AG-UI runs (`notifyStreamObservers` is
    private to the primary entry); `TOOL_CALL_ARGS`; `STATE_*` ↔ `$state`;
    actions back to the agent.
-4. Minor release in lockstep with the Material catalog.
 
 ## Changed files
 
@@ -210,5 +210,5 @@ without depending on any one agent framework.
 
 ## Next concrete step
 
-On the user's go, make the four proposed commits on `main` (no AI
-attribution), then hand over `git push origin main`.
+The user pushes `main` (`git push origin main`); then the minor release in
+lockstep with the Material catalog, when the user asks for it.
