@@ -6,8 +6,8 @@
   checkout is busy with the AG-UI work in another session)
 - Base branch: main
 - Base commit: 8b640d8 (chore: release 0.9.6)
-- Current HEAD: release 0.9.7 bump on top of abc027d, 5fa73b3, 65d5a1e
-- Status: step 1 released as 0.9.5, upstream issue vercel-labs/json-render#393 posted; step 2 (builder) released as 0.9.6; step 3 committed, released as 0.9.7
+- Current HEAD: 753a01d (archive) on `main`, pushed
+- Status: step 1 released as 0.9.5, upstream issue vercel-labs/json-render#393 posted; step 2 (builder) released as 0.9.6; step 3 released as 0.9.7; Angular 20 zod fix released as 0.9.8 + material 0.3.15; done, archived
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -173,7 +173,22 @@ catalog in one command" (builder and schematic come later).
   declares no `message` capability, so the view shows that error; posting
   itself is covered by the AppBridge spec).
 
+## Angular 20 follow-up (0.9.8, material 0.3.15)
+
+- Checking the schematic on Angular 20.3 found that `ng add` wrote
+  `zod@^4.0.0`, which kept the CLI's hoisted zod 4.1.13 while
+  `@json-render/core` (dependency zod ^4.3.6) nested its own copy: catalog
+  schemas failed to type-check. Fix `2e34f0e`: all three schematics write
+  `zod@^4.3.6`; the peer range stays `^4.0.0`.
+- CI job `ng-add-smoke` (`scripts/ng-add-smoke.mjs`, Angular 20, `c59cd0a`):
+  `ng new`, `ng add`, `ng generate ngx-json-render:mcp-app`, build, list
+  tools. Green on GitHub; fails on the old range (checked by patching `dist`).
+- claude.ai re-check on the deployed example (library handlers): card
+  rendered, the user's Approve click put the message in the composer.
+- `mcp-app-angular-starter` README now points at the builder and schematic.
+
 ## Next concrete step
 
-After the 0.9.7 release (`check:published`, release notes): archive this
-task file; the goal "MCP App from your catalog in one command" is met.
+None on this branch: the goal "an MCP App from your catalog in one command"
+is shipped. Promotion (LinkedIn post, dev.to draft) is tracked outside the
+repo.
