@@ -5,7 +5,7 @@
 - Branch: fix/activity-loading
 - Base branch: main
 - Base commit: 4330734
-- Status: in progress
+- Status: done — merged to main, released as 0.9.10
 
 ## Objective
 
@@ -79,5 +79,6 @@ order models stream in (a parent lists its children before they arrive):
 
 ## Next concrete step
 
-Owner decision: commit and push this branch, then release 0.9.9 and add the
-stand as `examples/copilotkit-angular` before filing the CopilotKit issue.
+None on this branch. Follow-up outside it: file the CopilotKit docs issue
+(draft in the session that made this fix), and optionally add the stand as
+`examples/copilotkit-angular`.
