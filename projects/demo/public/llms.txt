@@ -1,0 +1,33 @@
+# ngx-json-render
+
+> Angular renderer for json-render (vercel-labs/json-render): a model emits a JSON spec constrained to a catalog of your components, and `<json-render>` renders it as real standalone Angular components, with signals, OnPush and no Zone.js, never through innerHTML or eval. Specs can stream in as RFC 6902 JSONL patches and render while they arrive.
+
+- Install: `npm install ngx-json-render @json-render/core zod`, or `ng add ngx-json-render` in an Angular CLI workspace.
+- Peer dependencies: Angular 19 or later (the Material catalog needs 20 or later), `@json-render/core` 0.20 or 0.21, `zod` ^4.
+- It is an adapter over `@json-render/core`, with the same spec grammar, expressions, state store, actions and SpecStream patches as the React, Vue, Svelte and Solid renderers, so catalogs and specs are portable between them.
+- Catalog components are standalone components with no inputs: they read props with `injectRenderContext().props()` and render children with `<jr-children />`.
+- `injectUIStream` streams a UI from an endpoint; `injectChatUI` streams chat replies that mix prose and specs.
+- `ngx-json-render-material` is a ready catalog of 29 Angular Material components, for generating UI before writing a catalog of your own.
+- License: Apache-2.0.
+
+## Docs
+
+- [ngx-json-render README](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/ngx-json-render/README.md): install, quick start, comparison with Hashbrown, streaming (server side, Genkit, AI SDK messages, chat), checking generated specs, render limits, MCP App hosts, devtools, testing, state, confirmation dialogs, forms, security, API surface
+- [ngx-json-render agent skill](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/skills/ngx-json-render/SKILL.md): the same API condensed for coding agents; CI compiles every snippet against the built package
+- [ngx-json-render-material README](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/ngx-json-render-material/README.md): the Angular Material catalog: install, use, component list, validation, overriding a component
+- [ngx-json-render-material agent skill](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/skills/ngx-json-render-material/SKILL.md): the Material catalog condensed for coding agents
+
+## Examples
+
+- [Live demo](https://shteynu.github.io/ngx-json-render/): a streamed sales dashboard and support form, a playground that renders a hand-edited spec against either catalog, an interactive spec (bindings, repeat, confirm, watch), and a chat where prose and UI patches share one reply
+- [AI SDK chat example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/examples/ai-sdk-chat/README.md): `Chat` from `@ai-sdk/angular` with answers that carry Material UI
+- [MCP App example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/mcp-app/README.md): the Material catalog rendered inline in Claude, ChatGPT, VS Code or Cursor through `ngx-json-render/mcp`
+- [Open in StackBlitz](https://stackblitz.com/github/shteynu/ngx-json-render): the whole workspace, running the demo
+
+## Optional
+
+- [Source on GitHub](https://github.com/shteynu/ngx-json-render)
+- [ngx-json-render on npm](https://www.npmjs.com/package/ngx-json-render)
+- [ngx-json-render-material on npm](https://www.npmjs.com/package/ngx-json-render-material)
+- [json-render](https://github.com/vercel-labs/json-render): the upstream project that defines the spec grammar, catalogs and `@json-render/core`
+- [Context7 entry](https://context7.com/shteynu/ngx-json-render): the same docs indexed for Context7-connected coding agents
