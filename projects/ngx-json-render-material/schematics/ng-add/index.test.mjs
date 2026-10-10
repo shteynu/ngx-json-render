@@ -43,9 +43,11 @@ test('adds the renderer and its peers at the ranges the catalog admits', async (
     { project: 'app' },
     await workspace(),
   );
-  for (const name of ['ngx-json-render', '@json-render/core', 'zod']) {
+  for (const name of ['ngx-json-render', '@json-render/core']) {
     assert.equal(dependencies(tree)[name], self.peerDependencies[name], name);
   }
+  // Core's own zod floor, so npm does not keep the CLI's older hoisted copy.
+  assert.equal(dependencies(tree)['zod'], '^4.3.6');
 });
 
 test('without Material: adds it at the Angular range, installs, then runs its ng-add', async () => {

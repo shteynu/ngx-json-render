@@ -40,7 +40,8 @@ test('adds the peers at the ranges the package admits, and installs them', async
     dependencies(tree)['@json-render/core'],
     self.peerDependencies['@json-render/core'],
   );
-  assert.equal(dependencies(tree)['zod'], self.peerDependencies['zod']);
+  // Core's own zod floor, so npm does not keep the CLI's older hoisted copy.
+  assert.equal(dependencies(tree)['zod'], '^4.3.6');
   assert.equal(installs().length, 1);
 });
 

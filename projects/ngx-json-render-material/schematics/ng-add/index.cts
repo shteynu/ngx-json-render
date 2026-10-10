@@ -30,6 +30,14 @@ const self = require('../../package.json') as Manifest;
 /** Peers taken at the range this package's own manifest admits. */
 const PEERS = ['ngx-json-render', '@json-render/core', 'zod'];
 
+/**
+ * Ranges to write that are narrower than the peer range. `@json-render/core`
+ * depends on zod ^4.3.6 itself; with a looser app range npm keeps whatever zod
+ * the Angular CLI hoisted (4.1.13 on Angular 20) and nests core's own copy,
+ * and the catalog's schemas then fail to type-check against core's.
+ */
+const INSTALL_RANGES: Record<string, string> = { zod: '^4.3.6' };
+
 const README =
   'https://github.com/shteynu/ngx-json-render/tree/main/projects/ngx-json-render-material#readme';
 
@@ -53,7 +61,7 @@ export function ngAdd(options: NgAddOptions = {}): Rule {
 
     const wanted: [string, string][] = [];
     for (const name of PEERS) {
-      const range = self.peerDependencies?.[name];
+      const range = INSTALL_RANGES[name] ?? self.peerDependencies?.[name];
       if (!range)
         throw new SchematicsException(
           `ngx-json-render-material declares no peer range for ${name}.`,

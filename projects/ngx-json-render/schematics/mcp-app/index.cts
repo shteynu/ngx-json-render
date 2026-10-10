@@ -48,6 +48,14 @@ const PEERS = [
   '@modelcontextprotocol/sdk',
 ];
 
+/**
+ * Ranges to write that are narrower than the peer range. `@json-render/core`
+ * depends on zod ^4.3.6 itself; with a looser app range npm keeps whatever zod
+ * the Angular CLI hoisted (4.1.13 on Angular 20) and nests core's own copy,
+ * and the catalog's schemas then fail to type-check against core's.
+ */
+const INSTALL_RANGES: Record<string, string> = { zod: '^4.3.6' };
+
 /** Origins the Material view loads its fonts from. */
 const MATERIAL_FONTS = [
   'https://fonts.googleapis.com',
@@ -107,7 +115,7 @@ export function mcpApp(options: McpAppOptions): Rule {
     ];
     for (const peer of PEERS) {
       if (declares(manifest, peer)) continue;
-      const range = self.peerDependencies?.[peer];
+      const range = INSTALL_RANGES[peer] ?? self.peerDependencies?.[peer];
       if (!range) {
         throw new SchematicsException(
           `ngx-json-render declares no peer range for ${peer}.`,

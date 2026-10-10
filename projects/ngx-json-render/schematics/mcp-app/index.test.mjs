@@ -93,9 +93,9 @@ test('generates a view, a server and an mcp target with a starter catalog', asyn
   assert.ok(tree.exists('/projects/mcp-app/src/styles.css'));
 
   const dependencies = tree.readJson('/package.json').dependencies;
+  assert.equal(dependencies['zod'], '^4.3.6');
   for (const peer of [
     '@json-render/core',
-    'zod',
     '@modelcontextprotocol/ext-apps',
     '@modelcontextprotocol/sdk',
   ]) {
