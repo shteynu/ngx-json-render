@@ -3,9 +3,8 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token)
-- Status: **in progress 2026-10-10: draft 1.0.0 uploaded, domain verified,
-  MCP scanned clean; blocked only on the demo video URL**
+- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token), `29f3323` (review video)
+- Status: **submitted 2026-10-10, version 1.0.0 in review**
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code (Opus 5.5)
 
@@ -172,13 +171,28 @@ developer mode.
   `plugin.json`, followed by a ZIP re-upload ("Upload new version"); it cannot
   be typed in the portal. Reviewers only see the video; it is not shared.
 
+## Submitted 2026-10-10
+
+- The walkthrough video was recorded by the agent in the user's ChatGPT
+  (sidebar collapsed, then cropped so no chats or avatar show). It holds title
+  cards plus screenshots of the 5 positive cases (all rendered the view) and
+  the 3 negatives (plain text), and was assembled with ffmpeg. Committed as
+  `projects/demo/public/mcp/chatgpt-review.mp4` (69 s, 0.5 MB) and served from
+  GitHub Pages. `plugin.json` got `review.demo_recording_url`.
+- New ZIP uploaded on the plugin page ("Upload plugin to make changes"). Review
+  information → Save details cleared "Incomplete review information"; the
+  portal then showed no findings.
+- Submit for review asks for six attestations (terms and guidelines, laws, no
+  money transfers, rights to content, suitable under 18, not aimed at under
+  13). The user ticked them and pressed Submit. Status: Review "In review",
+  Publication "Not published", version "1.0.0 · In review".
+- Positive case 3 (release status) rendered an "unknown status" page with
+  checkpoints and callouts but no progress bar, because the prompt carries no
+  data. The expected-behaviour text promises a progress bar; adjust it in the
+  next version if the reviewers mind.
+
 ## Next concrete step
 
-1. User: record a walkthrough of the test cases in ChatGPT (developer mode,
-   `@ngx-json-render UI` for the positives) and host it at a URL reviewers can
-   open (for example, an unlisted YouTube video).
-2. Agent: put the URL into `projects/mcp-app/chatgpt-plugin/plugin.json`, run
-   `npm run pack:chatgpt-plugin`, then use "Upload new version" on the plugin
-   page and check that the finding is gone.
-3. User: check how the developer name will show (the verified name is in
-   Hebrew script), then press Submit for review, and Publish after approval.
+Wait for the review result (email to the account owner). After approval, the
+user presses Publish; check then how the developer name shows (the verified
+identity's name is in Hebrew script) and update `docs/mcp-app-directory-listing.md`.

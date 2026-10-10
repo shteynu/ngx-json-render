@@ -9,10 +9,12 @@ demo on GitHub Pages, from `projects/demo/public/mcp/`.
 review. The Claude sections below match the live listing; edit it from
 [its manage page](https://claude.ai/directory/manage/ngx-json-render-ui) →
 Edit → Open the full editor, and keep this file in step. An edit made during
-review changes what the reviewers read. Not yet submitted to ChatGPT: the
-ChatGPT listing lives in `projects/mcp-app/chatgpt-plugin/plugin.json`, packed
-by `npm run pack:chatgpt-plugin` into `dist/chatgpt-plugin.zip` and uploaded
-at platform.openai.com/plugins.
+review changes what the reviewers read. Submitted to the ChatGPT plugin
+directory on 2026-10-10 as version 1.0.0, in review. The ChatGPT listing lives
+in `projects/mcp-app/chatgpt-plugin/plugin.json`, packed by
+`npm run pack:chatgpt-plugin` into `dist/chatgpt-plugin.zip` and uploaded at
+platform.openai.com/plugins. Review information is read from the ZIP and is
+read-only in the portal, so any change means a new upload.
 
 ## Links
 
@@ -183,8 +185,9 @@ Negative (the app should not be used):
       submission, 2026-10-06.
 - [x] Tested in ChatGPT developer mode, 2026-10-07.
 - [ ] Tested with MCP Inspector (`npx @modelcontextprotocol/inspector`).
-- [ ] A verified OpenAI developer identity (individual or business).
-- [ ] Domain verified: the portal's token committed as
+- [x] A verified OpenAI developer identity (individual), 2026-10-10.
+- [x] Domain verified, 2026-10-10: the portal's token committed as
       `projects/mcp-app/server/openai-apps-challenge.txt`, deployed, and served
       at `https://ngx-json-render.vercel.app/.well-known/openai-apps-challenge`.
-- [ ] A demo video URL in `review.demo_recording_url` or the dashboard.
+- [x] A demo video URL in `review.demo_recording_url`: the walkthrough at
+      `projects/demo/public/mcp/chatgpt-review.mp4`, 2026-10-10.
