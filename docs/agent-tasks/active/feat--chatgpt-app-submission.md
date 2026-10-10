@@ -3,9 +3,9 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed)
-- Status: **parked 2026-10-07: OpenAI verification needs a payment method,
-  which the user declined to add**
+- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token)
+- Status: **in progress 2026-10-10: draft 1.0.0 uploaded, domain verified,
+  MCP scanned clean; blocked only on the demo video URL**
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code (Opus 5.5)
 
@@ -149,7 +149,36 @@ developer mode.
 - Security settings in the user's ChatGPT account are switched by the user.
 - Ask before changing the Claude listing while it is in review.
 
+## Done 2026-10-10 (unparked)
+
+- User added a card in Billing. OpenAI took a one-off $5 credit purchase;
+  auto-reload is off. Then the user passed Individual verification (Persona).
+- `dist/chatgpt-plugin.zip` uploaded at platform.openai.com/plugins under
+  identity "Individual — <the user's verified name, in Hebrew script>". Draft
+  1.0.0, plugin id `plugin_asdk_app_6aca519d14948191a5e3f0d46fa7fd02`. The
+  upload dialog creates its file input only after "Upload new or existing
+  plugin" is clicked; the agent then filled it with the extension's
+  file upload.
+- Challenge token committed as
+  `projects/mcp-app/server/openai-apps-challenge.txt` (`8653590`, pushed by
+  the user). It is live on Vercel as `text/plain`, and **Domain verified**
+  passed: `*.vercel.app` is accepted.
+- Connect → "Tools scanned successfully"; MCP configuration "Configured";
+  `render-ui` found; "No findings in the latest MCP scan".
+- Review information: countries ("All supported countries"), the 5 + 3 test
+  cases and the release notes are read from the ZIP, read-only in the portal.
+  The only blocking finding is "No video walkthrough URL provided". The URL
+  must go into `extensions.com.openai.review.demo_recording_url` in
+  `plugin.json`, followed by a ZIP re-upload ("Upload new version"); it cannot
+  be typed in the portal. Reviewers only see the video; it is not shared.
+
 ## Next concrete step
 
-None until the user decides to add a payment method. Then: check
-Verifications status, and once verified upload the ZIP.
+1. User: record a walkthrough of the test cases in ChatGPT (developer mode,
+   `@ngx-json-render UI` for the positives) and host it at a URL reviewers can
+   open (for example, an unlisted YouTube video).
+2. Agent: put the URL into `projects/mcp-app/chatgpt-plugin/plugin.json`, run
+   `npm run pack:chatgpt-plugin`, then use "Upload new version" on the plugin
+   page and check that the finding is gone.
+3. User: check how the developer name will show (the verified name is in
+   Hebrew script), then press Submit for review, and Publish after approval.
