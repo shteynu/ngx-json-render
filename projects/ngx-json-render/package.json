@@ -12,14 +12,26 @@
     "signals",
     "server-driven-ui",
     "sdui",
-    "dynamic-components"
+    "dynamic-components",
+    "angular-library",
+    "ngx",
+    "llm",
+    "ai-ui",
+    "streaming",
+    "json-patch",
+    "chat-ui",
+    "mcp",
+    "mcp-apps",
+    "zoneless",
+    "json-renderer",
+    "dynamic-ui"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shteynu/ngx-json-render.git"
   },
-  "homepage": "https://github.com/shteynu/ngx-json-render",
+  "homepage": "https://shteynu.github.io/ngx-json-render/",
   "bugs": {
     "url": "https://github.com/shteynu/ngx-json-render/issues"
   },
