@@ -5,9 +5,9 @@
 - Branch: feat/mcp-server (worktree `.claude/worktrees/mcp-server`; the main
   checkout is busy with the AG-UI work in another session)
 - Base branch: main
-- Base commit: 2a0eb15 (chore: release 0.9.3)
-- Current HEAD: 2a0eb15
-- Status: step 1 done and verified, uncommitted; upstream issue drafted, not posted
+- Base commit: 4a2d424 (rebased from 2a0eb15 after the AG-UI release, 0.9.4)
+- Current HEAD: 2b5df71 on `main` (fast-forwarded locally, not pushed)
+- Status: step 1 merged into local `main` and re-verified after the rebase; upstream issue drafted, not posted
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -93,6 +93,10 @@ catalog in one command" (builder and schematic come later).
   `_meta` from `dist/mcp-app/server.mjs` dumped before and after the move are
   byte-identical (scratchpad `mcp/before.json`, `after.json`).
 - `--vercel` bundle built; its handler answered `tools/list` with `render-ui`.
+- Re-run after rebasing onto 4a2d424 (`npm ci` first): `npm test`, demo
+  build, `build:mcp-app` + byte-identical dump, `check:skills`,
+  `check:plugin`, `check:zoneless`, `check:peers`, and prettier over
+  `git ls-files` as CI sees it.
 - Packed `ngx-json-render-0.9.3.tgz` in a clean Node project with
   `@modelcontextprotocol/sdk@1.29.0` (peer floor): README stdio snippet and
   `handleRenderUiRequest` both work.
@@ -104,10 +108,6 @@ catalog in one command" (builder and schematic come later).
 
 ## Known risks
 
-- The main checkout carries uncommitted AG-UI work touching the same files
-  (`angular.json`, `tsconfig.json`, the renderer's `tsconfig.lib/spec.json`,
-  its README). Both add list entries next to `mcp`; expect small conflicts on
-  rebase.
 - Release: new public entry point → renderer minor (0.10.0), catalog peer
   range in lockstep.
 
@@ -118,5 +118,6 @@ catalog in one command" (builder and schematic come later).
 
 ## Next concrete step
 
-User decides: commit on `feat/mcp-server`; once the AG-UI session has
-committed on `main`, rebase this branch onto it and `merge --ff-only`.
+User pushes `main`. Then release 0.10.0 (renderer minor, catalog patch with
+the peer widened), then post `docs/upstream-mcp-issue.local.md` on the user's
+yes. After that: the Angular builder for the single-file view.
