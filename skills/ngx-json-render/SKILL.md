@@ -1,6 +1,6 @@
 ---
 name: ngx-json-render
-description: Angular renderer for json-render. Use when rendering AI-generated JSON specs as Angular components, working with ngx-json-render, defining Angular catalogs and component registries, streaming specs with injectUIStream or injectChatUI, checking generated specs, testing catalog components with ngx-json-render/testing, or inspecting a render with ngx-json-render/devtools.
+description: Angular renderer for json-render. Use when rendering AI-generated JSON specs as Angular components, working with ngx-json-render, defining Angular catalogs and component registries, streaming specs with injectUIStream or injectChatUI, rendering specs an AG-UI agent or CopilotKit streams with ngx-json-render/ag-ui, checking generated specs, testing catalog components with ngx-json-render/testing, or inspecting a render with ngx-json-render/devtools.
 ---
 
 # ngx-json-render
@@ -342,6 +342,44 @@ await this.mcp.sendMessage('Approve release 2.4.0', { version: '2.4.0' }); // po
 
 `spec`, `loading`, `connected`, `connecting` and `error` are signals. The spec streams in from `toolinputpartial` while the model writes the call (`streamPartialInput: false` to wait for the result), and `callServerTool(name, args)` replaces it with another tool's result. The server side is `@json-render/mcp`; a full example lives in `projects/mcp-app` of the repository.
 
+## AG-UI agents (`ngx-json-render/ag-ui`)
+
+On [AG-UI](https://docs.ag-ui.com) (CopilotKit, LangGraph, any `@ag-ui/client` agent) a spec travels as an activity with `activityType: "json-render-spec"` (`JSON_RENDER_ACTIVITY_TYPE`): `ACTIVITY_SNAPSHOT.content` is a whole spec, `ACTIVITY_DELTA.patch` is RFC 6902 patches against it. No peer: the entry point accepts any agent and event of the right shape.
+
+```ts
+import { Component } from '@angular/core';
+import { HttpAgent } from '@ag-ui/client';
+import { JsonRenderer } from 'ngx-json-render';
+import { injectAgentUI } from 'ngx-json-render/ag-ui';
+
+@Component({
+  selector: 'app-agent',
+  imports: [JsonRenderer],
+  template: `<json-render [spec]="ui.spec()" [loading]="ui.isStreaming()" [registry]="registry" />`,
+})
+export class AgentPage {
+  readonly registry = registry;
+  readonly agent = new HttpAgent({ url: '/api/agent' });
+  readonly ui = injectAgentUI({ agent: this.agent, catalog, validate: 'warn' });
+
+  ask(text: string) {
+    this.agent.addMessage({ id: crypto.randomUUID(), role: 'user', content: text });
+    void this.agent.runAgent();
+  }
+}
+```
+
+The hook only listens: whoever runs the agent, it folds the run's json-render activities into `spec` (latest), `surfaces` (`{ messageId, spec }[]`), `isStreaming`, `error` and `issues`, checks each spec when the run ends (`onComplete(spec, messageId)`), and starts from surfaces already in the agent's history. Do not render `agent.messages` content yourself: the client deep-clones messages on every event, so every element would re-render on every delta. `applyAgUiEvent(surfaces, event)` is the same fold as a pure function. In a CopilotKit Angular app, register the activity renderer; it draws with the `provideJsonRender` registry:
+
+```ts fragment
+providers: [
+  provideJsonRender({ registry }),
+  provideCopilotKit({ runtimeUrl: '/api/copilotkit', renderActivityMessages: [jsonRenderActivityRenderer()] }),
+];
+```
+
+Server side: parse the model's text with `createMixedStreamParser` from `@json-render/core` (prose with ` ```spec ` fences, `catalog.prompt({ mode: 'inline' })`), send prose as `TEXT_MESSAGE_CONTENT`, open the surface with an `ACTIVITY_SNAPSHOT` of `{ root: '', elements: {} }`, and send each patch as an `ACTIVITY_DELTA` with `patch: [patch]`, encoded by `EventEncoder` from `@ag-ui/encoder`. The README's "From an AG-UI agent" section has the full route.
+
 ## Devtools (`ngx-json-render/devtools`)
 
 A floating inspector, the counterpart of `@json-render/devtools-react`: Spec, State, Actions, Stream and Catalog tabs plus an element picker. Optional peer `@json-render/devtools`, at the same version as `@json-render/core` (it pins core exactly): `npm install -D @json-render/devtools@0.21`.
@@ -391,15 +429,16 @@ const stream = injectUIStream({
 
 ## Key Exports
 
-| Export                                                                                                        | Purpose                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JsonRenderer` (`<json-render>`), `JrChildren` (`<jr-children [slot]>`)                                       | Render a spec; render an element's children or a named slot                                                                                                                       |
-| `schema`, `defineRegistry`, `createStoreSetState`                                                             | Angular schema (`schema.createCatalog`), typed registry, store adapter                                                                                                            |
-| `injectRenderContext`                                                                                         | Props, element, `emit`, `on`, `bindings`, `setBound`, `loading`                                                                                                                   |
-| `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`                               | State access inside components                                                                                                                                                    |
-| `injectActions`, `injectAction`, `isActionCancelled`, `injectValidation`, `injectFieldValidation`             | Actions and field validation inside components                                                                                                                                    |
-| `injectUIStream`, `injectChatUI`, `jsonRenderMessage`, `buildSpecFromParts`, `getTextFromParts`, `applyPatch` | Streaming                                                                                                                                                                         |
-| `checkSpec`, `formatSpecCheckIssues`                                                                          | Spec checks by hand; types `RenderLimits`, `SpecCheck`, `SpecCheckIssue`                                                                                                          |
-| `JR_CONFIRM_DIALOG`, `JR_CONFIRM_LABELS`, `injectConfirmContext`, `JrConfirmDialog`                           | Confirmation dialog                                                                                                                                                               |
-| `injectRepeatScope`, `injectElementKey`, `injectDevtoolsActive`                                               | Repeat scope, element key, devtools                                                                                                                                               |
-| Re-exported from core                                                                                         | `Spec`, `UIElement`, `ActionBinding`, `ActionHandler`, `StateStore`, `VisibilityCondition`, `createStateStore`, `validateSpec`, `autoFixSpec`, `nestedToFlat`, `formatSpecIssues` |
+| Export                                                                                                                 | Purpose                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JsonRenderer` (`<json-render>`), `JrChildren` (`<jr-children [slot]>`)                                                | Render a spec; render an element's children or a named slot                                                                                                                       |
+| `schema`, `defineRegistry`, `createStoreSetState`                                                                      | Angular schema (`schema.createCatalog`), typed registry, store adapter                                                                                                            |
+| `injectRenderContext`                                                                                                  | Props, element, `emit`, `on`, `bindings`, `setBound`, `loading`                                                                                                                   |
+| `injectStateStore`, `injectStateValue`, `injectStateBinding`, `injectBoundProp`                                        | State access inside components                                                                                                                                                    |
+| `injectActions`, `injectAction`, `isActionCancelled`, `injectValidation`, `injectFieldValidation`                      | Actions and field validation inside components                                                                                                                                    |
+| `injectUIStream`, `injectChatUI`, `jsonRenderMessage`, `buildSpecFromParts`, `getTextFromParts`, `applyPatch`          | Streaming                                                                                                                                                                         |
+| `injectAgentUI`, `applyAgUiEvent`, `jsonRenderActivityRenderer`, `JSON_RENDER_ACTIVITY_TYPE` (`ngx-json-render/ag-ui`) | AG-UI agents and CopilotKit activities                                                                                                                                            |
+| `checkSpec`, `formatSpecCheckIssues`                                                                                   | Spec checks by hand; types `RenderLimits`, `SpecCheck`, `SpecCheckIssue`                                                                                                          |
+| `JR_CONFIRM_DIALOG`, `JR_CONFIRM_LABELS`, `injectConfirmContext`, `JrConfirmDialog`                                    | Confirmation dialog                                                                                                                                                               |
+| `injectRepeatScope`, `injectElementKey`, `injectDevtoolsActive`                                                        | Repeat scope, element key, devtools                                                                                                                                               |
+| Re-exported from core                                                                                                  | `Spec`, `UIElement`, `ActionBinding`, `ActionHandler`, `StateStore`, `VisibilityCondition`, `createStateStore`, `validateSpec`, `autoFixSpec`, `nestedToFlat`, `formatSpecIssues` |
