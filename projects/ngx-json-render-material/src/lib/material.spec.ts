@@ -12,6 +12,12 @@ import {
   NativeDateAdapter,
 } from '@angular/material/core';
 import { MatDatepickerInputHarness } from '@angular/material/datepicker/testing';
+import { MatButtonToggleGroupHarness } from '@angular/material/button-toggle/testing';
+import { MatSelectHarness } from '@angular/material/select/testing';
+import {
+  MatStepperHarness,
+  StepperOrientation,
+} from '@angular/material/stepper/testing';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import type { Spec } from '@json-render/core';
@@ -2311,5 +2317,378 @@ describe('material date picker', () => {
       expect(await (await datepicker(fixture)).getValue(), due).toBe(shown);
       TestBed.resetTestingModule();
     }
+  });
+});
+
+/** Click the button whose trimmed text is `label`. */
+function clickButton(fixture: ComponentFixture<unknown>, label: string): void {
+  const button = Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+  ).find((el) => el.textContent?.trim() === label);
+  if (!button) throw new Error(`no button "${label}"`);
+  button.click();
+}
+
+/** Trimmed texts of the visible buttons labelled Back or Next, in order. */
+function navButtons(fixture: ComponentFixture<unknown>): string[] {
+  return Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '.jrm-step-nav button',
+    ),
+  ).map((el) => el.textContent?.trim() ?? '');
+}
+
+describe('material toggle group', () => {
+  const VIEW = {
+    root: 'view',
+    state: { view: 'week' },
+    elements: {
+      view: {
+        type: 'ToggleGroup',
+        props: {
+          label: 'Range',
+          value: { $bindState: '/view' },
+          options: [
+            { value: 'day', label: 'Day' },
+            { value: 'week', label: 'Week', icon: 'date_range' },
+            { value: 'month', label: 'Month' },
+          ],
+        },
+        children: [],
+      },
+    },
+  } as unknown as Spec;
+
+  it('shows the bound option as chosen and writes a click back to state', async () => {
+    const fixture = await render(VIEW);
+    const group = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatButtonToggleGroupHarness,
+    );
+    const toggles = await group.getToggles();
+
+    expect(await Promise.all(toggles.map((t) => t.getText()))).toEqual([
+      'Day',
+      'date_range Week',
+      'Month',
+    ]);
+    expect(await toggles[1].isChecked()).toBe(true);
+
+    await toggles[2].check();
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/view')).toBe('month');
+
+    const host: HTMLElement = fixture.nativeElement;
+    const label = host.querySelector('label')!;
+    expect(label.textContent?.trim()).toBe('Range');
+    expect(
+      host
+        .querySelector('mat-button-toggle-group')!
+        .getAttribute('aria-labelledby'),
+    ).toBe(label.id);
+  });
+
+  it('reports a required choice through its own error line', async () => {
+    const fixture = await render({
+      root: 'form',
+      state: { view: '' },
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['view', 'save'] },
+        view: {
+          type: 'ToggleGroup',
+          props: {
+            value: { $bindState: '/view' },
+            options: [{ value: 'day', label: 'Day' }],
+            validation: {
+              checks: [{ type: 'required', message: 'Pick a range' }],
+            },
+          },
+          children: [],
+        },
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'validateForm' } },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    clickButton(fixture, 'Save');
+    await settle(fixture);
+
+    expect(errorTexts(fixture)).toEqual(['Pick a range']);
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('mat-button-toggle-group')!
+        .hasAttribute('aria-labelledby'),
+    ).toBe(false);
+  });
+});
+
+describe('material multiple select', () => {
+  function tagsSpec(tags: unknown, extra: Record<string, unknown> = {}) {
+    return {
+      root: 'form',
+      state: { tags },
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['tags', 'save'] },
+        tags: {
+          type: 'Select',
+          props: {
+            label: 'Tags',
+            value: { $bindState: '/tags' },
+            options: [
+              { value: 'bug', label: 'Bug' },
+              { value: 'docs', label: 'Docs' },
+              { value: 'ui', label: 'UI' },
+            ],
+            multiple: true,
+            ...extra,
+          },
+          children: [],
+        },
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'validateForm' } },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+  }
+
+  async function select(fixture: ComponentFixture<unknown>) {
+    return TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatSelectHarness,
+    );
+  }
+
+  it('writes every chosen option to state as an array', async () => {
+    const fixture = await render(tagsSpec([]));
+    const harness = await select(fixture);
+    expect(await harness.isMultiple()).toBe(true);
+
+    await harness.open();
+    await harness.clickOptions({ text: 'Bug' });
+    await harness.clickOptions({ text: 'UI' });
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/tags')).toEqual(['bug', 'ui']);
+  });
+
+  it('shows the bound values, and a lone string as one of them', async () => {
+    for (const [tags, shown] of [
+      [['docs', 'ui', 42], 'Docs, UI'],
+      ['bug', 'Bug'],
+      ['', ''],
+    ] as const) {
+      const fixture = await render(tagsSpec(tags));
+      expect(await (await select(fixture)).getValueText(), String(tags)).toBe(
+        shown,
+      );
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('reads an array as no value in a single select', async () => {
+    const fixture = await render(tagsSpec(['bug'], { multiple: false }));
+    const harness = await select(fixture);
+
+    expect(await harness.isMultiple()).toBe(false);
+    expect(await harness.getValueText()).toBe('');
+  });
+
+  it('switches to multiple when a later patch adds it', async () => {
+    const fixture = await render(tagsSpec('bug', { multiple: undefined }));
+    expect(await (await select(fixture)).isMultiple()).toBe(false);
+
+    fixture.componentInstance.spec.set(tagsSpec(['bug', 'docs']));
+    await settle(fixture);
+
+    const harness = await select(fixture);
+    expect(await harness.isMultiple()).toBe(true);
+    expect(await harness.getValueText()).toBe('Bug, Docs');
+  });
+
+  it('fails a required check on an empty selection', async () => {
+    const fixture = await render(
+      tagsSpec([], {
+        validation: { checks: [{ type: 'required', message: 'Pick a tag' }] },
+      }),
+    );
+
+    clickButton(fixture, 'Save');
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/formValidation')).toEqual({
+      valid: false,
+      errors: { '/tags': ['Pick a tag'] },
+    });
+    expect(errorTexts(fixture)).toEqual(['Pick a tag']);
+  });
+});
+
+describe('material stepper', () => {
+  /** A two-step sign-up: a required email, then a required name. */
+  function signUp(stepper: Record<string, unknown> = {}) {
+    return {
+      root: 'stepper',
+      state: { email: '', name: '', step: 0 },
+      elements: {
+        stepper: {
+          type: 'Stepper',
+          props: stepper,
+          children: ['account', 'profile'],
+        },
+        account: {
+          type: 'Step',
+          props: { label: 'Account' },
+          children: ['card'],
+        },
+        // Nested, so the step finds a field that is not its direct child.
+        card: { type: 'Card', props: {}, children: ['email'] },
+        email: {
+          type: 'Input',
+          props: {
+            label: 'Email',
+            value: { $bindState: '/email' },
+            validation: {
+              checks: [{ type: 'required', message: 'Email is required' }],
+            },
+          },
+          children: [],
+        },
+        profile: {
+          type: 'Step',
+          props: { label: 'Profile' },
+          children: ['name'],
+        },
+        name: {
+          type: 'Input',
+          props: {
+            label: 'Name',
+            value: { $bindState: '/name' },
+            validation: {
+              checks: [{ type: 'required', message: 'Name is required' }],
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+  }
+
+  async function stepper(fixture: ComponentFixture<unknown>) {
+    return TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatStepperHarness,
+    );
+  }
+
+  async function selectedLabel(fixture: ComponentFixture<unknown>) {
+    const [step] = await (await stepper(fixture)).getSteps({ selected: true });
+    return step.getLabel();
+  }
+
+  async function typeEmail(fixture: ComponentFixture<unknown>, value: string) {
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      'input',
+    )!;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    await settle(fixture);
+  }
+
+  it('renders each Step child as a step with Back and Next where they apply', async () => {
+    const fixture = await render(signUp());
+    const steps = await (await stepper(fixture)).getSteps();
+
+    expect(await Promise.all(steps.map((step) => step.getLabel()))).toEqual([
+      'Account',
+      'Profile',
+    ]);
+    // Both step bodies are in the DOM; the first has only Next, the last only Back.
+    expect(navButtons(fixture)).toEqual(['Next', 'Back']);
+  });
+
+  it('moves on from Next only once the step’s own fields pass', async () => {
+    const fixture = await render(signUp());
+
+    clickButton(fixture, 'Next');
+    await settle(fixture);
+    expect(await selectedLabel(fixture)).toBe('Account');
+    // The email is validated; the name, in the other step, is not.
+    expect(errorTexts(fixture)).toEqual(['Email is required']);
+
+    await typeEmail(fixture, 'ada@example.com');
+    clickButton(fixture, 'Next');
+    await settle(fixture);
+    expect(await selectedLabel(fixture)).toBe('Profile');
+    expect(errorTexts(fixture)).toEqual([]);
+
+    clickButton(fixture, 'Back');
+    await settle(fixture);
+    expect(await selectedLabel(fixture)).toBe('Account');
+  });
+
+  it('keeps a linear stepper from skipping ahead by its header', async () => {
+    const fixture = await render(signUp({ linear: true }));
+    const [, profile] = await (await stepper(fixture)).getSteps();
+
+    await typeEmail(fixture, 'ada@example.com');
+    await profile.select();
+    await settle(fixture);
+    expect(await selectedLabel(fixture)).toBe('Account');
+
+    clickButton(fixture, 'Next');
+    await settle(fixture);
+    expect(await selectedLabel(fixture)).toBe('Profile');
+  });
+
+  it('opens the bound step, clamped to the steps there are, and writes moves back', async () => {
+    const spec = signUp({ selected: { $bindState: '/step' } });
+    (spec.state as Record<string, unknown>)['step'] = 7;
+    const fixture = await render(spec);
+    expect(await selectedLabel(fixture)).toBe('Profile');
+
+    const [account] = await (await stepper(fixture)).getSteps();
+    await account.select();
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/step')).toBe(0);
+  });
+
+  it('takes its button labels and orientation from the spec', async () => {
+    const fixture = await render(
+      signUp({
+        orientation: 'vertical',
+        backLabel: 'Zurück',
+        nextLabel: 'Weiter',
+        selected: 'soon',
+      }),
+    );
+
+    expect(navButtons(fixture)).toEqual(['Weiter', 'Zurück']);
+    expect(await (await stepper(fixture)).getOrientation()).toBe(
+      StepperOrientation.VERTICAL,
+    );
+    expect(await selectedLabel(fixture)).toBe('Account');
+  });
+
+  it('renders a single step without navigation, and a Step outside a Stepper as nothing', async () => {
+    const fixture = await render({
+      root: 'stack',
+      state: {},
+      elements: {
+        stack: { type: 'Stack', props: {}, children: ['stepper', 'stray'] },
+        stepper: { type: 'Stepper', props: {}, children: ['only'] },
+        only: { type: 'Step', props: { label: 'Only' }, children: ['text'] },
+        text: { type: 'Text', props: { content: 'Inside' }, children: [] },
+        stray: { type: 'Step', props: { label: 'Stray' }, children: [] },
+      },
+    } as unknown as Spec);
+
+    expect(navButtons(fixture)).toEqual([]);
+    expect(await selectedLabel(fixture)).toBe('Only');
+    expect(fixture.nativeElement.textContent).toContain('Inside');
+    expect(fixture.nativeElement.textContent).not.toContain('Stray');
   });
 });

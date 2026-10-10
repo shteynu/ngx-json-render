@@ -4,7 +4,7 @@
 
 Angular Material catalog for [`ngx-json-render`](https://www.npmjs.com/package/ngx-json-render) — a ready-made component vocabulary for generative UI in Angular, which an LLM can generate screens against, so you don't have to write one before your first generated screen.
 
-`ngx-json-render` gives you the renderer. This gives you the 30 components it renders.
+`ngx-json-render` gives you the renderer. This gives you the 33 components it renders.
 
 ## Install
 
@@ -87,13 +87,13 @@ import { materialCatalog } from 'ngx-json-render-material/catalog';
 
 ## Components
 
-| Group        | Components                                                                                                             |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider`                                         |
-| Typography   | `Heading`, `Text`, `Icon`, `Image`                                                                                     |
-| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                                          |
-| Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
-| Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                                    |
+| Group        | Components                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Stepper`, `Step`, `Divider`                                     |
+| Typography   | `Heading`, `Text`, `Icon`, `Image`                                                                                                    |
+| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                                                         |
+| Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox`, `RadioGroup`, `ToggleGroup`, `SlideToggle`, `Slider` |
+| Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                                                   |
 
 Props are named for what they mean, not for Material's API (`variant`, not `mat-raised-button`), so a spec written against this catalog stays portable to the other json-render renderers — and a model that has never seen Angular Material can still target it.
 
@@ -107,8 +107,8 @@ The catalog declares no custom actions — the built-in `setState`, `pushState`,
 
 ## Validation
 
-`Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox` and `RadioGroup` take a
-`validation` prop. The checks run against the state path the field's value is bound to, so
+`Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox`, `RadioGroup` and
+`ToggleGroup` take a `validation` prop. The checks run against the state path the field's value is bound to, so
 **validation applies only to a bound field** — a literal `value` has no path to
 validate and the config is ignored.
 
@@ -141,8 +141,8 @@ Check types: `required`, `requiredIf`, `email`, `url`, `numeric`, `minLength`,
 
 `validateOn` is `"change"`, `"blur"` or `"submit"`. It defaults to `"blur"` for
 `Input` and `Textarea` — validating on every keystroke is noisy — and to
-`"change"` for `Select`, `DatePicker`, `Checkbox` and `RadioGroup`, where a
-change is a deliberate choice. `enabled` takes a visibility condition and switches the
+`"change"` for `Select`, `DatePicker`, `Checkbox`, `RadioGroup` and
+`ToggleGroup`, where a change is a deliberate choice. `enabled` takes a visibility condition and switches the
 whole config off when it is false.
 
 The built-in `validateForm` action validates every bound field at once,
@@ -170,8 +170,9 @@ act on:
 ```
 
 Errors appear in the Material form field's subscript (`<mat-error>`) for
-`Input`, `Textarea`, `Select` and `DatePicker`, and on their own line under `Checkbox` and
-`RadioGroup`, which have no form field to host one.
+`Input`, `Textarea`, `Select` and `DatePicker`, and on their own line under
+`Checkbox`, `RadioGroup` and `ToggleGroup`, which have no form field to host
+one.
 
 Two things worth knowing:
 
@@ -208,6 +209,21 @@ export class BrandedCard {
 ## Notes
 
 - `Tabs` discovers its tabs from `Tab` children in the spec rather than through `@ContentChildren`, which a spec-driven tree cannot satisfy. Each `Tab` hands its label and body to the parent, which replays them into real `<mat-tab>` elements.
+- `Select` with `multiple: true` holds an array of the chosen values; start
+  its state as `[]`. A `required` check fails on an empty array. A lone string
+  reads as a one-item list, and an array in a select without `multiple` reads
+  as no value.
+- `Stepper` takes `Step` children the way `Tabs` takes `Tab` ones. Each step
+  but the first gets a Back button and each but the last a Next button
+  (`backLabel` and `nextLabel` rename them). **Next validates the bound fields
+  inside its step**, however deeply nested, and moves on only when they all
+  pass; put the final `submitForm` button in the last step. `linear: true`
+  stops the headers from skipping to a step not reached through Next.
+  `selected`, the 0-based index of the open step, can be bound with
+  `$bindState` to read or drive it; an index past the last step opens the
+  last one.
+- `ToggleGroup` is a Material button-toggle group: a row of 2–5 segments with
+  one chosen, bound like a `RadioGroup`. An option may carry an `icon`.
 - `DatePicker` keeps its date in state as a `"YYYY-MM-DD"` string, and so do
   `min` and `max`; clearing the field writes `""`. ISO dates compare correctly
   as strings, so an end date after a start date is a `greaterThan` check with

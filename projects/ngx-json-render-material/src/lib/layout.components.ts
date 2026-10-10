@@ -9,12 +9,20 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import {
+  MatStep,
+  MatStepper,
+  MatStepperModule,
+} from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import {
@@ -23,6 +31,7 @@ import {
   injectRenderContext,
 } from 'ngx-json-render';
 import type { MaterialProps } from 'ngx-json-render-material/catalog';
+import { JrmStepFields } from './field';
 
 /** Layout container that stacks children vertically or horizontally. */
 @Component({
@@ -271,6 +280,39 @@ export class JrmTabs {
   readonly registry = inject(JrmTabRegistry);
 }
 
+/**
+ * Hand a panel's label and body to the registry of the `Tabs` or `Stepper`
+ * above it, and take it back when the component is destroyed. Returns the
+ * registration id, `null` until the body exists or outside any registry.
+ */
+function injectPanelRegistration(
+  label: Signal<string>,
+  body: Signal<TemplateRef<unknown> | undefined>,
+): Signal<number | null> {
+  const registry = inject(JrmTabRegistry, { optional: true });
+  const key = injectElementKey();
+  const id = signal<number | null>(null);
+
+  // Registering is a write to a signal the parent already read this cycle,
+  // so it has to land outside change detection to avoid NG0100 — and the
+  // view must be created before `body()` resolves. An effect satisfies
+  // both and, unlike afterNextRender, also runs on the server. Only the
+  // template is read here: the label travels as a signal, so a patched
+  // label reaches the parent without re-registering.
+  effect(() => {
+    const template = body();
+    if (untracked(id) !== null || !template || !registry) return;
+    id.set(registry.register({ key, label, body: template }));
+  });
+
+  inject(DestroyRef).onDestroy(() => {
+    const registered = id();
+    if (registered !== null) registry?.unregister(registered);
+  });
+
+  return id.asReadonly();
+}
+
 /** A single tab; valid only as a direct child of `Tabs`. */
 @Component({
   selector: 'jrm-tab',
@@ -282,34 +324,153 @@ export class JrmTabs {
 })
 export class JrmTab {
   private readonly ctx = injectRenderContext<MaterialProps<'Tab'>>();
-  private readonly registry = inject(JrmTabRegistry, { optional: true });
-  private readonly key = injectElementKey();
   private readonly body = viewChild<TemplateRef<unknown>>('body');
   private readonly label = computed(() => this.ctx.props().label ?? '');
 
   constructor() {
-    let id: number | null = null;
+    injectPanelRegistration(this.label, this.body);
+  }
+}
 
-    // Registering is a write to a signal the parent already read this cycle,
-    // so it has to land outside change detection to avoid NG0100 — and the
-    // view must be created before `body()` resolves. An effect satisfies
-    // both and, unlike afterNextRender, also runs on the server. Only the
-    // template is read here: the label travels as a signal, so a patched
-    // label reaches the group without re-registering.
-    effect(() => {
-      const body = this.body();
-      if (id !== null || !body) return;
-      id =
-        this.registry?.register({
-          key: this.key,
-          label: this.label,
-          body,
-        }) ?? null;
-    });
+/**
+ * Material stepper whose steps come from `Step` children in the spec.
+ *
+ * It works the way {@link JrmTabs} does — each `JrmStep` hands its label and
+ * body to a {@link JrmTabRegistry}, and this component replays them into real
+ * `<mat-step>` elements — plus Back/Next buttons that the steps render, Next
+ * validating the step's own fields first.
+ */
+@Component({
+  selector: 'jrm-stepper',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [JrChildren, MatStepperModule, NgTemplateOutlet],
+  providers: [JrmTabRegistry],
+  template: `
+    <!-- Instantiates the Step children so they can register themselves. -->
+    <div class="jrm-tab-sources"><jr-children /></div>
 
-    inject(DestroyRef).onDestroy(() => {
-      if (id !== null) this.registry?.unregister(id);
-    });
+    <!-- MatStepper throws on an index outside its steps, so it waits for the
+         first one rather than start empty. -->
+    @if (registry.tabs().length > 0) {
+      <mat-stepper
+        [orientation]="props().orientation ?? 'horizontal'"
+        [linear]="props().linear ?? false"
+        [selectedIndex]="selected()"
+        (selectionChange)="onSelect($event.selectedIndex)"
+      >
+        @for (step of registry.tabs(); track step.id) {
+          <mat-step [label]="step.label()" [completed]="passed().has(step.id)">
+            <ng-container *ngTemplateOutlet="step.body" />
+          </mat-step>
+        }
+      </mat-stepper>
+    }
+  `,
+  styles: `
+    .jrm-tab-sources { display: none; }
+  `,
+})
+export class JrmStepper {
+  readonly ctx = injectRenderContext<MaterialProps<'Stepper'>>();
+  readonly props = this.ctx.props;
+  readonly registry = inject(JrmTabRegistry);
+  private readonly stepper = viewChild(MatStepper);
+  private readonly steps = viewChildren(MatStep);
+
+  /** Steps whose Next has passed validation; in linear mode only these unlock the next header. */
+  readonly passed = signal<ReadonlySet<number>>(new Set());
+
+  /**
+   * The open step, clamped to the steps that exist: the index can arrive in
+   * a patch before the steps it points at do.
+   */
+  readonly selected = computed(() => {
+    const last = Math.max(this.registry.tabs().length - 1, 0);
+    const index = Math.trunc(Number(this.props().selected ?? 0));
+    return Number.isNaN(index) ? 0 : Math.min(Math.max(index, 0), last);
+  });
+
+  /** Position of a registered step, -1 when it is not mounted. */
+  indexOf(id: number | null): number {
+    return this.registry.tabs().findIndex((step) => step.id === id);
+  }
+
+  /** Mark a step passed and open the one after it. */
+  next(id: number | null): void {
+    const step = this.steps()[this.indexOf(id)];
+    if (!step || id === null) return;
+    // Set directly as well as through the [completed] binding: the binding
+    // only lands on the next change detection, and linear mode checks
+    // completion inside next() itself.
+    step.completed = true;
+    this.passed.update((passed) => new Set(passed).add(id));
+    this.stepper()?.next();
+  }
+
+  previous(): void {
+    this.stepper()?.previous();
+  }
+
+  onSelect(index: number): void {
+    if (this.ctx.bindings()?.['selected']) {
+      this.ctx.setBound('selected', index);
+    }
+  }
+}
+
+/**
+ * A single step; valid only as a direct child of `Stepper`. It renders its
+ * children and the step's Back/Next buttons, and provides the scope its
+ * fields register in, so Next validates only what this step shows.
+ */
+@Component({
+  selector: 'jrm-step',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [JrChildren, MatButtonModule],
+  providers: [JrmStepFields],
+  template: `
+    <ng-template #body>
+      <div class="jrm-step-body"><jr-children /></div>
+      @if (count() > 1) {
+        <div class="jrm-step-nav">
+          @if (index() > 0) {
+            <button matButton="text" type="button" (click)="back()">
+              {{ stepper?.props()?.backLabel ?? 'Back' }}
+            </button>
+          }
+          @if (index() < count() - 1) {
+            <button matButton="filled" type="button" (click)="next()">
+              {{ stepper?.props()?.nextLabel ?? 'Next' }}
+            </button>
+          }
+        </div>
+      }
+    </ng-template>
+  `,
+  styles: `
+    .jrm-step-body { padding: 16px 0 8px; }
+    .jrm-step-nav { display: flex; gap: 8px; }
+  `,
+})
+export class JrmStep {
+  private readonly ctx = injectRenderContext<MaterialProps<'Step'>>();
+  readonly stepper = inject(JrmStepper, { optional: true });
+  private readonly fields = inject(JrmStepFields);
+  private readonly body = viewChild<TemplateRef<unknown>>('body');
+  private readonly label = computed(() => this.ctx.props().label ?? '');
+  private readonly id = injectPanelRegistration(this.label, this.body);
+
+  readonly index = computed(() => this.stepper?.indexOf(this.id()) ?? -1);
+  readonly count = computed(() => this.stepper?.registry.tabs().length ?? 0);
+
+  back(): void {
+    this.stepper?.previous();
+  }
+
+  /** Validate this step's fields, and move on only when they all pass. */
+  next(): void {
+    if (!this.fields.validate()) return;
+    this.stepper?.next(this.id());
   }
 }
 

@@ -109,6 +109,29 @@ export const materialCatalog = schema.createCatalog({
       description:
         'A single tab inside a Tabs component. Valid only as a direct child of Tabs.',
     },
+    Stepper: {
+      props: z.object({
+        orientation: z.enum(['horizontal', 'vertical']).optional(),
+        linear: z.boolean().optional(),
+        selected: z.number().int().min(0).optional(),
+        backLabel: z.string().optional(),
+        nextLabel: z.string().optional(),
+      }),
+      slots: ['default'],
+      description:
+        'Material stepper for a multi-step form or wizard. Children MUST all be Step components; each Step supplies one step and its body. ' +
+        'Every step but the first gets a Back button and every step but the last a Next button (`backLabel`, `nextLabel` rename them). ' +
+        "Next validates the bound fields inside its step and moves on only if they all pass, so put each field's `validation` on it as usual and the final submit button (submitForm) in the last Step. " +
+        'With `linear: true` the step headers cannot skip ahead to a step not reached yet. `selected` is the 0-based index of the open step; bind it with {"$bindState":"/path"} to read or drive it.',
+    },
+    Step: {
+      props: z.object({
+        label: z.string(),
+      }),
+      slots: ['default'],
+      description:
+        'A single step inside a Stepper. Valid only as a direct child of Stepper.',
+    },
     Divider: {
       props: z.object({}),
       slots: [],
@@ -271,14 +294,16 @@ export const materialCatalog = schema.createCatalog({
     Select: {
       props: z.object({
         label: z.string().optional(),
-        value: z.string().optional(),
+        value: z.union([z.string(), z.array(z.string())]).optional(),
         options: z.array(z.object({ value: z.string(), label: z.string() })),
+        multiple: z.boolean().optional(),
         disabled: z.boolean().optional(),
         validation,
       }),
       slots: [],
       description:
         'Material select. Bind `value` with {"$bindState":"/path"}; `options` is an explicit list. ' +
+        'With `multiple: true` the user can pick several options and `value` is an array of the chosen values (start it as []); a required check then fails on an empty array. ' +
         VALIDATION_HINT,
     },
     DatePicker: {
@@ -321,6 +346,26 @@ export const materialCatalog = schema.createCatalog({
       slots: [],
       description:
         'Material radio group. Bind `value` with {"$bindState":"/path"}. ' +
+        VALIDATION_HINT,
+    },
+    ToggleGroup: {
+      props: z.object({
+        label: z.string().optional(),
+        value: z.string().optional(),
+        options: z.array(
+          z.object({
+            value: z.string(),
+            label: z.string(),
+            icon: z.string().optional(),
+          }),
+        ),
+        disabled: z.boolean().optional(),
+        validation,
+      }),
+      slots: [],
+      description:
+        'Segmented control: a row of 2–5 buttons, one of which is chosen. Prefer it to a RadioGroup or Select for a short, frequently switched choice such as a view mode or a time range. ' +
+        'Bind `value` with {"$bindState":"/path"}; an option may carry a Material Symbols `icon`. ' +
         VALIDATION_HINT,
     },
     SlideToggle: {

@@ -37,7 +37,7 @@ const CATALOGS: readonly CatalogChoice[] = [
   {
     id: 'material',
     label: 'Angular Material',
-    blurb: 'ngx-json-render-material — 30 components, nothing to write.',
+    blurb: 'ngx-json-render-material — 33 components, nothing to write.',
     catalog: materialCatalog,
     registry: materialRegistry,
     starter: materialStarterSpec,

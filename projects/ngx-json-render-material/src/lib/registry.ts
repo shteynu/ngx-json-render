@@ -12,6 +12,7 @@ import {
   JrmSlideToggle,
   JrmSlider,
   JrmTextarea,
+  JrmToggleGroup,
 } from './form.components';
 import {
   JrmCard,
@@ -19,6 +20,8 @@ import {
   JrmExpansionPanel,
   JrmGrid,
   JrmStack,
+  JrmStep,
+  JrmStepper,
   JrmTab,
   JrmTabs,
   JrmToolbar,
@@ -51,6 +54,8 @@ export const materialComponents: Components<typeof materialCatalog> = {
   ExpansionPanel: JrmExpansionPanel,
   Tabs: JrmTabs,
   Tab: JrmTab,
+  Stepper: JrmStepper,
+  Step: JrmStep,
   Divider: JrmDivider,
   // typography
   Heading: JrmHeading,
@@ -72,6 +77,7 @@ export const materialComponents: Components<typeof materialCatalog> = {
   DatePicker: JrmDatePicker,
   Checkbox: JrmCheckbox,
   RadioGroup: JrmRadioGroup,
+  ToggleGroup: JrmToggleGroup,
   SlideToggle: JrmSlideToggle,
   Slider: JrmSlider,
   // feedback

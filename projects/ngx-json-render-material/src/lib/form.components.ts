@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
   DateAdapter,
@@ -45,11 +46,12 @@ interface SelectOption {
  * tells the (OnPush) form field to re-render its subscript.
  */
 function syncErrorState(
-  control: () => MatInput | MatSelect,
+  control: () => MatInput | MatSelect | undefined,
   invalid: () => boolean,
 ): void {
   effect(() => {
     const target = control();
+    if (!target) return;
     target.errorState = invalid();
     target.stateChanges.next();
   });
@@ -222,27 +224,48 @@ export class JrmTextarea {
   }
 }
 
-/** Material select; two-way bindable via `$bindState`. */
+/**
+ * Material select; two-way bindable via `$bindState`. With `multiple` it
+ * holds an array of the chosen values instead of a single one.
+ */
 @Component({
   selector: 'jrm-select',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatFormFieldModule, MatSelectModule],
+  // MatSelect throws when `multiple` changes after it initialises, and a
+  // streamed spec can add the prop in a later patch, so each mode gets its
+  // own mat-select and a change swaps one for the other.
   template: `
     <mat-form-field appearance="outline" class="jrm-field">
       @if (props().label) {
         <mat-label>{{ props().label }}</mat-label>
       }
-      <mat-select
-        [value]="props().value ?? null"
-        [required]="field.required()"
-        [disabled]="props().disabled ?? false"
-        (selectionChange)="field.set($event.value)"
-        (closed)="field.blur()"
-      >
-        @for (option of options(); track option.value) {
-          <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
+      @if (multiple()) {
+        <mat-select
+          multiple
+          [value]="values()"
+          [required]="field.required()"
+          [disabled]="props().disabled ?? false"
+          (selectionChange)="field.set($event.value)"
+          (closed)="field.blur()"
+        >
+          @for (option of options(); track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      } @else {
+        <mat-select
+          [value]="value()"
+          [required]="field.required()"
+          [disabled]="props().disabled ?? false"
+          (selectionChange)="field.set($event.value)"
+          (closed)="field.blur()"
+        >
+          @for (option of options(); track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      }
       @for (error of field.errors(); track error) {
         <mat-error>{{ error }}</mat-error>
       }
@@ -256,10 +279,27 @@ export class JrmSelect {
   readonly ctx = injectRenderContext<MaterialProps<'Select'>>();
   readonly props = this.ctx.props;
   readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
-  private readonly control = viewChild.required(MatSelect);
+  // Optional: the mode switch swaps one mat-select for the other.
+  private readonly control = viewChild(MatSelect);
   readonly options = computed<SelectOption[]>(() => {
     const options = this.props().options;
     return Array.isArray(options) ? options : [];
+  });
+  readonly multiple = computed(() => this.props().multiple === true);
+
+  /** The single value; an array (a spec that forgot `multiple`) reads as none. */
+  readonly value = computed(() => {
+    const value = this.props().value;
+    return typeof value === 'string' ? value : null;
+  });
+
+  /** The chosen values; a lone string reads as a one-item list. */
+  readonly values = computed<string[]>(() => {
+    const value = this.props().value;
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === 'string');
+    }
+    return typeof value === 'string' && value !== '' ? [value] : [];
   });
 
   constructor() {
@@ -459,6 +499,62 @@ export class JrmRadioGroup {
   readonly props = this.ctx.props;
   readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
   readonly options = computed<SelectOption[]>(() => {
+    const options = this.props().options;
+    return Array.isArray(options) ? options : [];
+  });
+}
+
+/**
+ * Material button-toggle group: a row of segments, one of which is chosen.
+ * Two-way bindable via `$bindState`.
+ */
+@Component({
+  selector: 'jrm-toggle-group',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonToggleModule, MatIconModule],
+  template: `
+    @if (props().label) {
+      <label class="mat-label-large jrm-toggle-label" [id]="labelId">
+        {{ props().label }}
+      </label>
+    }
+    <mat-button-toggle-group
+      hideSingleSelectionIndicator
+      [attr.aria-labelledby]="props().label ? labelId : null"
+      [value]="props().value ?? null"
+      [disabled]="props().disabled ?? false"
+      (change)="field.set($event.value)"
+    >
+      @for (option of options(); track option.value) {
+        <mat-button-toggle [value]="option.value">
+          @if (option.icon) {
+            <mat-icon>{{ option.icon }}</mat-icon>
+          }
+          {{ option.label }}
+        </mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+    @for (error of field.errors(); track error) {
+      <div class="jrm-error">{{ error }}</div>
+    }
+  `,
+  styles: `
+    :host { display: block; }
+    .jrm-toggle-label { display: block; margin-bottom: 4px; }
+    .jrm-error {
+      color: var(--mat-sys-error, #c62828);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+  `,
+})
+export class JrmToggleGroup {
+  private static nextId = 0;
+  readonly ctx = injectRenderContext<MaterialProps<'ToggleGroup'>>();
+  readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
+  readonly labelId = `jrm-toggle-label-${JrmToggleGroup.nextId++}`;
+  readonly options = computed<Array<SelectOption & { icon?: string }>>(() => {
     const options = this.props().options;
     return Array.isArray(options) ? options : [];
   });

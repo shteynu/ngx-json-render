@@ -19,6 +19,8 @@ export {
   JrmExpansionPanel,
   JrmGrid,
   JrmStack,
+  JrmStep,
+  JrmStepper,
   JrmTab,
   JrmTabRegistry,
   JrmTabs,
@@ -47,6 +49,7 @@ export {
   JrmSlideToggle,
   JrmSlider,
   JrmTextarea,
+  JrmToggleGroup,
 } from './lib/form.components';
 export {
   JrmCallout,

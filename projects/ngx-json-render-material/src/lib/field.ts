@@ -1,4 +1,10 @@
-import { type Signal, computed } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  type Signal,
+  computed,
+  inject,
+} from '@angular/core';
 import type { ValidationConfig } from '@json-render/core';
 import { type RenderContext, injectFieldValidation } from 'ngx-json-render';
 
@@ -23,6 +29,39 @@ export interface JrmField {
   set: (value: unknown) => void;
   /** Mark the field touched, validating when `validateOn` is `blur`. */
   blur: () => void;
+}
+
+/**
+ * The validatable fields inside one `Step` of a `Stepper`, so its Next button
+ * can validate those and not the whole form.
+ *
+ * A `JrmStep` provides one; every catalog field rendered anywhere under it —
+ * nested in a Card or a Stack included — finds it through DI and adds itself.
+ * A field outside any step finds none.
+ *
+ * @internal Shared by the form components and the stepper; not public API.
+ */
+@Injectable()
+export class JrmStepFields {
+  private readonly checks = new Set<() => boolean>();
+
+  /** Add a field's check. Returns the function that removes it again. */
+  add(check: () => boolean): () => void {
+    this.checks.add(check);
+    return () => this.checks.delete(check);
+  }
+
+  /**
+   * Validate every field in the step — all of them, so each one shows its
+   * errors — and report whether they all passed.
+   */
+  validate(): boolean {
+    let valid = true;
+    for (const check of this.checks) {
+      valid = check() && valid;
+    }
+    return valid;
+  }
 }
 
 /**
@@ -54,6 +93,12 @@ export function injectJrmField(
   // state path to key on, and validateForm reports per path.
   const registered = () => Boolean(path() && config());
   const validateOn = () => config()?.validateOn ?? defaultValidateOn;
+
+  const step = inject(JrmStepFields, { optional: true });
+  if (step) {
+    const remove = step.add(() => !registered() || field.validate().valid);
+    inject(DestroyRef).onDestroy(remove);
+  }
 
   return {
     errors: computed(() => (field.state().validated ? field.errors() : [])),
