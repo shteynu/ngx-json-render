@@ -57,6 +57,8 @@ npx skills add shteynu/ngx-json-render --skill ngx-json-render
 
 The source is [`skills/ngx-json-render/SKILL.md`](https://github.com/shteynu/ngx-json-render/blob/main/skills/ngx-json-render/SKILL.md);
 the Material catalog has one too (`--skill ngx-json-render-material`).
+An agent that reads [llms.txt](https://llmstxt.org) instead can start from
+<https://shteynu.github.io/ngx-json-render/llms.txt>.
 
 ## The shortest path: a ready-made catalog
 

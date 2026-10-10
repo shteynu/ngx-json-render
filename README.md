@@ -31,6 +31,10 @@ claude plugin marketplace add shteynu/ngx-json-render
 claude plugin install ngx-json-render@ngx-json-render
 ```
 
+An agent with neither can start from [`llms.txt`](https://shteynu.github.io/ngx-json-render/llms.txt)
+on the demo site, which links both package READMEs and both skills as raw
+markdown ([`projects/demo/public/llms.txt`](projects/demo/public/llms.txt)).
+
 Sources: [`skills/ngx-json-render/SKILL.md`](skills/ngx-json-render/SKILL.md)
 and [`skills/ngx-json-render-material/SKILL.md`](skills/ngx-json-render-material/SKILL.md).
 An agent reads the skill instead of the README, so a change to a package's
