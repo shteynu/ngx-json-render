@@ -20,6 +20,9 @@ const themeColor = z.enum(['primary', 'accent', 'warn']);
  */
 const validation = ValidationConfigSchema.optional();
 
+/** A calendar date as state holds it, e.g. "2026-03-14". */
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
 /** Appended to the description of every component that accepts `validation`. */
 const VALIDATION_HINT =
   'Validate it with `validation`: {"checks":[{"type":"required","message":"..."}],"validateOn":"blur"}. ' +
@@ -276,6 +279,23 @@ export const materialCatalog = schema.createCatalog({
       slots: [],
       description:
         'Material select. Bind `value` with {"$bindState":"/path"}; `options` is an explicit list. ' +
+        VALIDATION_HINT,
+    },
+    DatePicker: {
+      props: z.object({
+        label: z.string().optional(),
+        value: isoDate.optional(),
+        min: isoDate.optional(),
+        max: isoDate.optional(),
+        hint: z.string().optional(),
+        disabled: z.boolean().optional(),
+        validation,
+      }),
+      slots: [],
+      description:
+        'Material date field with a calendar popup. Dates in `value`, `min` and `max` are "YYYY-MM-DD" strings. ' +
+        'Bind `value` with {"$bindState":"/path"}; clearing the field writes "". `min` and `max` limit the days the calendar offers. ' +
+        'ISO dates compare as strings, so an end date after a start date is {"type":"greaterThan","args":{"other":{"$state":"/start"}},"message":"..."}. ' +
         VALIDATION_HINT,
     },
     Checkbox: {

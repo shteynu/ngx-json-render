@@ -4,6 +4,7 @@ import { JrmCallout, JrmProgressBar, JrmSpinner } from './feedback.components';
 import {
   JrmButton,
   JrmCheckbox,
+  JrmDatePicker,
   JrmIconButton,
   JrmInput,
   JrmRadioGroup,
@@ -68,6 +69,7 @@ export const materialComponents: Components<typeof materialCatalog> = {
   Input: JrmInput,
   Textarea: JrmTextarea,
   Select: JrmSelect,
+  DatePicker: JrmDatePicker,
   Checkbox: JrmCheckbox,
   RadioGroup: JrmRadioGroup,
   SlideToggle: JrmSlideToggle,

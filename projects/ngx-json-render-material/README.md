@@ -4,7 +4,7 @@
 
 Angular Material catalog for [`ngx-json-render`](https://www.npmjs.com/package/ngx-json-render) — a ready-made component vocabulary for generative UI in Angular, which an LLM can generate screens against, so you don't have to write one before your first generated screen.
 
-`ngx-json-render` gives you the renderer. This gives you the 29 components it renders.
+`ngx-json-render` gives you the renderer. This gives you the 30 components it renders.
 
 ## Install
 
@@ -87,13 +87,13 @@ import { materialCatalog } from 'ngx-json-render-material/catalog';
 
 ## Components
 
-| Group        | Components                                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider`                           |
-| Typography   | `Heading`, `Text`, `Icon`, `Image`                                                                       |
-| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                            |
-| Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
-| Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                      |
+| Group        | Components                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Layout       | `Stack`, `Grid`, `Card`, `Toolbar`, `ExpansionPanel`, `Tabs`, `Tab`, `Divider`                                         |
+| Typography   | `Heading`, `Text`, `Icon`, `Image`                                                                                     |
+| Data display | `Metric`, `Chip`, `List`, `ListItem`, `Table`                                                                          |
+| Forms        | `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox`, `RadioGroup`, `SlideToggle`, `Slider` |
+| Feedback     | `ProgressBar`, `Spinner`, `Callout`                                                                                    |
 
 Props are named for what they mean, not for Material's API (`variant`, not `mat-raised-button`), so a spec written against this catalog stays portable to the other json-render renderers — and a model that has never seen Angular Material can still target it.
 
@@ -107,8 +107,8 @@ The catalog declares no custom actions — the built-in `setState`, `pushState`,
 
 ## Validation
 
-`Input`, `Textarea`, `Select`, `Checkbox` and `RadioGroup` take a `validation`
-prop. The checks run against the state path the field's value is bound to, so
+`Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox` and `RadioGroup` take a
+`validation` prop. The checks run against the state path the field's value is bound to, so
 **validation applies only to a bound field** — a literal `value` has no path to
 validate and the config is ignored.
 
@@ -141,8 +141,8 @@ Check types: `required`, `requiredIf`, `email`, `url`, `numeric`, `minLength`,
 
 `validateOn` is `"change"`, `"blur"` or `"submit"`. It defaults to `"blur"` for
 `Input` and `Textarea` — validating on every keystroke is noisy — and to
-`"change"` for `Select`, `Checkbox` and `RadioGroup`, where a change is a
-deliberate choice. `enabled` takes a visibility condition and switches the
+`"change"` for `Select`, `DatePicker`, `Checkbox` and `RadioGroup`, where a
+change is a deliberate choice. `enabled` takes a visibility condition and switches the
 whole config off when it is false.
 
 The built-in `validateForm` action validates every bound field at once,
@@ -170,7 +170,7 @@ act on:
 ```
 
 Errors appear in the Material form field's subscript (`<mat-error>`) for
-`Input`, `Textarea` and `Select`, and on their own line under `Checkbox` and
+`Input`, `Textarea`, `Select` and `DatePicker`, and on their own line under `Checkbox` and
 `RadioGroup`, which have no form field to host one.
 
 Two things worth knowing:
@@ -208,6 +208,13 @@ export class BrandedCard {
 ## Notes
 
 - `Tabs` discovers its tabs from `Tab` children in the spec rather than through `@ContentChildren`, which a spec-driven tree cannot satisfy. Each `Tab` hands its label and body to the parent, which replays them into real `<mat-tab>` elements.
+- `DatePicker` keeps its date in state as a `"YYYY-MM-DD"` string, and so do
+  `min` and `max`; clearing the field writes `""`. ISO dates compare correctly
+  as strings, so an end date after a start date is a `greaterThan` check with
+  `{ "other": { "$state": "/start" } }`. It uses the app's `DateAdapter` and
+  `MAT_DATE_FORMATS` when the app provides them (`provideLuxonDateAdapter()`,
+  `provideDateFnsAdapter()`, a `MAT_DATE_LOCALE`), and the native `Date`
+  adapter otherwise, so it needs no provider of its own.
 - `Table` takes `columns` and `rows` as props. Bind `rows` to a state array with `{"$state": "/path"}` rather than using `repeat`.
 - `Image` renders only an absolute `https:` URL and nothing for any other `src` — `javascript:`, `data:`, `http:` and relative URLs included. The schema says so too, so `checkSpec` reports such a `src`; the component checks again at render time, because a `src` bound to `$state` is only known then. It sends no referrer. `alt` is required; `""` marks a decorative image.
 - `List` requires `ListItem` children, and `Tabs` requires `Tab` children; the catalog descriptions say so, and the prompt carries them through to the model.

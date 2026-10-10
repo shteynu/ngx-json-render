@@ -39,6 +39,7 @@ export {
 export {
   JrmButton,
   JrmCheckbox,
+  JrmDatePicker,
   JrmIconButton,
   JrmInput,
   JrmRadioGroup,

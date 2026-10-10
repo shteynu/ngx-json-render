@@ -4,6 +4,14 @@ import {
   signal,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import {
+  DateAdapter,
+  MAT_DATE_FORMATS,
+  MAT_NATIVE_DATE_FORMATS,
+  NativeDateAdapter,
+} from '@angular/material/core';
+import { MatDatepickerInputHarness } from '@angular/material/datepicker/testing';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 import type { Spec } from '@json-render/core';
@@ -2098,5 +2106,210 @@ describe('material catalog edge cases', () => {
     await settle(fixture);
 
     expect(lastValueAt(fixture, '/volume')).toBe(70);
+  });
+});
+
+describe('material date picker', () => {
+  /** A due-date field bound to /due, between the given bounds. */
+  function dueDateSpec(due: unknown, extra: Record<string, unknown> = {}) {
+    return {
+      root: 'form',
+      state: { due },
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['due', 'save'] },
+        due: {
+          type: 'DatePicker',
+          props: { label: 'Due', value: { $bindState: '/due' }, ...extra },
+          children: [],
+        },
+        save: {
+          type: 'Button',
+          props: { label: 'Save' },
+          on: { press: { action: 'validateForm' } },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+  }
+
+  async function datepicker(fixture: ComponentFixture<unknown>) {
+    return TestbedHarnessEnvironment.loader(fixture).getHarness(
+      MatDatepickerInputHarness,
+    );
+  }
+
+  it('shows a bound ISO date and hands its bounds to the calendar', async () => {
+    const fixture = await render(
+      dueDateSpec('2026-03-14', {
+        min: '2026-03-05',
+        max: '2026-03-25',
+        hint: 'Within March',
+      }),
+    );
+    const input = await datepicker(fixture);
+    expect(await input.getValue()).toBe('3/14/2026');
+
+    await input.openCalendar();
+    const calendar = await input.getCalendar();
+    const disabled = await calendar.getCells({ disabled: true });
+    const days = await Promise.all(disabled.map((cell) => cell.getText()));
+    // March 1–4 and 26–31: the days outside the bounds.
+    expect(days).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '26',
+      '27',
+      '28',
+      '29',
+      '30',
+      '31',
+    ]);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('mat-hint')
+        ?.textContent,
+    ).toBe('Within March');
+  });
+
+  it('writes a day picked from the calendar back as an ISO string', async () => {
+    const fixture = await render(dueDateSpec('2026-03-14'));
+    const input = await datepicker(fixture);
+
+    await input.openCalendar();
+    const calendar = await input.getCalendar();
+    await calendar.selectCell({ text: '20' });
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/due')).toBe('2026-03-20');
+    expect(await input.getValue()).toBe('3/20/2026');
+  });
+
+  it('writes a typed date as ISO and a cleared field as an empty string', async () => {
+    const fixture = await render(dueDateSpec(''));
+    const input = await datepicker(fixture);
+
+    await input.setValue('4/2/2026');
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/due')).toBe('2026-04-02');
+
+    await input.setValue('');
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/due')).toBe('');
+  });
+
+  it('reads a value that is not a YYYY-MM-DD date as no date', async () => {
+    for (const due of ['2026-02-31', '2026-13-01', '14.03.2026', 20260314]) {
+      const fixture = await render(dueDateSpec(due));
+      expect(await (await datepicker(fixture)).getValue(), String(due)).toBe(
+        '',
+      );
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('keeps the date part of a datetime', async () => {
+    const fixture = await render(dueDateSpec('2026-03-14T09:30:00Z'));
+    expect(await (await datepicker(fixture)).getValue()).toBe('3/14/2026');
+  });
+
+  it('reports a required date through validateForm and its form field', async () => {
+    const fixture = await render(
+      dueDateSpec('', {
+        validation: {
+          checks: [{ type: 'required', message: 'Pick a date' }],
+        },
+      }),
+    );
+
+    // The first button is the calendar toggle; Save is the last.
+    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'button',
+    );
+    buttons[buttons.length - 1].click();
+    await settle(fixture);
+
+    expect(lastValueAt(fixture, '/formValidation')).toEqual({
+      valid: false,
+      errors: { '/due': ['Pick a date'] },
+    });
+    expect(errorTexts(fixture)).toEqual(['Pick a date']);
+    expect(await (await datepicker(fixture)).isRequired()).toBe(true);
+  });
+
+  it('validates an end date against a start date as ISO strings', async () => {
+    const spec = {
+      root: 'form',
+      state: { start: '2026-03-10', end: '2026-03-01' },
+      elements: {
+        form: { type: 'Stack', props: {}, children: ['start', 'end'] },
+        start: {
+          type: 'DatePicker',
+          props: { label: 'Start', value: { $bindState: '/start' } },
+          children: [],
+        },
+        end: {
+          type: 'DatePicker',
+          props: {
+            label: 'End',
+            value: { $bindState: '/end' },
+            validation: {
+              checks: [
+                {
+                  type: 'greaterThan',
+                  args: { other: { $state: '/start' } },
+                  message: 'End after start',
+                },
+              ],
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec;
+    const fixture = await render(spec);
+    const [, end] = await TestbedHarnessEnvironment.loader(
+      fixture,
+    ).getAllHarnesses(MatDatepickerInputHarness);
+
+    await end.setValue('3/5/2026');
+    await settle(fixture);
+    expect(errorTexts(fixture)).toEqual(['End after start']);
+
+    await end.setValue('3/12/2026');
+    await settle(fixture);
+    expect(lastValueAt(fixture, '/end')).toBe('2026-03-12');
+    expect(errorTexts(fixture)).toEqual([]);
+  });
+
+  it('uses the DateAdapter and formats the app provides', async () => {
+    /** Formats as ISO and, like NativeDateAdapter outside dev mode, rolls an
+     *  overflowing day over instead of throwing. */
+    class IsoAdapter extends NativeDateAdapter {
+      override format(date: Date): string {
+        return `on ${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+      }
+      override createDate(year: number, month: number, day: number): Date {
+        return new Date(year, month, day);
+      }
+    }
+    for (const [due, shown] of [
+      ['2026-03-14', 'on 2026/3/14'],
+      ['2026-02-31', ''],
+    ]) {
+      TestBed.configureTestingModule({
+        providers: [
+          provideZonelessChangeDetection(),
+          { provide: DateAdapter, useClass: IsoAdapter },
+          { provide: MAT_DATE_FORMATS, useValue: MAT_NATIVE_DATE_FORMATS },
+        ],
+      });
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.spec.set(dueDateSpec(due));
+      await settle(fixture);
+
+      expect(await (await datepicker(fixture)).getValue(), due).toBe(shown);
+      TestBed.resetTestingModule();
+    }
   });
 });

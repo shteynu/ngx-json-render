@@ -5,7 +5,7 @@ description: Angular Material catalog for ngx-json-render. Use when rendering js
 
 # ngx-json-render-material
 
-29 Angular Material components registered for `ngx-json-render`, plus the catalog that describes them to a model. Drop `materialRegistry` into `<json-render>`, feed `materialCatalog.prompt()` to the model, and a generated spec renders with nothing else wired up.
+30 Angular Material components registered for `ngx-json-render`, plus the catalog that describes them to a model. Drop `materialRegistry` into `<json-render>`, feed `materialCatalog.prompt()` to the model, and a generated spec renders with nothing else wired up.
 
 ## Installation
 
@@ -110,6 +110,7 @@ Prop names are renderer-neutral (`variant`, not `mat-raised-button`), so a spec 
 - **Input** — `label`, `value`, `placeholder`, `hint`, `type` (`text` | `number` | `email` | `password`), `required`, `disabled`, `validation`. Emits `submit` on Enter. `required` only draws the asterisk; enforcement comes from `validation`.
 - **Textarea** — `label`, `value`, `placeholder`, `rows`, `disabled`, `validation`.
 - **Select** — `label`, `value`, `options: [{ value, label }]`, `disabled`, `validation`.
+- **DatePicker** — `label`, `value`, `min`, `max` (all dates are `"YYYY-MM-DD"` strings), `hint`, `disabled`, `validation`. Clearing it writes `""`. Uses the app's `DateAdapter` and `MAT_DATE_FORMATS` if provided, the native `Date` adapter otherwise.
 - **Checkbox** — `label` (required), `checked`, `disabled`, `validation`.
 - **RadioGroup** — `label`, `value`, `options: [{ value, label }]`, `direction` (`vertical` | `horizontal`), `validation`.
 - **SlideToggle** — `label` (required), `checked`, `disabled`.
@@ -134,7 +135,7 @@ Prop names are renderer-neutral (`variant`, not `mat-raised-button`), so a spec 
 }
 ```
 
-Form controls write back through their binding, not through an event. Bind `value` (`Input`, `Textarea`, `Select`, `RadioGroup`, `Slider`) or `checked` (`Checkbox`, `SlideToggle`) with `{"$bindState": "/path"}`, or `{"$bindItem": "field"}` inside a `repeat`. To react to what the user typed, `watch` the bound path.
+Form controls write back through their binding, not through an event. Bind `value` (`Input`, `Textarea`, `Select`, `DatePicker`, `RadioGroup`, `Slider`) or `checked` (`Checkbox`, `SlideToggle`) with `{"$bindState": "/path"}`, or `{"$bindItem": "field"}` inside a `repeat`. To react to what the user typed, `watch` the bound path.
 
 ```json
 { "type": "Input", "props": { "label": "Name", "value": { "$bindState": "/name" } }, "children": [] }
@@ -146,7 +147,7 @@ The catalog declares no custom actions; the built-ins cover it: `setState`, `pus
 
 ## Validation
 
-`Input`, `Textarea`, `Select`, `Checkbox` and `RadioGroup` take a `validation` prop. The checks run against the state path the field is bound to, so **validation applies only to a bound field**; on a literal `value` the config is ignored.
+`Input`, `Textarea`, `Select`, `DatePicker`, `Checkbox` and `RadioGroup` take a `validation` prop. The checks run against the state path the field is bound to, so **validation applies only to a bound field**; on a literal `value` the config is ignored.
 
 ```json
 {
@@ -167,9 +168,10 @@ The catalog declares no custom actions; the built-ins cover it: `setState`, `pus
 ```
 
 - Check types: `required`, `requiredIf`, `email`, `url`, `numeric`, `minLength`, `maxLength`, `pattern`, `min`, `max`, `matches`, `equalTo`, `lessThan`, `greaterThan`. Arguments go in `args` and may reference state: `{ "type": "equalTo", "args": { "other": { "$state": "/password" } }, "message": "Passwords must match" }`.
-- `validateOn` is `change`, `blur` or `submit`. Defaults: `blur` for `Input` and `Textarea`, `change` for `Select`, `Checkbox` and `RadioGroup`. `enabled` takes a visibility condition and switches the whole config off when false.
+- `validateOn` is `change`, `blur` or `submit`. Defaults: `blur` for `Input` and `Textarea`, `change` for `Select`, `DatePicker`, `Checkbox` and `RadioGroup`. `enabled` takes a visibility condition and switches the whole config off when false.
 - `required` rejects `null`, `undefined`, empty strings and empty arrays, but **not** `false`. A checkbox that must be ticked uses `{ "type": "equalTo", "args": { "other": true }, "message": "…" }`.
-- Errors show in the form field's `<mat-error>` for `Input`, `Textarea` and `Select`, and on their own line under `Checkbox` and `RadioGroup`.
+- ISO dates compare as strings, so an end date after a start date is `{ "type": "greaterThan", "args": { "other": { "$state": "/start" } }, "message": "…" }` on the end `DatePicker`.
+- Errors show in the form field's `<mat-error>` for `Input`, `Textarea`, `Select` and `DatePicker`, and on their own line under `Checkbox` and `RadioGroup`.
 
 A submit button validates every bound field and dispatches only when all pass:
 

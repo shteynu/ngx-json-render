@@ -54,7 +54,7 @@ export function ngAdd(): Rule {
         'ngx-json-render is ready. Next: describe your components in a catalog,',
         `register them, and render a spec with <json-render> — see ${README}`,
         'No components of your own yet? `ng add ngx-json-render-material` adds',
-        '29 ready-made Angular Material ones.',
+        '30 ready-made Angular Material ones.',
       ].join('\n'),
     );
     return chain(rules);

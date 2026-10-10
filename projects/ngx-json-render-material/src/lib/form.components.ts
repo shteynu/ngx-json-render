@@ -4,10 +4,18 @@ import {
   type ElementRef,
   computed,
   effect,
+  inject,
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import {
+  DateAdapter,
+  MAT_DATE_FORMATS,
+  MAT_NATIVE_DATE_FORMATS,
+  NativeDateAdapter,
+} from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInput, MatInputModule } from '@angular/material/input';
@@ -256,6 +264,124 @@ export class JrmSelect {
 
   constructor() {
     syncErrorState(this.control, this.field.invalid);
+  }
+}
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/;
+
+/**
+ * Read a spec's `YYYY-MM-DD` string as a date of whatever type the adapter
+ * works in. Anything else — another format, a non-string, an impossible day
+ * such as 2026-02-31 — reads as no date. A datetime keeps its date part.
+ */
+function parseIsoDate<D>(adapter: DateAdapter<D>, value: unknown): D | null {
+  if (typeof value !== 'string') return null;
+  const match = ISO_DATE.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  let date: D;
+  try {
+    date = adapter.createDate(year, month, day);
+  } catch {
+    return null;
+  }
+  // Outside dev mode NativeDateAdapter rolls an overflowing day into the next
+  // month instead of throwing, so check that the day survived.
+  return adapter.getMonth(date) === month && adapter.getDate(date) === day
+    ? date
+    : null;
+}
+
+/** Write an adapter date back as the `YYYY-MM-DD` string state holds. */
+function toIsoDate<D>(adapter: DateAdapter<D>, date: D): string {
+  const pad = (n: number, width: number) => String(n).padStart(width, '0');
+  return [
+    pad(adapter.getYear(date), 4),
+    pad(adapter.getMonth(date) + 1, 2),
+    pad(adapter.getDate(date), 2),
+  ].join('-');
+}
+
+/**
+ * Material date field with a calendar popup; two-way bindable via
+ * `$bindState`. State holds the date as a `YYYY-MM-DD` string, so it stays
+ * JSON, and ISO dates compare correctly in `lessThan` / `greaterThan` checks.
+ *
+ * It uses the app's `DateAdapter` and `MAT_DATE_FORMATS` when the app provides
+ * them (`provideLuxonDateAdapter()`, `provideDateFnsAdapter()`, a locale), and
+ * falls back to the native `Date` adapter otherwise, so the registry renders
+ * a date field with nothing extra to provide.
+ */
+@Component({
+  selector: 'jrm-date-picker',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatDatepickerModule, MatFormFieldModule, MatInputModule],
+  providers: [
+    {
+      provide: DateAdapter,
+      useFactory: () =>
+        inject(DateAdapter, { optional: true, skipSelf: true }) ??
+        new NativeDateAdapter(),
+    },
+    {
+      provide: MAT_DATE_FORMATS,
+      useFactory: () =>
+        inject(MAT_DATE_FORMATS, { optional: true, skipSelf: true }) ??
+        MAT_NATIVE_DATE_FORMATS,
+    },
+  ],
+  template: `
+    <mat-form-field appearance="outline" class="jrm-field">
+      @if (props().label) {
+        <mat-label>{{ props().label }}</mat-label>
+      }
+      <input
+        matInput
+        [matDatepicker]="picker"
+        [value]="date()"
+        [min]="min()"
+        [max]="max()"
+        [required]="field.required()"
+        [disabled]="props().disabled ?? false"
+        (dateChange)="onDateChange($event.value)"
+        (blur)="field.blur()"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-datepicker #picker (closed)="field.blur()" />
+      @if (props().hint) {
+        <mat-hint>{{ props().hint }}</mat-hint>
+      }
+      @for (error of field.errors(); track error) {
+        <mat-error>{{ error }}</mat-error>
+      }
+    </mat-form-field>
+  `,
+  styles: `
+    .jrm-field { width: 100%; }
+  `,
+})
+export class JrmDatePicker {
+  readonly ctx = injectRenderContext<MaterialProps<'DatePicker'>>();
+  readonly props = this.ctx.props;
+  readonly field: JrmField = injectJrmField(this.ctx, 'value', 'change');
+  private readonly adapter = inject<DateAdapter<unknown>>(DateAdapter);
+  private readonly control = viewChild.required(MatInput);
+
+  readonly date = computed(() =>
+    parseIsoDate(this.adapter, this.props().value),
+  );
+  readonly min = computed(() => parseIsoDate(this.adapter, this.props().min));
+  readonly max = computed(() => parseIsoDate(this.adapter, this.props().max));
+
+  constructor() {
+    syncErrorState(this.control, this.field.invalid);
+  }
+
+  /** A cleared field, or text that is not a date, writes `""`. */
+  onDateChange(value: unknown): void {
+    this.field.set(value == null ? '' : toIsoDate(this.adapter, value));
   }
 }
 

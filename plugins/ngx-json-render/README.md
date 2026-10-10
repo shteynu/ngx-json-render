@@ -11,7 +11,7 @@ catalog of your components, and `<json-render>` renders it as real Angular compo
   visibility, actions and state, checking what the model produced, serving a spec as an MCP App
   (`ngx-json-render/mcp`), the devtools panel, and testing catalog components with
   `ngx-json-render/testing`.
-- **ngx-json-render-material**: when you use the ready 29-component Angular Material catalog,
+- **ngx-json-render-material**: when you use the ready 30-component Angular Material catalog,
   Claude renders specs with `materialRegistry`, feeds `materialCatalog.prompt()` to the model, wires
   events and two-way binding, writes form validation into a spec, and overrides or extends a
   component.

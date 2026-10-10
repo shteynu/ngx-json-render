@@ -4,13 +4,14 @@ import type { Spec } from 'ngx-json-render';
  * The playground's starting point for the Angular Material catalog.
  *
  * Deliberately small enough to read in one screen and edit by hand: a metric
- * grid, a table bound to state, and a form field bound two-way — the three
+ * grid, a table bound to state, and form fields bound two-way — the three
  * shapes a generated spec uses most.
  */
 export const materialStarterSpec: Spec = {
   root: 'root',
   state: {
     name: 'Ada',
+    nextRelease: '2026-10-17',
     releases: [
       { version: '0.1.4', date: '2026-08-28', status: 'published' },
       { version: '0.1.3', date: '2026-08-21', status: 'published' },
@@ -68,7 +69,7 @@ export const materialStarterSpec: Spec = {
     'form-card': {
       type: 'Card',
       props: { title: 'Say hello', appearance: 'outlined' },
-      children: ['name-input', 'greeting'],
+      children: ['name-input', 'release-date', 'greeting'],
     },
     'name-input': {
       type: 'Input',
@@ -79,10 +80,23 @@ export const materialStarterSpec: Spec = {
       },
       children: [],
     },
+    'release-date': {
+      type: 'DatePicker',
+      props: {
+        label: 'Next release',
+        value: { $bindState: '/nextRelease' },
+        min: '2026-10-01',
+        hint: 'State holds the picked day as YYYY-MM-DD.',
+      },
+      children: [],
+    },
     greeting: {
       type: 'Text',
       props: {
-        content: { $template: 'Hello, ${/name}! This UI came from JSON.' },
+        content: {
+          $template:
+            'Hello, ${/name}! Next release: ${/nextRelease}. This UI came from JSON.',
+        },
         tone: 'muted',
       },
       children: [],

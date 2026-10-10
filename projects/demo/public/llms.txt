@@ -7,7 +7,7 @@
 - It is an adapter over `@json-render/core`, with the same spec grammar, expressions, state store, actions and SpecStream patches as the React, Vue, Svelte and Solid renderers, so catalogs and specs are portable between them.
 - Catalog components are standalone components with no inputs: they read props with `injectRenderContext().props()` and render children with `<jr-children />`.
 - `injectUIStream` streams a UI from an endpoint; `injectChatUI` streams chat replies that mix prose and specs.
-- `ngx-json-render-material` is a ready catalog of 29 Angular Material components, for generating UI before writing a catalog of your own.
+- `ngx-json-render-material` is a ready catalog of 30 Angular Material components, for generating UI before writing a catalog of your own.
 - License: Apache-2.0.
 
 ## Docs
