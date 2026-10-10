@@ -1,0 +1,40 @@
+{
+  "name": "ngx-json-render-example-copilotkit-angular",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "concurrently -n server,web -c magenta,cyan \"npm run server\" \"ng serve\"",
+    "server": "tsx watch --env-file-if-exists=.env server/index.ts",
+    "build": "ng build && tsc -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "@ag-ui/client": "1.0.2",
+    "@ag-ui/core": "1.0.2",
+    "@angular/cdk": "^22.2.0",
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/material": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "@copilotkit/angular": "^0.5.3",
+    "@copilotkit/runtime": "^1.78.0",
+    "@json-render/core": "^0.21.0",
+    "ai": "^7.0.136",
+    "ngx-json-render": "^0.9.10",
+    "ngx-json-render-material": "^0.3.16",
+    "rxjs": "7.8.1",
+    "tslib": "^2.3.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.2",
+    "@angular/cli": "^22.2.2",
+    "@angular/compiler-cli": "^22.2.0",
+    "@types/node": "^22.10.5",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "~6.0.2"
+  }
+}

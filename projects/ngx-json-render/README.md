@@ -519,6 +519,9 @@ have not arrived. An activity already on screen stays checked while a later
 run builds another. CopilotKit mounts the activity mid-run, after the run has
 fixed its subscribers, so the end of that run is read from the agent's
 `isRunning` flag.
+[`examples/copilotkit-angular`](https://github.com/shteynu/ngx-json-render/tree/main/examples/copilotkit-angular)
+is the whole path, CopilotKit runtime to rendered activity, and runs without
+a model key.
 
 **On the server**, the model's output — prose with ` ```spec ` fenced JSONL,
 as `catalog.prompt({ mode: 'inline' })` asks for — splits into text-message
