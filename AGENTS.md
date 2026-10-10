@@ -144,7 +144,12 @@ script. `test:schematics` covers its inliner; the builder as a whole runs in
 `npm run build:mcp-app`, where `angular.json` names it by path
 (`./dist/ngx-json-render:mcp-app`) because this workspace does not install its
 own package. A change to it is checked like a schematic change plus
-`npm run build:mcp-app`.
+`npm run build:mcp-app`. The `mcp-app` schematic (`schematics/mcp-app`), which
+generates a view project, its server and the target, is checked end to end in
+the scratchpad: `ng new`, install the packed `dist/ngx-json-render` (and
+`dist/ngx-json-render-material` for the Material mode), `ng generate
+ngx-json-render:mcp-app`, `ng run <name>:mcp`, then list the tools of
+`node dist/<name>/server.mjs` and open `--http` in ext-apps' basic-host.
 
 Formatting: `npm run format:check` (config in `.prettierrc`, exclusions in
 `.prettierignore`). CI runs it, so a failure is something you introduced;

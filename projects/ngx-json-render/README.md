@@ -732,7 +732,7 @@ export class App {
 }
 ```
 
-The spec renders while the model is still writing the tool call, from the host's `toolinputpartial` notifications; pass `streamPartialInput: false` to wait for the result. `mcp.sendMessage(text, data)` posts a user message to the chat, so a button can continue the conversation, and `mcp.callServerTool(name, args)` replaces the spec with another tool's result. The connection closes with the injector that created it.
+The spec renders while the model is still writing the tool call, from the host's `toolinputpartial` notifications; pass `streamPartialInput: false` to wait for the result. `mcp.sendMessage(text, data)` posts a user message to the chat, so a button can continue the conversation, and `mcp.callServerTool(name, args)` replaces the spec with another tool's result. `mcp.handlers` holds a ready `sendMessage` action handler for `<json-render [handlers]>`, the one the server's `sendMessage: true` describes to the model (below), and `mcp.lastMessage` is a signal with how its last call went, so the view can say when a host declined the message. The connection closes with the injector that created it.
 
 ### The server
 
@@ -762,11 +762,21 @@ What it does on top of upstream's `createMcpApp` from `@json-render/mcp`, whose 
 - **Errors the model can fix.** A spec with a missing child or root, or a `$template` that reads a repeat item as `${$item/field}`, goes back as a tool error that says what to write instead (`specProblems`).
 - **The structured result ChatGPT asks for:** the spec as `structuredContent`, with an output schema (`specOutputSchema`).
 
-Options: `name`, `version`, `toolName` (default `render-ui`), `title`, `description`, `csp` (the origins the view may load from and connect to; left out, the host allows none) and `widgetDomain` (the view's origin for ChatGPT's plugin directory). If your catalog has a `sendMessage` action, the description tells the model how to use it; the view's handler for it calls `mcp.sendMessage()`.
+Options: `name`, `version`, `toolName` (default `render-ui`), `title`, `description`, `csp` (the origins the view may load from and connect to; left out, the host allows none) `widgetDomain` (the view's origin for ChatGPT's plugin directory) and `sendMessage: true`, which adds a `sendMessage` action to the catalog the model sees, so a button in the view can post a message to the chat as the user; hand the view `mcp.handlers` to handle it. Your catalog stays host-neutral; `withSendMessage(catalog)` gives you the extended catalog if you need it elsewhere.
+
+### In one command
+
+```bash
+ng generate ngx-json-render:mcp-app --catalog src/app/catalog.ts#catalog --registry src/app/registry.ts#registry
+ng run mcp-app:mcp
+node dist/mcp-app/server.mjs
+```
+
+The schematic adds an application project for the view (`--name`, default `mcp-app`): `src/app/app.ts` renders the model's spec with your registry, handles `sendMessage` with `mcp.handlers`, says under the UI whether the host took the message, and follows the host's light or dark theme. Next to it, `server.ts` serves your catalog with `createRenderUiServer({ sendMessage: true })` over stdio, or over HTTP on port 3001 with `--http`, and an `mcp` target builds both with the builder below. It also adds the MCP peers to `package.json`. The server loads the catalog file in Node, so that file must not import Angular; the schematic warns when it does. Without `--catalog` and `--registry` it uses the Angular Material catalog when `ngx-json-render-material` is installed, with its theme, fonts and CSP, and otherwise writes a starter catalog and registry into the new project.
 
 ### Building it
 
-A host loads the view as one HTML document with nowhere to fetch chunks from, so the Angular build has to be folded into a single page. The `ngx-json-render:mcp-app` builder does that, and bundles the server next to it. Give the view its own application project (`ng generate application mcp-view`), then add a target to it in `angular.json`:
+A host loads the view as one HTML document with nowhere to fetch chunks from, so the Angular build has to be folded into a single page. The `ngx-json-render:mcp-app` builder does that, and bundles the server next to it. The schematic above sets it up; by hand, give the view its own application project (`ng generate application mcp-view`), then add a target to it in `angular.json`:
 
 ```json
 "mcp": {
@@ -1221,11 +1231,11 @@ Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`, and the ca
 
 Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec`, with no Angular behind them, for a server that defines a catalog.
 
-MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
+MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`, `MessageOutcome`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
 
-MCP App server (`ngx-json-render/mcp/server`): `createRenderUiServer`, `handleRenderUiRequest`, `renderUiDescription`, `specInputSchema`, `specOutputSchema`, `specProblems`, `DESCRIPTION_LIMIT`, and the types `RenderUiServerOptions`, `RenderUiDescriptionOptions`. No Angular; the same optional peers.
+MCP App server (`ngx-json-render/mcp/server`): `createRenderUiServer`, `handleRenderUiRequest`, `renderUiDescription`, `specInputSchema`, `specOutputSchema`, `specProblems`, `DESCRIPTION_LIMIT`, `withSendMessage`, `sendMessageAction`, and the types `RenderUiServerOptions`, `RenderUiDescriptionOptions`. No Angular; the same optional peers.
 
-MCP App builder (`ngx-json-render:mcp-app`): the view's application build as one `view.html`, and the server bundled into `server.mjs`.
+MCP App builder (`ngx-json-render:mcp-app`): the view's application build as one `view.html`, and the server bundled into `server.mjs`. Schematic `ng generate ngx-json-render:mcp-app` (`--name`, `--catalog`, `--registry`): the view project, its server and the `mcp` target.
 
 Router (`ngx-json-render/router`): `injectRouterNavigate`, and the type `RouterNavigateOptions`. Needs the optional peer `@angular/router`, which an Angular app on the router already has.
 

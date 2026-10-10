@@ -93,8 +93,9 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
   `$template` that reads a repeat item as `${$item/field}`: it would render as
   an empty string, and the error tells the model to write `${field}`.
 - `server/catalog.ts`: the catalog the tool describes to the model, the
-  Material catalog plus a `sendMessage` action (below). The published catalog
-  stays host-neutral; the action needs the view's handler.
+  Material catalog plus the `sendMessage` action (below), added with
+  `withSendMessage` from `ngx-json-render/mcp/server`. The published catalog
+  stays host-neutral; the action needs the view's handler, `mcp.handlers`.
 - `server/server.ts`: stdio and a local HTTP server. `server/vercel.ts`: the
   hosted endpoint. `npm run build:mcp-app -- --vercel` bundles it, with every
   dependency and the view inlined, into `.vercel/output`, and `vercel.json`
@@ -168,15 +169,15 @@ submitted form), the tool description offers one more action:
 }
 ```
 
-The view's handler calls `mcp.sendMessage(text, data)`, which posts a
-`ui/message` to the host as a user message: the text, then `data` as a JSON
-block. Claude does not send it on its own: it puts the message in the message
+The view's handler, `mcp.handlers.sendMessage`, calls
+`mcp.sendMessage(text, data)`, which posts a `ui/message` to the host as a
+user message: the text, then `data` as a JSON block. Claude does not send it on its own: it puts the message in the message
 box, under a warning to review it, and the user sends it. The model then
 answers it like anything the user typed, and can call `render-ui` again with
 the next screen. The handler rejects, so a binding's `onError` runs, when the
 host does not declare the `message` capability or declines the message. Either
-way the view says what happened under the UI: "Message passed to the chat."
-or the reason it could not send.
+way the view says what happened under the UI, from `mcp.lastMessage`:
+"Message passed to the chat." or the reason it could not send.
 
 `data` has to be a single `{ "$state": "/path" }`: core resolves `$state` only
 at the top level of a custom action's params. Through `submitForm` the inner
