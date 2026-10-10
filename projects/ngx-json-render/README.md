@@ -746,7 +746,7 @@ import { catalog } from './catalog'; // defineCatalog(schema, …) from ngx-json
 
 const server = createRenderUiServer({
   catalog,
-  html: readFileSync('dist/view.html', 'utf8'), // the view above, built into one page
+  html: readFileSync(new URL('./view.html', import.meta.url), 'utf8'), // the view above, built into one page
   name: 'my-app',
   version: '1.0.0',
 });
@@ -764,7 +764,24 @@ What it does on top of upstream's `createMcpApp` from `@json-render/mcp`, whose 
 
 Options: `name`, `version`, `toolName` (default `render-ui`), `title`, `description`, `csp` (the origins the view may load from and connect to; left out, the host allows none) and `widgetDomain` (the view's origin for ChatGPT's plugin directory). If your catalog has a `sendMessage` action, the description tells the model how to use it; the view's handler for it calls `mcp.sendMessage()`.
 
-[`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, the build that inlines it into one page, and this server, the one behind `https://ngx-json-render.vercel.app/mcp`.
+### Building it
+
+A host loads the view as one HTML document with nowhere to fetch chunks from, so the Angular build has to be folded into a single page. The `ngx-json-render:mcp-app` builder does that, and bundles the server next to it. Give the view its own application project (`ng generate application mcp-view`), then add a target to it in `angular.json`:
+
+```json
+"mcp": {
+  "builder": "ngx-json-render:mcp-app",
+  "options": {
+    "buildTarget": "mcp-view:build:production",
+    "outputPath": "dist/mcp-app",
+    "server": "projects/mcp-view/server.ts"
+  }
+}
+```
+
+`ng run mcp-view:mcp` runs the application build, then writes `dist/mcp-app/view.html` with every script and stylesheet inlined, and the fonts and images the stylesheets use as data URLs, and `dist/mcp-app/server.mjs` with its dependencies bundled in, so `node dist/mcp-app/server.mjs` runs anywhere without `node_modules`. Files the page cannot reach, such as an image referenced only from a template, are listed as a warning: point at them from a stylesheet or from an `https:` origin in `csp`. The server bundle is not type-checked; run `tsc --noEmit` on it first if you want that. Options: `server` (leave it out to build the view only), `tsConfig` for the server, and `externalPackages: true` to keep `node_modules` packages out of `server.mjs`.
+
+[`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, built with this builder, and this server, the one behind `https://ngx-json-render.vercel.app/mcp`.
 
 ## Devtools
 
@@ -1207,6 +1224,8 @@ Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec
 MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
 
 MCP App server (`ngx-json-render/mcp/server`): `createRenderUiServer`, `handleRenderUiRequest`, `renderUiDescription`, `specInputSchema`, `specOutputSchema`, `specProblems`, `DESCRIPTION_LIMIT`, and the types `RenderUiServerOptions`, `RenderUiDescriptionOptions`. No Angular; the same optional peers.
+
+MCP App builder (`ngx-json-render:mcp-app`): the view's application build as one `view.html`, and the server bundled into `server.mjs`.
 
 Router (`ngx-json-render/router`): `injectRouterNavigate`, and the type `RouterNavigateOptions`. Needs the optional peer `@angular/router`, which an Angular app on the router already has.
 

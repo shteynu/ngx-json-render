@@ -75,9 +75,12 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
   Everything specific to this project is an option: `streamPartialInput`,
   `autoResize` and `transport`.
 - `src/app/app.ts`: the view, `<json-render>` with the Material registry.
-- `scripts/build-mcp-app.mjs`: hosts load a `ui://` resource as one HTML
-  document, so the script folds Angular's chunks into one inline module and
-  inlines the styles. It then type-checks and bundles the server.
+- `scripts/build-mcp-app.mjs`: type-checks the server, then runs
+  `ng run mcp-app:mcp`, the `ngx-json-render:mcp-app` builder (from `dist/`,
+  since this workspace does not install its own package). Hosts load a `ui://`
+  resource as one HTML document, so the builder folds Angular's chunks into
+  one inline module, inlines the styles, and bundles the server with its
+  dependencies.
 - `server/app.ts`: the server, from `createRenderUiServer()` in
   `ngx-json-render/mcp/server`, with what is specific to this deployment: the
   catalog, a CSP that allows only Google Fonts instead of any `https:` origin,

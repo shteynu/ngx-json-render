@@ -137,6 +137,15 @@ schematic ever runs. The end-to-end check, in the scratchpad: `ng new` an app
 with the Angular line the workspace pins, `npm pack` both `dist/` folders,
 `ng add` each tarball, and build the app with the README's Material example.
 
+The renderer's `ngx-json-render:mcp-app` builder lives in the same folder
+(`schematics/builders.json`, `schematics/mcp-app-builder`) for the same reason:
+Architect loads builders with `require` too, so it is `.cts` built by the same
+script. `test:schematics` covers its inliner; the builder as a whole runs in
+`npm run build:mcp-app`, where `angular.json` names it by path
+(`./dist/ngx-json-render:mcp-app`) because this workspace does not install its
+own package. A change to it is checked like a schematic change plus
+`npm run build:mcp-app`.
+
 Formatting: `npm run format:check` (config in `.prettierrc`, exclusions in
 `.prettierignore`). CI runs it, so a failure is something you introduced;
 `npm run format` fixes it. Note `embeddedLanguageFormatting` is off on
