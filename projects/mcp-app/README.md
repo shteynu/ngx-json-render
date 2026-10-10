@@ -78,16 +78,17 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
 - `scripts/build-mcp-app.mjs`: hosts load a `ui://` resource as one HTML
   document, so the script folds Angular's chunks into one inline module and
   inlines the styles. It then type-checks and bundles the server.
-- `server/app.ts`: registers the tool the way `createMcpApp` does, with the
-  description and input schema from `server/tool.ts` (below), a read-only
-  annotation, and a CSP that allows only Google Fonts instead of any `https:`
-  origin. It serves Streamable HTTP statelessly.
-- `server/tool.ts`: what the model sees of the tool. A short description, and
-  an input schema with each component's props and each action's params,
-  which the SDK also enforces. A spec whose children or root are missing is
-  sent back to the model as an error, and so is a `$template` that reads a
-  repeat item as `${$item/field}`: it would render as an empty string, and the
-  error tells the model to write `${field}`.
+- `server/app.ts`: the server, from `createRenderUiServer()` in
+  `ngx-json-render/mcp/server`, with what is specific to this deployment: the
+  catalog, a CSP that allows only Google Fonts instead of any `https:` origin,
+  and the ChatGPT widget domain. It serves Streamable HTTP statelessly.
+- `ngx-json-render/mcp/server` registers the tool the way `createMcpApp`
+  does, with a read-only annotation and what the model sees of the tool: a
+  short description, and an input schema with each component's props and
+  each action's params, which the SDK also enforces. A spec whose children or
+  root are missing is sent back to the model as an error, and so is a
+  `$template` that reads a repeat item as `${$item/field}`: it would render as
+  an empty string, and the error tells the model to write `${field}`.
 - `server/catalog.ts`: the catalog the tool describes to the model, the
   Material catalog plus a `sendMessage` action (below). The published catalog
   stays host-neutral; the action needs the view's handler.
@@ -118,7 +119,7 @@ _always_ send `state` for data-backed UI, so tables and lists arrive empty,
 and no button does anything. The React schema has the same shape, so this is
 not specific to Angular.
 
-`specInputSchema()` in `server/tool.ts` replaces it with a schema built from
+`specInputSchema()` in `ngx-json-render/mcp/server` replaces it with a schema built from
 the catalog: `state`, `on`, `watch`, `visible` and `repeat` are declared, each
 component's props are its own schema (a value may also be a dynamic
 expression such as `{ "$state": "/path" }`; an unknown prop is rejected), and
@@ -137,9 +138,9 @@ characters, which that prompt spends on its patch-streaming instructions.
 Asked to quote where the description ended, Claude quoted the middle of the
 state-streaming example: it had seen no component, prop or action, and
 guessed (`"variant": "primary"` on a Button, which the view then could not
-draw). `TOOL_DESCRIPTION` in `server/tool.ts` is about 1 600 characters,
-covers what a schema cannot say (state, bindings, repeat, events,
-`sendMessage`), and leaves the vocabulary to the input schema.
+draw). `renderUiDescription()` in `ngx-json-render/mcp/server` is about
+1 600 characters, covers what a schema cannot say (state, bindings, repeat,
+events, `sendMessage`), and leaves the vocabulary to the input schema.
 
 Once upstream fixes both, the server can go back to a plain
 `createMcpApp({ name, version, catalog, html })`.

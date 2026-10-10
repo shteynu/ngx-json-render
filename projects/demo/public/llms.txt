@@ -21,7 +21,7 @@
 
 - [Live demo](https://shteynu.github.io/ngx-json-render/): a streamed sales dashboard and support form, a playground that renders a hand-edited spec against either catalog, an interactive spec (bindings, repeat, confirm, watch), and a chat where prose and UI patches share one reply
 - [AI SDK chat example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/examples/ai-sdk-chat/README.md): `Chat` from `@ai-sdk/angular` with answers that carry Material UI
-- [MCP App example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/mcp-app/README.md): the Material catalog rendered inline in Claude, ChatGPT, VS Code or Cursor through `ngx-json-render/mcp`
+- [MCP App example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/mcp-app/README.md): the Material catalog rendered inline in Claude, ChatGPT, VS Code or Cursor through `ngx-json-render/mcp` (the view) and `ngx-json-render/mcp/server` (the `render-ui` tool)
 - [Open in StackBlitz](https://stackblitz.com/github/shteynu/ngx-json-render): the whole workspace, running the demo
 
 ## Optional

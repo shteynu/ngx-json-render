@@ -734,7 +734,37 @@ export class App {
 
 The spec renders while the model is still writing the tool call, from the host's `toolinputpartial` notifications; pass `streamPartialInput: false` to wait for the result. `mcp.sendMessage(text, data)` posts a user message to the chat, so a button can continue the conversation, and `mcp.callServerTool(name, args)` replaces the spec with another tool's result. The connection closes with the injector that created it.
 
-The server side is upstream's `@json-render/mcp`, which serves the view as a single HTML resource. [`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, the build that inlines it into one page, and a server that works around two `createMcpApp` problems.
+### The server
+
+`ngx-json-render/mcp/server` is the other half: an MCP server with one `render-ui` tool for your catalog, and the view as its `ui://` resource. It needs no Angular, so it runs in plain Node or on an edge function, and it takes the same two optional peers.
+
+```ts
+import { readFileSync } from 'node:fs';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { createRenderUiServer } from 'ngx-json-render/mcp/server';
+import { catalog } from './catalog'; // defineCatalog(schema, …) from ngx-json-render/schema
+
+const server = createRenderUiServer({
+  catalog,
+  html: readFileSync('dist/view.html', 'utf8'), // the view above, built into one page
+  name: 'my-app',
+  version: '1.0.0',
+});
+await server.connect(new StdioServerTransport());
+```
+
+Over HTTP, `handleRenderUiRequest(options, request)` takes a web `Request` and returns a `Response`. It serves each request statelessly with a fresh server, as a serverless or edge function needs, and answers CORS for browser-based clients such as MCP Inspector.
+
+What it does on top of upstream's `createMcpApp` from `@json-render/mcp`, whose tool and resource it registers the same way:
+
+- **A description Claude reads whole.** `createMcpApp` describes the tool with `catalog.prompt()`, about 26 000 characters, and Claude cuts a tool description off after roughly 2 000, before the first component. `renderUiDescription(catalog)` stays under that limit (`DESCRIPTION_LIMIT`) and leaves the components to the input schema.
+- **An input schema that keeps the spec whole.** `catalog.zodSchema()` has no `state`, `on` or `watch`, so the MCP SDK strips them from the arguments before the tool sees them, and it types no props. `specInputSchema(catalog)` declares them and gives each component its own props, with dynamic values allowed and unknown props rejected, and checks each action's params.
+- **Errors the model can fix.** A spec with a missing child or root, or a `$template` that reads a repeat item as `${$item/field}`, goes back as a tool error that says what to write instead (`specProblems`).
+- **The structured result ChatGPT asks for:** the spec as `structuredContent`, with an output schema (`specOutputSchema`).
+
+Options: `name`, `version`, `toolName` (default `render-ui`), `title`, `description`, `csp` (the origins the view may load from and connect to; left out, the host allows none) and `widgetDomain` (the view's origin for ChatGPT's plugin directory). If your catalog has a `sendMessage` action, the description tells the model how to use it; the view's handler for it calls `mcp.sendMessage()`.
+
+[`projects/mcp-app`](https://github.com/shteynu/ngx-json-render/tree/main/projects/mcp-app) is a complete example with the Material catalog: the view, the build that inlines it into one page, and this server, the one behind `https://ngx-json-render.vercel.app/mcp`.
 
 ## Devtools
 
@@ -1175,6 +1205,8 @@ Registry & schema: `defineRegistry`, `createStoreSetState`, `schema`, and the ca
 Schema alone (`ngx-json-render/schema`): `schema`, `AngularSchema`, `AngularSpec`, with no Angular behind them, for a server that defines a catalog.
 
 MCP Apps (`ngx-json-render/mcp`): `injectJsonRenderApp`, `parseSpecFromToolResult`, `messageText`, and the types `JsonRenderApp`, `JsonRenderAppOptions`. Needs the optional peers `@modelcontextprotocol/ext-apps` and `@modelcontextprotocol/sdk`.
+
+MCP App server (`ngx-json-render/mcp/server`): `createRenderUiServer`, `handleRenderUiRequest`, `renderUiDescription`, `specInputSchema`, `specOutputSchema`, `specProblems`, `DESCRIPTION_LIMIT`, and the types `RenderUiServerOptions`, `RenderUiDescriptionOptions`. No Angular; the same optional peers.
 
 Router (`ngx-json-render/router`): `injectRouterNavigate`, and the type `RouterNavigateOptions`. Needs the optional peer `@angular/router`, which an Angular app on the router already has.
 

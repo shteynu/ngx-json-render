@@ -340,7 +340,7 @@ readonly mcp = injectJsonRenderApp({ name: 'my-app', version: '1.0.0' }); // in 
 await this.mcp.sendMessage('Approve release 2.4.0', { version: '2.4.0' }); // posts a user message to the chat
 ```
 
-`spec`, `loading`, `connected`, `connecting` and `error` are signals. The spec streams in from `toolinputpartial` while the model writes the call (`streamPartialInput: false` to wait for the result), and `callServerTool(name, args)` replaces it with another tool's result. The server side is `@json-render/mcp`; a full example lives in `projects/mcp-app` of the repository.
+`spec`, `loading`, `connected`, `connecting` and `error` are signals. The spec streams in from `toolinputpartial` while the model writes the call (`streamPartialInput: false` to wait for the result), and `callServerTool(name, args)` replaces it with another tool's result. The server side is `ngx-json-render/mcp/server` (no Angular): `createRenderUiServer({ catalog, html, name, version })` returns an `McpServer` with a `render-ui` tool for the catalog and the view as its `ui://` resource; connect it to `StdioServerTransport`, or serve web `Request`s with `handleRenderUiRequest(options, request)`. Prefer it over upstream's `createMcpApp`, whose tool description Claude cuts off and whose input schema drops `state`, `on` and `watch`. A full example lives in `projects/mcp-app` of the repository.
 
 ## AG-UI agents (`ngx-json-render/ag-ui`)
 
