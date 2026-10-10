@@ -1,0 +1,16 @@
+{
+  "name": "ngx-json-render",
+  "owner": {
+    "name": "shteynu",
+    "url": "https://github.com/shteynu/ngx-json-render"
+  },
+  "description": "Skills for ngx-json-render, the Angular renderer for json-render.",
+  "plugins": [
+    {
+      "name": "ngx-json-render",
+      "source": "./plugins/ngx-json-render",
+      "category": "development",
+      "tags": ["angular", "json-render", "generative-ui", "angular-material"]
+    }
+  ]
+}

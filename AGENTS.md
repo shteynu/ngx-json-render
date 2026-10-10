@@ -72,7 +72,7 @@ are the typecheck**, and they are strict — `strict`, `strictTemplates`,
 | `@json-render/core` version or its peer range              | `npm ci`, then the full `npm run build` and `npm test` on the version the workspace pins, then the `core-compat` steps at the floor of the range — see below                                                                                                                                 |
 | `.github/workflows/**`, release config                     | Read the workflow diff against the matching `npm run` script; releases are tag-driven (a manual `workflow_dispatch` run creates the tag itself) and publish to npm — never trigger one as verification; `core-canary.yml` may be dispatched by hand, it only reads and files issues          |
 | `projects/*/schematics/**`, `scripts/build-schematics.mjs` | `npm run build:lib` and `npm run build:material` (each compiles its package's schematic into `dist/`), then `npm run test:schematics`; for a change in what `ng add` installs, also the end-to-end run below                                                                                 |
-| `skills/**`                                                | `npm run build:lib` and `npm run build:material`, then `npm run check:skills` — every `ts` block in a skill is compiled against the builds; see below                                                                                                                                        |
+| `skills/**`                                                | `npm run build:lib` and `npm run build:material`, then `npm run check:skills` — every `ts` block in a skill is compiled against the builds; then `npm run sync:plugin` and `npm run check:plugin`; see below                                                                                 |
 | Docs only (`README.md`, `docs/**`)                         | `git diff --check` and a link check; no build needed                                                                                                                                                                                                                                         |
 
 Coverage: each project declares `coverageThresholds` in `angular.json`,
@@ -98,6 +98,17 @@ an excerpt rather than a module — a server route for another process, a test
 fragment with free variables — carries `fragment` in its info string
 (` ```ts fragment `) and is skipped; keep those few. Errors are reported
 against the skill file and line. CI runs it after both builds.
+
+Plugin: `plugins/ngx-json-render` is the Claude Code plugin that Anthropic's
+plugin directory installs, listed by `.claude-plugin/marketplace.json`. The
+directory installs only that folder and refuses symbolic links, so it holds
+copies of `skills/*` and the root `LICENSE`. `skills/` stays the source:
+edit there, then `npm run sync:plugin` (`scripts/sync-plugin.mjs`) rewrites
+the copies, removes skills that no longer exist, and sets the plugin's version
+to the renderer's. A renderer version bump therefore needs a sync in the same
+commit; `npm run check:plugin`, which CI runs, fails on any drift. The
+directory wants the version raised on every update, which tying it to the
+renderer's release gives for free.
 
 `ng add`: each published package ships an `ng-add` schematic, sources in
 `projects/<package>/schematics`, compiled by `scripts/build-schematics.mjs` into

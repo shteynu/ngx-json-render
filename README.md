@@ -24,12 +24,22 @@ against the real API instead of guessing from the package name:
 npx skills add shteynu/ngx-json-render --skill ngx-json-render --skill ngx-json-render-material
 ```
 
+In Claude Code they also come as a plugin, which updates with each release:
+
+```bash
+claude plugin marketplace add shteynu/ngx-json-render
+claude plugin install ngx-json-render@ngx-json-render
+```
+
 Sources: [`skills/ngx-json-render/SKILL.md`](skills/ngx-json-render/SKILL.md)
 and [`skills/ngx-json-render-material/SKILL.md`](skills/ngx-json-render-material/SKILL.md).
 An agent reads the skill instead of the README, so a change to a package's
 public API or its README is not done until the matching skill says the same.
 CI compiles every TypeScript snippet in both skills against the built
 packages (`npm run check:skills`), so a skill cannot silently fall behind.
+The plugin in [`plugins/ngx-json-render`](plugins/ngx-json-render) holds
+copies of both skills that `npm run sync:plugin` refreshes; CI fails when
+they drift (`npm run check:plugin`).
 
 ## Workspace layout
 

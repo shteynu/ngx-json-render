@@ -1,0 +1,24 @@
+{
+  "name": "ngx-json-render",
+  "displayName": "ngx-json-render",
+  "version": "0.9.1",
+  "description": "Render AI-generated json-render specs as Angular components: catalogs, registries, streaming with signals, spec checks, tests, and a ready Angular Material catalog.",
+  "author": {
+    "name": "shteynu",
+    "url": "https://github.com/shteynu"
+  },
+  "homepage": "https://github.com/shteynu/ngx-json-render/tree/main/plugins/ngx-json-render",
+  "repository": "https://github.com/shteynu/ngx-json-render",
+  "license": "Apache-2.0",
+  "keywords": [
+    "angular",
+    "json-render",
+    "generative-ui",
+    "signals",
+    "angular-material",
+    "llm-ui"
+  ],
+  "documentationUrl": "https://github.com/shteynu/ngx-json-render#readme",
+  "supportUrl": "https://github.com/shteynu/ngx-json-render/issues",
+  "privacyPolicyUrl": "https://github.com/shteynu/ngx-json-render/blob/main/plugins/ngx-json-render/PRIVACY.md"
+}

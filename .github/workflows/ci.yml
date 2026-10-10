@@ -54,6 +54,9 @@ jobs:
       - name: Compile the skills' snippets
         run: npm run check:skills
 
+      - name: Check the Claude Code plugin's copies of the skills
+        run: npm run check:plugin
+
       # `ng add` for both packages, run against a generated Angular workspace.
       # The schematics are compiled by build:lib and build:material into the
       # dist folders the tests load, so this has to come after both builds.

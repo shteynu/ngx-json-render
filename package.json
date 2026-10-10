@@ -18,6 +18,8 @@
     "check:zoneless": "node scripts/check-zoneless.mjs",
     "check:published": "node scripts/check-published-resolution.mjs",
     "check:skills": "node scripts/check-skill-snippets.mjs",
+    "sync:plugin": "node scripts/sync-plugin.mjs",
+    "check:plugin": "node scripts/sync-plugin.mjs --check",
     "capture:gif": "node scripts/capture-streaming-gif.mjs",
     "build:mcp-app": "node scripts/build-mcp-app.mjs",
     "pack:chatgpt-plugin": "node scripts/pack-chatgpt-plugin.mjs"
