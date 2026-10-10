@@ -140,6 +140,48 @@ export function specInputSchema(catalog: Catalog) {
 }
 
 /**
+ * The sentences every validatable component's description ends with, or ""
+ * when there are none worth sharing.
+ *
+ * The catalog repeats its validation hint on each form field because
+ * `catalog.prompt()` lists components one by one and shows no prop-level
+ * descriptions. In the input schema the same ~600 characters would arrive
+ * once per field component, so the schema says them once, on `elements`, and
+ * each field points there. Found as the descriptions' common tail, cut back
+ * to a sentence start, so the catalog does not have to export it.
+ */
+function sharedValidationHint(components: CatalogData['components']): string {
+  const descriptions = Object.values(components)
+    .filter(
+      (component) =>
+        (component.props as Partial<z.ZodObject>).shape?.['validation'] !==
+        undefined,
+    )
+    .map((component) => component.description);
+  if (descriptions.length < 2) return '';
+
+  let tail = descriptions[0];
+  for (const description of descriptions.slice(1)) {
+    let n = 0;
+    while (
+      n < tail.length &&
+      n < description.length &&
+      tail[tail.length - 1 - n] === description[description.length - 1 - n]
+    ) {
+      n++;
+    }
+    tail = tail.slice(tail.length - n);
+  }
+  // The shared tail usually starts part-way through the sentence before it.
+  const before = descriptions[0].slice(0, descriptions[0].length - tail.length);
+  if (before !== '' && !/[.!?] $/.test(before)) {
+    const next = tail.indexOf('. ');
+    tail = next === -1 ? '' : tail.slice(next + 2);
+  }
+  return tail.length >= 200 ? tail : '';
+}
+
+/**
  * What `render-ui` returns as `structuredContent`: the spec it was given,
  * after the input schema filled in missing `children`. Only its outline,
  * since the input schema already carries the catalog and a second copy would
@@ -209,25 +251,36 @@ function buildSpecInputSchema(catalog: Catalog) {
       .optional(),
   };
   const { components } = catalog.data as CatalogData;
-  const elements = Object.entries(components).map(([type, component]) =>
-    z
+  const hint = sharedValidationHint(components);
+  const elements = Object.entries(components).map(([type, component]) => {
+    const description =
+      hint && component.description.endsWith(hint)
+        ? `${component.description.slice(0, -hint.length)}Validation: see \`elements\`.`
+        : component.description;
+    return z
       .strictObject({
         type: z.literal(type),
         props: allowDynamic(component.props),
         children: z.array(z.string()).default([]),
         ...shared,
       })
-      .describe(`${type}: ${component.description}`),
-  );
+      .describe(`${type}: ${description}`);
+  });
   return z.strictObject({
     root: z.string().describe('Key of the top element in `elements`.'),
-    elements: z.record(
-      z.string(),
-      z.discriminatedUnion(
-        'type',
-        elements as unknown as [z.ZodObject, ...z.ZodObject[]],
+    elements: z
+      .record(
+        z.string(),
+        z.discriminatedUnion(
+          'type',
+          elements as unknown as [z.ZodObject, ...z.ZodObject[]],
+        ),
+      )
+      .describe(
+        hint
+          ? `Elements by key. On every component that takes \`validation\`: ${hint}`
+          : 'Elements by key.',
       ),
-    ),
     state: z
       .record(z.string(), z.unknown())
       .optional()

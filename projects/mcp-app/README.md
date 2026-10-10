@@ -123,8 +123,10 @@ the catalog: `state`, `on`, `watch`, `visible` and `repeat` are declared, each
 component's props are its own schema (a value may also be a dynamic
 expression such as `{ "$state": "/path" }`; an unknown prop is rejected), and
 each binding's `action` must be a built-in or a catalog action, with the
-catalog action's params checked. Shared parts are JSON Schema definitions, so
-the whole schema is about 39 000 characters.
+catalog action's params checked. Shared parts are JSON Schema definitions,
+and the validation hint the catalog repeats on every form field (for
+`catalog.prompt()`, which lists components one by one) is stated once, on
+`elements`, so the whole schema is about 44 000 characters.
 
 ### Claude cuts the description off
 

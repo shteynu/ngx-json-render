@@ -66,6 +66,39 @@ describe('render-ui tool', () => {
     expect(json.length).toBeLessThan(45_000);
   });
 
+  it('states the catalog’s validation hint once, where every field can find it', () => {
+    const json = JSON.stringify(
+      z.toJSONSchema(schema, { target: 'draft-7', io: 'input' }),
+    );
+    const count = (text: string) => json.split(text).length - 1;
+    // Every component whose props take `validation`: the form fields.
+    const components = mcpCatalog.data.components as Record<
+      string,
+      { props: Partial<z.ZodObject> }
+    >;
+    const fields = Object.keys(components).filter(
+      (name) => components[name].props.shape?.['validation'] !== undefined,
+    );
+    expect(fields).toContain('Input');
+
+    expect(count('Validate it with `validation`')).toBe(1);
+    expect(count('On every component that takes `validation`: Validate')).toBe(
+      1,
+    );
+    expect(count('Validation: see `elements`.')).toBe(fields.length);
+    const descriptions: string[] = [];
+    JSON.parse(json, (key, value) => {
+      if (key === 'description' && typeof value === 'string') {
+        descriptions.push(value);
+      }
+      return value;
+    });
+    for (const field of fields) {
+      const own = descriptions.find((d) => d.startsWith(`${field}: `));
+      expect(own, field).toMatch(/Validation: see `elements`\.$/);
+    }
+  });
+
   it("offers no Image, which the view's CSP would block", () => {
     expect(mcpCatalog.componentNames).not.toContain('Image');
     expect(
