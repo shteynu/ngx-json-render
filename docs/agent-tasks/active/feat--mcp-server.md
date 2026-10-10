@@ -5,9 +5,9 @@
 - Branch: feat/mcp-server (worktree `.claude/worktrees/mcp-server`; the main
   checkout is busy with the AG-UI work in another session)
 - Base branch: main
-- Base commit: 4a2d424 (rebased from 2a0eb15 after the AG-UI release, 0.9.4)
-- Current HEAD: 2b5df71 on `main` (fast-forwarded locally, not pushed)
-- Status: step 1 merged into local `main` and re-verified after the rebase; upstream issue drafted, not posted
+- Base commit: f999a02 (chore: release 0.9.5)
+- Current HEAD: f999a02; step 2 (builder) uncommitted in this worktree
+- Status: step 1 released as 0.9.5, upstream issue vercel-labs/json-render#393 posted; step 2 (builder) done and verified, uncommitted
 - Last updated: 2026-10-10
 - Last agent/tool: Claude Code
 
@@ -116,8 +116,34 @@ catalog in one command" (builder and schematic come later).
 - Commit/merge: user's call. Posting the upstream issue: user's yes on the
   final text, and only after the code is on `main` (the issue links to it).
 
+## Step 2: the `ngx-json-render:mcp-app` builder
+
+- `projects/ngx-json-render/schematics/builders.json`,
+  `schematics/mcp-app-builder/{index,inline}.cts`, `schema.json`,
+  `inline.test.mjs`; `"builders"` in the package manifest; node types in the
+  schematics tsconfig. Runs the application build, inlines every module
+  script (esbuild from `@angular/build`), local stylesheet and stylesheet
+  `url()` file (data URLs), drops local icon links, warns about files the
+  page cannot reach, bundles `server` into a self-contained `server.mjs`
+  (`externalPackages` opts out).
+- Example: `angular.json` target `mcp-app:mcp` names the builder by path
+  (`./dist/ngx-json-render:mcp-app`); `scripts/build-mcp-app.mjs` now
+  type-checks, runs it, and keeps only the Vercel packaging.
+- Docs: README "Building it" + API surface line, example README, skill,
+  AGENTS.md note on where the builder lives.
+- Verified: `npm test` (schematics 14/14), demo build, `build:mcp-app
+--vercel`; example `view.html` byte-identical to the old script's,
+  `tools/list` identical to the 0.9.5 baseline, standalone `server.mjs` runs
+  with no `node_modules`; clean `ng new` (Angular 21.2) app with the packed
+  tarball: builder by name, hashed files, stylesheet font inlined, server
+  from an empty folder over stdio and over HTTP (`handleRenderUiRequest`),
+  rendered in ext-apps `basic-host` (card + two styled badges).
+- Not done: zod locale trimming (the application build owns the bundle).
+  npm 10.9 fails `ng new` installs on jsdom's optional `canvas` peer
+  (`edgesOut`); `--legacy-peer-deps` works around it, unrelated to us.
+
 ## Next concrete step
 
-User pushes `main`. Then release 0.10.0 (renderer minor, catalog patch with
-the peer widened), then post `docs/upstream-mcp-issue.local.md` on the user's
-yes. After that: the Angular builder for the single-file view.
+User decides: commit step 2 and fast-forward `main`, release as a patch
+(0.9.6). Then step 3: `sendMessage` in the library and the `mcp-app`
+schematic.
