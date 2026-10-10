@@ -109,28 +109,6 @@ export class App {
 vocabulary. Everything below is the other path — your own components, which is
 what the catalog API is for.
 
-## ngx-json-render or Hashbrown?
-
-[Hashbrown](https://hashbrown.dev) is the other generative-UI library for
-Angular. Both let a model compose your components; they differ in what the
-model emits and in how much of the agent around it they provide. Compared
-against `@hashbrownai/angular` 0.6.1, as published on 2026-09-30:
-
-|                      | ngx-json-render                                                                                                                                                          | Hashbrown                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| What the model emits | A json-render spec, streamed as RFC 6902 patches — the format the React, Vue, Svelte and Solid renderers read, so a catalog and a spec move between frameworks unchanged | Hashbrown's own JSON, generated against a schema built from the components you expose; read by Hashbrown's Angular and React clients                 |
-| Server               | Anything that streams text: the [AI SDK](https://ai-sdk.dev) in a few lines, or your own endpoint; `catalog.prompt()` writes the system prompt                           | An [AG-UI](https://docs.ag-ui.com) endpoint, built with Hashbrown's adapters (OpenAI, Anthropic, Google, Azure, Bedrock, Ollama) or your own mapping |
-| Angular              | 20, 21 and 22, each tested in CI                                                                                                                                         | 22 only since 0.6 (0.5 supported 20 and 21)                                                                                                          |
-| Components           | Your own, or 33 ready-made Angular Material ones ([`ngx-json-render-material`](https://www.npmjs.com/package/ngx-json-render-material))                                  | Your own (`exposeComponent`, UI kits)                                                                                                                |
-| Beyond rendering     | Rendering-focused: state and two-way bindings in the spec, actions, visibility, repeat, watch, confirmation dialogs                                                      | An agent toolkit: client-side tools, a QuickJS sandbox for model-written code, shared agent state, interrupts, streaming Markdown                    |
-| License              | Apache-2.0                                                                                                                                                               | MIT                                                                                                                                                  |
-
-Reach for Hashbrown when you want the agent loop — tools, a sandbox, AG-UI —
-from one library and are on Angular 22. Reach for this one when you want an
-open spec format that is not tied to Angular or to one vendor's client, a
-server you already have, Angular 20 or 21, or a UI that renders from a
-ready-made Material catalog before you have written a component.
-
 ## Quick start
 
 **1. Define a catalog** — the vocabulary the model (or your server) is allowed to use:

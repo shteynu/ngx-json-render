@@ -12,7 +12,7 @@
 
 ## Docs
 
-- [ngx-json-render README](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/ngx-json-render/README.md): install, quick start, comparison with Hashbrown, streaming (server side, Genkit, AI SDK messages, chat), checking generated specs, render limits, MCP App hosts, devtools, testing, state, confirmation dialogs, forms, security, API surface
+- [ngx-json-render README](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/ngx-json-render/README.md): install, quick start, streaming (server side, Genkit, AI SDK messages, chat), checking generated specs, render limits, MCP App hosts, devtools, testing, state, confirmation dialogs, forms, security, API surface
 - [ngx-json-render agent skill](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/skills/ngx-json-render/SKILL.md): the same API condensed for coding agents; CI compiles every snippet against the built package
 - [ngx-json-render-material README](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/ngx-json-render-material/README.md): the Angular Material catalog: install, use, component list, validation, overriding a component
 - [ngx-json-render-material agent skill](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/skills/ngx-json-render-material/SKILL.md): the Material catalog condensed for coding agents
