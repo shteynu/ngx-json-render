@@ -1,0 +1,23 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "ngx-json-render",
+  "description": "Angular renderer for json-render: renders AI-generated JSON specs, constrained to a catalog of your components, as standalone Angular components with signals, zoneless. Streams specs as RFC 6902 patches (injectUIStream, injectChatUI). Includes ngx-json-render-material, a ready Angular Material catalog, and an MCP App view (ngx-json-render/mcp).",
+  "branch": "main",
+  "folders": [
+    "projects/ngx-json-render",
+    "projects/ngx-json-render-material",
+    "projects/mcp-app",
+    "skills",
+    "examples"
+  ],
+  "excludeFolders": ["node_modules", "dist", "coverage"],
+  "excludeFiles": ["AGENTS.md", "CLAUDE.md", "CHANGELOG.md", "LICENSE.md"],
+  "rules": [
+    "Install with `npm install ngx-json-render @json-render/core zod`; Angular 19 or later (the Material catalog needs 20 or later).",
+    "Catalog components are standalone components with no inputs: read props with `injectRenderContext().props()` and render children with `<jr-children />`.",
+    "Define catalogs with `schema` from `ngx-json-render/schema`, which has no Angular dependency, so server code can import the same catalog file.",
+    "In a spec, `visible`, `on`, `repeat`, `slots` and `watch` sit on the element, never inside `props`.",
+    "Stream specs with `injectUIStream`, or `injectChatUI` for chat replies that mix prose and specs; do not hand-filter half-streamed elements, give the registry entry a `fallback` instead.",
+    "For a ready-made component set, use `ngx-json-render-material` (`materialRegistry`, `materialCatalog.prompt()`) instead of writing a catalog first."
+  ]
+}

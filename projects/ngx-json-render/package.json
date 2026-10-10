@@ -10,7 +10,9 @@
     "ai",
     "renderer",
     "signals",
-    "server-driven-ui"
+    "server-driven-ui",
+    "sdui",
+    "dynamic-components"
   ],
   "license": "Apache-2.0",
   "repository": {
