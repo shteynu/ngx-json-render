@@ -1,0 +1,10 @@
+.git
+.angular
+.vercel
+node_modules
+dist
+coverage
+docs
+examples
+**/*.local
+**/*.local.*
