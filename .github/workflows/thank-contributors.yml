@@ -1,0 +1,42 @@
+# Thanks an outside contributor when their first pull request is merged, and
+# asks, without any condition attached, for a star or a note on how they use
+# ngx-json-render. Later merges by the same author get no comment.
+#
+# pull_request_target runs with a token that can comment on fork PRs; it is
+# safe here because the job never checks out or runs the contributor's code.
+name: Thank contributors
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  thank:
+    if: >-
+      github.event.pull_request.merged &&
+      github.event.pull_request.user.type == 'User' &&
+      github.event.pull_request.user.login != github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on the author's first merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # REST, not search: the search index can lag behind a merge that just happened.
+          merged=$(gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" \
+            --jq '.[] | select(.user.login == $ENV.AUTHOR and .merged_at != null) | .number' | wc -l)
+          if [ "$merged" -gt 1 ]; then
+            echo "$AUTHOR already has a merged PR here; not commenting again."
+            exit 0
+          fi
+          gh pr comment "$PR" -R "$REPO" --body-file - <<BODY
+          Thanks for your first contribution to ngx-json-render, @$AUTHOR! It's merged and goes out with the next release.
+
+          If ngx-json-render is useful to you, a ⭐ on the repo helps other developers find it. And if you use it in an app or a library, I'd love to hear about it: open an issue or mention it here.
+          BODY
