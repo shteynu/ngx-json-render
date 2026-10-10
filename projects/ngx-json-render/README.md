@@ -512,6 +512,14 @@ providers: [
 ];
 ```
 
+While the agent's run is still streaming an activity, its renderer is
+loading, as under `injectUIStream`: `validate` checks the spec once that run
+ends, not at every patch, and the catalog holds back elements whose props
+have not arrived. An activity already on screen stays checked while a later
+run builds another. CopilotKit mounts the activity mid-run, after the run has
+fixed its subscribers, so the end of that run is read from the agent's
+`isRunning` flag.
+
 **On the server**, the model's output — prose with ` ```spec ` fenced JSONL,
 as `catalog.prompt({ mode: 'inline' })` asks for — splits into text-message
 events and activity deltas with `createMixedStreamParser` from
