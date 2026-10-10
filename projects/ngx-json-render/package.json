@@ -1,6 +1,6 @@
 {
   "name": "ngx-json-render",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "description": "Generative UI for Angular: a json-render renderer that streams AI-generated JSON specs into real Angular components with signals.",
   "keywords": [
     "angular",
