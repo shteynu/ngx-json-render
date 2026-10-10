@@ -1,6 +1,6 @@
 # ngx-json-render
 
-> Angular renderer for json-render (vercel-labs/json-render): a model emits a JSON spec constrained to a catalog of your components, and `<json-render>` renders it as real standalone Angular components, with signals, OnPush and no Zone.js, never through innerHTML or eval. Specs can stream in as RFC 6902 JSONL patches and render while they arrive.
+> Generative UI for Angular: a renderer for json-render (vercel-labs/json-render). A model emits a JSON spec constrained to a catalog of your components, and `<json-render>` renders it as real standalone Angular components, with signals, OnPush and no Zone.js, never through innerHTML or eval. Specs can stream in as RFC 6902 JSONL patches and render while they arrive.
 
 - Install: `npm install ngx-json-render @json-render/core zod`, or `ng add ngx-json-render` in an Angular CLI workspace.
 - Peer dependencies: Angular 19 or later (the Material catalog needs 20 or later), `@json-render/core` 0.20 or 0.21, `zod` ^4.

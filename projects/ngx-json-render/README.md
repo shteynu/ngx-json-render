@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/ngx-json-render)](https://www.npmjs.com/package/ngx-json-render) [![CI](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml/badge.svg)](https://github.com/shteynu/ngx-json-render/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/ngx-json-render)](https://github.com/shteynu/ngx-json-render/blob/main/LICENSE)
 
-Angular renderer for [json-render](https://github.com/vercel-labs/json-render) — give an LLM a catalog of your components, stream back a JSON spec, and render it as real Angular components. No `innerHTML`, no `eval`, no framework lock-in on the wire format.
+Generative UI for Angular: a renderer for [json-render](https://github.com/vercel-labs/json-render). Give an LLM a catalog of your components, stream back a JSON spec, and render it as real Angular components. No `innerHTML`, no `eval`, no framework lock-in on the wire format.
 
 Built on `@json-render/core` (the same spec format, expressions, state store, actions, and streaming compiler used by the React, Vue, Solid, and Svelte renderers) and idiomatic modern Angular: standalone components, signals, `OnPush` everywhere, and zoneless — no `NgZone`, no Zone.js.
 
