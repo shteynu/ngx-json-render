@@ -166,6 +166,35 @@ jobs:
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
 
+  # consumer-smoke writes the app's package.json itself. This job takes the
+  # path the README gives a new user — `ng new`, `ng add`, then
+  # `ng generate ngx-json-render:mcp-app` and its build — so it sees what the
+  # schematics install next to what the Angular CLI brought. On Angular 20 a
+  # loose zod range kept the CLI's older zod and broke catalog typing.
+  ng-add-smoke:
+    name: ng add on Angular ${{ matrix.angular }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: [20]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build:lib
+
+      - name: ng new, ng add, ng generate mcp-app, build, list tools
+        run: node scripts/ng-add-smoke.mjs ${{ matrix.angular }}
+
   core-compat:
     name: '@json-render/core ${{ matrix.core }} compatibility'
     runs-on: ubuntu-latest

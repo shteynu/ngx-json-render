@@ -80,7 +80,7 @@ CI never sees, so its noise is not a signal.
 | `package.json`, `package-lock.json`, Angular version       | `npm ci` then the full `npm run build` and `npm test`; for an Angular-version change, a new dev dependency, or a new `test.options` key in `angular.json`, also run the `angular-compat` job's own steps in a throwaway checkout, and `scripts/consumer-smoke.mjs` for 19 and 22 — see below |
 | `@json-render/core` version or its peer range              | `npm ci`, then the full `npm run build` and `npm test` on the version the workspace pins, then the `core-compat` steps at the floor of the range — see below                                                                                                                                 |
 | `.github/workflows/**`, release config                     | Read the workflow diff against the matching `npm run` script; releases are tag-driven (a manual `workflow_dispatch` run creates the tag itself) and publish to npm — never trigger one as verification; `core-canary.yml` may be dispatched by hand, it only reads and files issues          |
-| `projects/*/schematics/**`, `scripts/build-schematics.mjs` | `npm run build:lib` and `npm run build:material` (each compiles its package's schematic into `dist/`), then `npm run test:schematics`; for a change in what `ng add` installs, also the end-to-end run below                                                                                 |
+| `projects/*/schematics/**`, `scripts/build-schematics.mjs` | `npm run build:lib` and `npm run build:material` (each compiles its package's schematic into `dist/`), then `npm run test:schematics`; for a change in what `ng add` installs, also the end-to-end run below and `node scripts/ng-add-smoke.mjs 20`                                          |
 | `skills/**`                                                | `npm run build:lib` and `npm run build:material`, then `npm run check:skills` — every `ts` block in a skill is compiled against the builds; then `npm run sync:plugin` and `npm run check:plugin`; see below                                                                                 |
 | Docs only (`README.md`, `docs/**`)                         | `git diff --check` and a link check; no build needed                                                                                                                                                                                                                                         |
 
@@ -272,6 +272,16 @@ public and protected members that hold Angular values explicitly typed with
 types the floor exports. Run it after `npm run build:lib`, with
 `CHROMIUM_PATH` pointing at a Chrome or Chromium binary; Angular 22's CLI
 needs Node 22.22.3 or newer.
+
+The `ng-add-smoke` CI job (`scripts/ng-add-smoke.mjs <major>`, Angular 20)
+takes the README's path instead: `ng new`, `ng add` of the packed
+`dist/ngx-json-render`, `ng generate ngx-json-render:mcp-app`, `ng run
+mcp-app:mcp`, then the generated server over stdio must list `render-ui`.
+`consumer-smoke` pins every dependency itself, so it cannot see what `ng add`
+installs next to the CLI's own: on Angular 20 the CLI hoists zod 4.1.13, and
+until 0.9.8 `ng add` wrote `zod@^4.0.0`, which kept it, while
+`@json-render/core` nested its own zod and catalog schemas stopped
+type-checking. Run it after `npm run build:lib`; it needs network for `ng new`.
 
 The `core-compat` CI job proves the floor of the `@json-render/core` peer range
 the way `angular-compat` proves the Angular floor. The workspace pins the newest
