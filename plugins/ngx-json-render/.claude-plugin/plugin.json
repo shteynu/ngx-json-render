@@ -1,7 +1,7 @@
 {
   "name": "ngx-json-render",
   "displayName": "ngx-json-render",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Render AI-generated json-render specs as Angular components: catalogs, registries, streaming with signals, spec checks, tests, and a ready Angular Material catalog.",
   "author": {
     "name": "shteynu",
