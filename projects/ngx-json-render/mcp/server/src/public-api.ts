@@ -6,6 +6,7 @@
  * an edge function; the view it serves is built with `ngx-json-render/mcp`.
  */
 
+export { sendMessageAction, withSendMessage } from './actions';
 export {
   createRenderUiServer,
   handleRenderUiRequest,

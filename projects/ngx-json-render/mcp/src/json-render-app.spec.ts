@@ -213,6 +213,43 @@ describe('injectJsonRenderApp', () => {
     expect(onmessage).not.toHaveBeenCalled();
   });
 
+  it('handles a sendMessage action and records how it went', async () => {
+    const { bridge, mcp } = await connect();
+    const messages: unknown[] = [];
+    bridge.onmessage = async (params) => {
+      messages.push(params);
+      return {};
+    };
+    const { sendMessage } = mcp.handlers;
+    expect(mcp.lastMessage()).toBeNull();
+
+    await sendMessage!({ text: 'Show more', data: ['not', 'an', 'object'] });
+
+    expect(messages).toEqual([
+      { role: 'user', content: [{ type: 'text', text: 'Show more' }] },
+    ]);
+    expect(mcp.lastMessage()).toEqual({ ok: true });
+  });
+
+  it('records a failed sendMessage action and rethrows it', async () => {
+    const { bridge, mcp } = await connect();
+    const onmessage = vi.fn(async () => ({ isError: true }));
+    bridge.onmessage = onmessage;
+    const { sendMessage } = mcp.handlers;
+
+    await expect(sendMessage!({ text: ' ' })).rejects.toThrow(
+      'sendMessage needs a non-empty "text" param.',
+    );
+    expect(onmessage).not.toHaveBeenCalled();
+    await expect(sendMessage!({ text: 'Approve' })).rejects.toThrow(
+      'The host declined the message.',
+    );
+    expect(mcp.lastMessage()).toEqual({
+      ok: false,
+      error: new Error('The host declined the message.'),
+    });
+  });
+
   it('reports a connection that fails', async () => {
     TestBed.configureTestingModule({
       providers: [provideZonelessChangeDetection()],

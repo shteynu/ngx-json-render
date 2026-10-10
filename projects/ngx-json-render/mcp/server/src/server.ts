@@ -15,6 +15,7 @@ import {
 import type { McpUiResourceCsp } from '@modelcontextprotocol/ext-apps';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { withSendMessage } from './actions';
 import {
   renderUiDescription,
   specInputSchema,
@@ -39,6 +40,12 @@ export interface RenderUiServerOptions {
   /** The tool's description. Default: {@link renderUiDescription} for the catalog. */
   description?: string;
   /**
+   * Add the `sendMessage` action to the catalog the model sees, so a button
+   * in the view can post a message to the chat as the user. The view handles
+   * it with `injectJsonRenderApp().handlers` from `ngx-json-render/mcp`.
+   */
+  sendMessage?: boolean;
+  /**
    * The origins the view may load from (`resourceDomains`) and connect to
    * (`connectDomains`). Left out, the host's default applies, which the MCP
    * Apps spec defines as none.
@@ -62,8 +69,10 @@ export interface RenderUiServerOptions {
  * rejected spec goes back to the model as an error it can fix.
  */
 export function createRenderUiServer(options: RenderUiServerOptions) {
+  const catalog = options.sendMessage
+    ? withSendMessage(options.catalog)
+    : options.catalog;
   const {
-    catalog,
     html,
     name = 'ngx-json-render',
     version = '0.0.0',

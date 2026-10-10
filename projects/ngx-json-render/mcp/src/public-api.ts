@@ -12,4 +12,5 @@ export {
   parseSpecFromToolResult,
   type JsonRenderApp,
   type JsonRenderAppOptions,
+  type MessageOutcome,
 } from './json-render-app';

@@ -8,6 +8,7 @@ import {
   createRenderUiServer,
   handleRenderUiRequest,
 } from './server';
+import { withSendMessage } from './actions';
 import { renderUiDescription } from './tool';
 
 const catalog = defineCatalog(schema, {
@@ -180,6 +181,17 @@ describe('createRenderUiServer', () => {
       'openai/widgetDomain': 'https://example.com',
     });
     await client.close();
+  });
+  it('adds the sendMessage action when asked', async () => {
+    const client = await connect({ sendMessage: true });
+
+    const [tool] = (await client.listTools()).tools;
+
+    expect(tool.description).toBe(
+      renderUiDescription(withSendMessage(catalog)),
+    );
+    expect(tool.description).toContain('sendMessage');
+    expect(JSON.stringify(tool.inputSchema)).toContain('"sendMessage"');
   });
 });
 

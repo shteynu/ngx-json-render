@@ -152,24 +152,6 @@ describe('App', () => {
     );
   });
 
-  it('sends nothing for a sendMessage without text', async () => {
-    const { fixture } = await connect();
-    const send = vi
-      .spyOn(fixture.componentInstance.mcp, 'sendMessage')
-      .mockResolvedValue();
-    const { sendMessage } = fixture.componentInstance.handlers;
-
-    await expect(sendMessage!({ text: ' ' })).rejects.toThrow(
-      'sendMessage needs a non-empty "text" param.',
-    );
-    expect(fixture.componentInstance.notice()).toEqual({
-      error: true,
-      text: 'Could not send the message: sendMessage needs a non-empty "text" param.',
-    });
-    await sendMessage!({ text: 'Show more', data: ['not', 'an', 'object'] });
-    expect(send).toHaveBeenCalledExactlyOnceWith('Show more', undefined);
-  });
-
   it('posts a form only once it is valid', async () => {
     const { fixture, host, messages } = await render({
       root: 'form',

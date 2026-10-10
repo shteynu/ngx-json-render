@@ -1,11 +1,10 @@
 import {
   Component,
   InjectionToken,
+  computed,
   effect,
   inject,
-  signal,
 } from '@angular/core';
-import type { ActionHandler } from '@json-render/core';
 import type { McpUiTheme } from '@modelcontextprotocol/ext-apps';
 import { JsonRenderer } from 'ngx-json-render';
 import { materialRegistry } from 'ngx-json-render-material';
@@ -77,39 +76,25 @@ export class App {
   readonly registry = materialRegistry;
 
   /**
-   * What became of the last `sendMessage`. A host may decline it, or not take
-   * messages at all, and without this a press would look like it did nothing.
-   */
-  readonly notice = signal<{ error: boolean; text: string } | null>(null);
-
-  /**
    * The actions `server/catalog.ts` adds to the Material catalog. A spec's
    * built-in actions (setState, submitForm, …) never reach these.
    */
-  readonly handlers: Record<string, ActionHandler> = {
-    sendMessage: async ({ text, data }) => {
-      try {
-        if (typeof text !== 'string' || !text.trim()) {
-          throw new Error('sendMessage needs a non-empty "text" param.');
-        }
-        const isObject =
-          data && typeof data === 'object' && !Array.isArray(data);
-        await this.mcp.sendMessage(
-          text,
-          isObject ? (data as Record<string, unknown>) : undefined,
-        );
-        this.notice.set({ error: false, text: 'Message passed to the chat.' });
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        this.notice.set({
+  readonly handlers = this.mcp.handlers;
+
+  /**
+   * What became of the last `sendMessage`. A host may decline it, or not take
+   * messages at all, and without this a press would look like it did nothing.
+   */
+  readonly notice = computed(() => {
+    const outcome = this.mcp.lastMessage();
+    if (!outcome) return null;
+    return outcome.ok
+      ? { error: false, text: 'Message passed to the chat.' }
+      : {
           error: true,
-          text: `Could not send the message: ${reason}`,
-        });
-        // Rethrown, so a binding's `onError` still runs.
-        throw error;
-      }
-    },
-  };
+          text: `Could not send the message: ${outcome.error.message}`,
+        };
+  });
 
   constructor() {
     // Follow the host's light/dark theme: the Material theme is emitted under

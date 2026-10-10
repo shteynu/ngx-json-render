@@ -5,7 +5,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import type { Spec } from '@json-render/core';
+import type { ActionHandler, Spec } from '@json-render/core';
 import { App } from '@modelcontextprotocol/ext-apps';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
@@ -37,6 +37,9 @@ export interface JsonRenderAppOptions {
   autoResize?: boolean;
 }
 
+/** How the last {@link JsonRenderApp.sendMessage} from an action went. */
+export type MessageOutcome = { ok: true } | { ok: false; error: Error };
+
 /**
  * What {@link injectJsonRenderApp} returns — the fields of
  * `UseJsonRenderAppReturn` from `@json-render/mcp/app`, as signals.
@@ -66,6 +69,20 @@ export interface JsonRenderApp {
    * one down, so an action's `onError` runs.
    */
   sendMessage(text: string, data?: Record<string, unknown>): Promise<void>;
+  /**
+   * Handlers for the actions the server adds for MCP Apps hosts
+   * (`createRenderUiServer({ sendMessage: true })` in
+   * `ngx-json-render/mcp/server`): pass them to `<json-render [handlers]>`.
+   * `sendMessage` takes `{ text, data? }` and posts it with
+   * {@link JsonRenderApp.sendMessage}.
+   */
+  readonly handlers: Record<string, ActionHandler>;
+  /**
+   * How the last `sendMessage` action went, `null` before the first. A host
+   * may decline a message or take none at all; show this so a press does not
+   * look like it did nothing.
+   */
+  readonly lastMessage: Signal<MessageOutcome | null>;
 }
 
 /** The text of a {@link JsonRenderApp.sendMessage} message. */
@@ -107,7 +124,8 @@ function specFrom(value: unknown): Spec | null {
  * Connect an Angular app running inside an MCP Apps iframe to its host and
  * keep the json-render spec the model sent in a signal. The Angular
  * counterpart of `useJsonRenderApp` from `@json-render/mcp/app`; the server
- * side is `createMcpApp` from `@json-render/mcp`, unchanged.
+ * side is `createRenderUiServer` from `ngx-json-render/mcp/server`, or
+ * `createMcpApp` from `@json-render/mcp`.
  *
  * Call it in an injection context. The connection closes when the injector
  * that created it is destroyed.
@@ -132,6 +150,7 @@ export function injectJsonRenderApp(
   const loading = signal(true);
   const connected = signal(false);
   const error = signal<Error | null>(null);
+  const lastMessage = signal<MessageOutcome | null>(null);
 
   const app = new App({ name, version }, {}, { autoResize });
 
@@ -165,6 +184,39 @@ export function injectJsonRenderApp(
     app.close().catch(() => undefined);
   });
 
+  async function sendMessage(text: string, data?: Record<string, unknown>) {
+    if (!app.getHostCapabilities()?.message) {
+      throw new Error('The host does not accept messages from the view.');
+    }
+    const result = await app.sendMessage({
+      role: 'user',
+      content: [{ type: 'text', text: messageText(text, data) }],
+    });
+    if (result.isError) throw new Error('The host declined the message.');
+  }
+
+  const handlers: Record<string, ActionHandler> = {
+    sendMessage: async ({ text, data }) => {
+      try {
+        if (typeof text !== 'string' || !text.trim()) {
+          throw new Error('sendMessage needs a non-empty "text" param.');
+        }
+        const isObject =
+          data !== null && typeof data === 'object' && !Array.isArray(data);
+        await sendMessage(
+          text,
+          isObject ? (data as Record<string, unknown>) : undefined,
+        );
+        lastMessage.set({ ok: true });
+      } catch (err) {
+        const reason = err instanceof Error ? err : new Error(String(err));
+        lastMessage.set({ ok: false, error: reason });
+        // Rethrown, so a binding's `onError` still runs.
+        throw reason;
+      }
+    },
+  };
+
   return {
     spec: spec.asReadonly(),
     connecting: computed(() => !connected() && !error()),
@@ -185,15 +237,8 @@ export function injectJsonRenderApp(
         loading.set(false);
       }
     },
-    async sendMessage(text, data) {
-      if (!app.getHostCapabilities()?.message) {
-        throw new Error('The host does not accept messages from the view.');
-      }
-      const result = await app.sendMessage({
-        role: 'user',
-        content: [{ type: 'text', text: messageText(text, data) }],
-      });
-      if (result.isError) throw new Error('The host declined the message.');
-    },
+    sendMessage,
+    handlers,
+    lastMessage: lastMessage.asReadonly(),
   };
 }
