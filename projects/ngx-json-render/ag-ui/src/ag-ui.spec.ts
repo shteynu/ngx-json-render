@@ -181,11 +181,14 @@ describe('applyAgUiEvent', () => {
     expect(applyAgUiEvent(start, snapshot('m1', { not: 'a spec' }))).toBe(
       start,
     );
+    expect(applyAgUiEvent(start, { type: EventType.TEXT_MESSAGE_START })).toBe(
+      start,
+    );
     expect(
-      applyAgUiEvent(start, { type: EventType.TEXT_MESSAGE_START }),
-    ).toBe(start);
-    expect(
-      applyAgUiEvent(start, { type: EventType.ACTIVITY_DELTA, messageId: 1 } as AgUiEvent),
+      applyAgUiEvent(start, {
+        type: EventType.ACTIVITY_DELTA,
+        messageId: 1,
+      } as AgUiEvent),
     ).toBe(start);
   });
 
@@ -432,7 +435,10 @@ describe('rendering', () => {
     }
 
     TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection(), provideJsonRender({ registry })],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideJsonRender({ registry }),
+      ],
     });
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
