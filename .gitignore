@@ -44,7 +44,7 @@ __screenshots__/
 Thumbs.db
 
 # Local tooling
-/.impeccable
+.impeccable/
 
 # Marketing / outreach drafts — local only, never committed.
 # Code-facing docs (and docs/streaming.gif, used by the READMEs) stay tracked.
