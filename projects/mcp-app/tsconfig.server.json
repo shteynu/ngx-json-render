@@ -5,5 +5,10 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "files": ["server/server.ts", "server/vercel.ts", "server/view.d.ts"]
+  "files": [
+    "server/server.ts",
+    "server/vercel.ts",
+    "server/worker.ts",
+    "server/view.d.ts"
+  ]
 }

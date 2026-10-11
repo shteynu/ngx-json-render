@@ -4,7 +4,7 @@
 // Output API), so the function needs no `node_modules` at runtime.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import html from 'mcp-app-view.html';
-import { handleMcpRequest } from './app';
+import { handleMcpRequest } from './node';
 
 export default async function handler(
   req: IncomingMessage,

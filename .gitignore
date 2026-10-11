@@ -50,3 +50,5 @@ Thumbs.db
 # Code-facing docs (and docs/streaming.gif, used by the READMEs) stay tracked.
 docs/*.local.md
 .vercel
+.cloudflare
+.wrangler

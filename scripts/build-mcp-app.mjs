@@ -12,6 +12,10 @@
 // hosted /mcp endpoint as one Node.js function with every dependency and the
 // view bundled in, plus a landing page. `vercel.json` runs it that way.
 //
+// With --cloudflare it writes the same endpoint as a Cloudflare Worker:
+// .cloudflare/worker.mjs, and the landing page under .cloudflare/static, which
+// `wrangler.jsonc` deploys as static assets.
+//
 // Needs dist/ngx-json-render and dist/ngx-json-render-material, like the demo
 // (`npm run build:lib && npm run build:material`).
 import { execFileSync } from 'node:child_process';
@@ -37,7 +41,7 @@ const run = (bin, args) =>
 run('typescript/bin/tsc', ['-p', 'projects/mcp-app/tsconfig.server.json']);
 run('@angular/cli/bin/ng.js', ['run', 'mcp-app:mcp']);
 
-// The Vercel function takes the catalog and the `render-ui` tool from the
+// The hosted endpoint takes the catalog and the `render-ui` tool from the
 // built packages' Angular-free entry points, as an app's server would from
 // npm; they are not in node_modules.
 const alias = {
@@ -110,4 +114,46 @@ if (process.argv.includes('--vercel')) {
     }),
   );
   console.log(`Built ${output} for Vercel`);
+}
+
+if (process.argv.includes('--cloudflare')) {
+  const output = '.cloudflare';
+  const statics = join(output, 'static');
+  rmSync(output, { recursive: true, force: true });
+  mkdirSync(statics, { recursive: true });
+
+  await build({
+    entryPoints: ['projects/mcp-app/server/worker.ts'],
+    outfile: join(output, 'worker.mjs'),
+    bundle: true,
+    platform: 'browser',
+    conditions: ['workerd', 'worker'],
+    target: 'es2022',
+    format: 'esm',
+    minify: true,
+    alias: { ...alias, 'mcp-app-view.html': `./${out}/view.html` },
+    loader: { '.html': 'text' },
+    // Left to the runtime's Node.js compatibility (`nodejs_compat`).
+    external: ['node:*'],
+    logLevel: 'warning',
+  });
+  writeFileSync(
+    join(statics, 'index.html'),
+    readFileSync('projects/mcp-app/server/landing.html', 'utf8'),
+  );
+  // OpenAI's domain check fetches its token as plain text; static assets
+  // would serve a file without an extension as a download.
+  const challenge = 'projects/mcp-app/server/openai-apps-challenge.txt';
+  if (existsSync(challenge)) {
+    mkdirSync(join(statics, '.well-known'));
+    writeFileSync(
+      join(statics, '.well-known', 'openai-apps-challenge'),
+      readFileSync(challenge, 'utf8').trim(),
+    );
+    writeFileSync(
+      join(statics, '_headers'),
+      '/.well-known/openai-apps-challenge\n  Content-Type: text/plain; charset=utf-8\n',
+    );
+  }
+  console.log(`Built ${output} for Cloudflare`);
 }
