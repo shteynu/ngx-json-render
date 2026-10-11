@@ -86,9 +86,9 @@ function warnOnOldAngular(
 ): void {
   const range = manifest.dependencies?.['@angular/core'];
   const major = range ? Number(/\d+/.exec(range)?.[0]) : NaN;
-  if (major < 20) {
+  if (major < 19) {
     warn(
-      `ngx-json-render needs Angular 20 or newer; this workspace has @angular/core ${range}.`,
+      `ngx-json-render needs Angular 19 or newer; this workspace has @angular/core ${range}.`,
     );
   }
 }

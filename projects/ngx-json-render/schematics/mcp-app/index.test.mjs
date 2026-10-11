@@ -103,6 +103,20 @@ test('generates a view, a server and an mcp target with a starter catalog', asyn
   }
 });
 
+test('uses the experimental zoneless provider on Angular 19', async () => {
+  const { tree } = await generate(
+    {},
+    await workspace({ '@angular/core': '^19.2.0' }),
+  );
+
+  const main = tree.readText('/projects/mcp-app/src/main.ts');
+  assert.match(main, /provideExperimentalZonelessChangeDetection\(\)/);
+  assert.doesNotMatch(main, /[^l]provideZonelessChangeDetection/);
+  // Angular 19 allows `as` on the first block of an @if chain only.
+  const view = tree.readText('/projects/mcp-app/src/app/app.ts');
+  assert.doesNotMatch(view, /@else if \([^)]*; as /);
+});
+
 test("imports the workspace's own catalog and registry", async () => {
   const { tree, logged } = await generate(
     {

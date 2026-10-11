@@ -60,7 +60,7 @@ test('leaves a peer the workspace already declares as it is', async () => {
 test('warns on an Angular older than the package supports', async () => {
   const before = await workspace();
   const manifest = before.readJson('/package.json');
-  manifest.dependencies['@angular/core'] = '^19.2.0';
+  manifest.dependencies['@angular/core'] = '^18.2.0';
   before.overwrite('/package.json', JSON.stringify(manifest));
 
   const warnings = [];
@@ -69,5 +69,5 @@ test('warns on an Angular older than the package supports', async () => {
   });
   await runner.runSchematic('ng-add', {}, before);
   subscription.unsubscribe();
-  assert.match(warnings.join('\n'), /Angular 20 or newer/);
+  assert.match(warnings.join('\n'), /Angular 19 or newer/);
 });

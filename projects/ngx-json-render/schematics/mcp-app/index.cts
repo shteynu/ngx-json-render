@@ -255,7 +255,11 @@ function writeFiles(name: string, source: Source): Rule {
       appFile,
       viewComponent(name, source.registryExport, from(appFile, registry)),
     );
-    overwrite(tree, posix.join(src, 'main.ts'), mainFile(material));
+    overwrite(
+      tree,
+      posix.join(src, 'main.ts'),
+      mainFile(material, zonelessProvider(readManifest(tree))),
+    );
     overwrite(tree, posix.join(src, 'index.html'), indexFile(name, material));
     tree.create(
       posix.join(src, material ? 'styles.scss' : 'styles.css'),
@@ -351,24 +355,26 @@ ${registry}
   template: \`
     @if (mcp.error(); as error) {
       <p class="status error">Could not connect to the host: {{ error.message }}</p>
-    } @else if (mcp.spec(); as spec) {
-      <json-render
-        [spec]="spec"
-        [loading]="mcp.loading()"
-        [registry]="registry"
-        [handlers]="mcp.handlers"
-      />
-      @if (mcp.lastMessage(); as outcome) {
-        @if (outcome.ok) {
-          <p class="status" role="status">Message passed to the chat.</p>
-        } @else {
-          <p class="status error" role="alert">
-            Could not send the message: {{ outcome.error.message }}
-          </p>
-        }
-      }
     } @else {
-      <p class="status">Waiting for the model's spec…</p>
+      @if (mcp.spec(); as spec) {
+        <json-render
+          [spec]="spec"
+          [loading]="mcp.loading()"
+          [registry]="registry"
+          [handlers]="mcp.handlers"
+        />
+        @if (mcp.lastMessage(); as outcome) {
+          @if (outcome.ok) {
+            <p class="status" role="status">Message passed to the chat.</p>
+          } @else {
+            <p class="status error" role="alert">
+              Could not send the message: {{ outcome.error.message }}
+            </p>
+          }
+        }
+      } @else {
+        <p class="status">Waiting for the model's spec…</p>
+      }
     }
   \`,
   styles: \`
@@ -409,21 +415,33 @@ export class App {
 `;
 }
 
-function mainFile(material: boolean): string {
+/**
+ * Angular 19 has zoneless change detection only as
+ * `provideExperimentalZonelessChangeDetection`; 20 renamed it.
+ */
+function zonelessProvider(manifest: Manifest): string {
+  const range = manifest.dependencies?.['@angular/core'];
+  const major = range ? Number(/\d+/.exec(range)?.[0]) : NaN;
+  return major === 19
+    ? 'provideExperimentalZonelessChangeDetection'
+    : 'provideZonelessChangeDetection';
+}
+
+function mainFile(material: boolean, zoneless: string): string {
   if (!material) {
-    return `import { provideZonelessChangeDetection } from '@angular/core';
+    return `import { ${zoneless} } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';
 
 bootstrapApplication(App, {
-  providers: [provideZonelessChangeDetection()],
+  providers: [${zoneless}()],
 }).catch((err) => console.error(err));
 `;
   }
   return `import {
   inject,
   provideEnvironmentInitializer,
-  provideZonelessChangeDetection,
+  ${zoneless},
 } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { bootstrapApplication } from '@angular/platform-browser';
@@ -431,7 +449,7 @@ import { App } from './app/app';
 
 bootstrapApplication(App, {
   providers: [
-    provideZonelessChangeDetection(),
+    ${zoneless}(),
     // The Material catalog names icons as Material Symbols ligatures.
     provideEnvironmentInitializer(() =>
       inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined'),
