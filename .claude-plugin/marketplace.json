@@ -10,7 +10,15 @@
       "name": "ngx-json-render",
       "source": "./plugins/ngx-json-render",
       "category": "development",
-      "tags": ["angular", "json-render", "generative-ui", "angular-material"]
+      "tags": [
+        "angular",
+        "json-render",
+        "generative-ui",
+        "angular-material",
+        "ag-ui",
+        "copilotkit",
+        "mcp-apps"
+      ]
     }
   ]
 }

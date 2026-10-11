@@ -96,6 +96,17 @@
   background: var(--accent);
 }
 
+.works-with {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.works-with a {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
 .links {
   display: flex;
   flex-wrap: wrap;

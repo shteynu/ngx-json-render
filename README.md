@@ -6,6 +6,8 @@ Generative UI for Angular: a renderer for [json-render](https://github.com/verce
 
 **→ Package documentation: [`projects/ngx-json-render/README.md`](projects/ngx-json-render/README.md)**
 
+**Works with:** [AG-UI agents, CopilotKit and LangGraph among them](projects/ngx-json-render/README.md#from-an-ag-ui-agent) · [MCP Apps in Claude, ChatGPT and VS Code](projects/ngx-json-render/README.md#inside-an-mcp-app-host) · [the Vercel AI SDK](projects/ngx-json-render/README.md#reading-an-ai-sdk-message) · [Genkit](projects/ngx-json-render/README.md#with-genkit) · any endpoint that streams text. Runnable examples: [`examples/copilotkit-angular`](examples/copilotkit-angular), [`examples/ai-sdk-chat`](examples/ai-sdk-chat), [`projects/mcp-app`](projects/mcp-app).
+
 **→ Live demo: <https://shteynu.github.io/ngx-json-render/>** — opens on a Q3 sales dashboard (KPI cards, a line chart, a bar chart) streaming in patch by patch; the same tab replays a support form whose validation and submit the model wrote, so sending it empty shows the checks at work. Four tabs: that SpecStream, which you can stop mid-generation and inspect half-built; a playground that renders a spec you edit by hand against either catalog and shows the system prompt a model would receive; an interactive spec (bindings, repeat, confirm, watch); and a chat where prose and UI patches arrive in the same reply. The two streaming tabs replay a recording by default and call a real model if you paste in your own key — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
 
 ![A SpecStream of RFC 6902 patches rendering progressively into an Angular dashboard](docs/streaming.gif)

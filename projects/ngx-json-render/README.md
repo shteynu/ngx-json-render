@@ -8,6 +8,8 @@ Built on `@json-render/core` (the same spec format, expressions, state store, ac
 
 This is an Angular **adapter over the official core**, not a second implementation of it — `@json-render/core` is a peer dependency, and the spec your model emits is the same one the React, Vue, Solid and Svelte renderers consume. A catalog and a spec written here move to another framework unchanged.
 
+**Works with:** [AG-UI agents, CopilotKit and LangGraph among them](#from-an-ag-ui-agent) · [MCP Apps in Claude, ChatGPT and VS Code](#inside-an-mcp-app-host) · [the Vercel AI SDK](#reading-an-ai-sdk-message) · [Genkit](#with-genkit) · any endpoint that streams text. The AG-UI and AI SDK paths run against the real clients in CI.
+
 **[Live demo](https://shteynu.github.io/ngx-json-render/)** — opens on a sales dashboard streaming in patch by patch, which you can stop mid-generation; plus a playground, an interactive spec (bindings, repeat, confirm, watch), and a chat where prose and UI patches arrive in one reply. Both streaming tabs replay a recording, or call a real model on your own key ([source](https://github.com/shteynu/ngx-json-render/tree/main/projects/demo)) — or [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/shteynu/ngx-json-render)
 
 ![A SpecStream of RFC 6902 patches rendering progressively into an Angular dashboard](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/docs/streaming.gif)

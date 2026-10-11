@@ -2,7 +2,7 @@
   "name": "ngx-json-render",
   "displayName": "ngx-json-render",
   "version": "0.9.10",
-  "description": "Render AI-generated json-render specs as Angular components: catalogs, registries, streaming with signals, spec checks, tests, and a ready Angular Material catalog.",
+  "description": "Render AI-generated json-render specs as Angular components: catalogs, registries, streaming with signals, AG-UI and CopilotKit agents, MCP Apps, spec checks, tests, and a ready Angular Material catalog.",
   "author": {
     "name": "shteynu",
     "url": "https://github.com/shteynu"
@@ -16,7 +16,10 @@
     "generative-ui",
     "signals",
     "angular-material",
-    "llm-ui"
+    "llm-ui",
+    "ag-ui",
+    "copilotkit",
+    "mcp-apps"
   ],
   "documentationUrl": "https://github.com/shteynu/ngx-json-render#readme",
   "supportUrl": "https://github.com/shteynu/ngx-json-render/issues",

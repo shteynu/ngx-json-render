@@ -1,7 +1,7 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
   "projectTitle": "ngx-json-render",
-  "description": "Angular renderer for json-render: renders AI-generated JSON specs, constrained to a catalog of your components, as standalone Angular components with signals, zoneless. Streams specs as RFC 6902 patches (injectUIStream, injectChatUI). Includes ngx-json-render-material, a ready Angular Material catalog, and an MCP App view (ngx-json-render/mcp).",
+  "description": "Angular renderer for json-render: renders AI-generated JSON specs, constrained to a catalog of your components, as standalone Angular components with signals, zoneless. Streams specs as RFC 6902 patches (injectUIStream, injectChatUI). Includes ngx-json-render-material, a ready Angular Material catalog, an MCP App view (ngx-json-render/mcp), and AG-UI / CopilotKit support (ngx-json-render/ag-ui: injectAgentUI, jsonRenderActivityRenderer).",
   "branch": "main",
   "folders": [
     "projects/ngx-json-render",
