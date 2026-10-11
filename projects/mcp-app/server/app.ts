@@ -7,8 +7,12 @@
 // Entry points: `server.ts` (stdio and a local HTTP server) and `vercel.ts`
 // (the hosted endpoint).
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { ReadableStream as WebReadableStream } from 'node:stream/web';
+import { gzipSync } from 'node:zlib';
 import type { Catalog } from '@json-render/core';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import {
   createRenderUiServer,
   renderUiDescription,
@@ -56,6 +60,11 @@ export function createServerInstance(
 /**
  * Serve one Streamable HTTP request, statelessly: a fresh server and
  * transport per request, so it runs unchanged on a serverless function.
+ *
+ * Replies are plain JSON rather than a one-event SSE stream, gzipped when the
+ * client accepts it: `resources/read` carries the whole view (about 1.6 MB of
+ * JSON, some 360 kB gzipped), and nothing compresses an event stream on the
+ * way out.
  */
 export async function handleMcpRequest(
   html: string,
@@ -76,13 +85,67 @@ export async function handleMcpRequest(
   }
 
   const server = createServerInstance(html);
-  const transport = new StreamableHTTPServerTransport({
+  const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
+    enableJsonResponse: true,
   });
   res.on('close', () => {
     void transport.close();
     void server.close();
   });
   await server.connect(transport);
-  await transport.handleRequest(req, res);
+  const response = await transport.handleRequest(await toWebRequest(req));
+  await writeResponse(response, req, res);
+}
+
+async function toWebRequest(req: IncomingMessage): Promise<Request> {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    for (const v of Array.isArray(value) ? value : [value]) {
+      headers.append(name, v);
+    }
+  }
+  const chunks: Buffer[] = [];
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+  }
+  const url = new URL(
+    req.url ?? '/',
+    `http://${req.headers.host ?? 'localhost'}`,
+  );
+  return new Request(url, {
+    method: req.method,
+    headers,
+    body: chunks.length > 0 ? Buffer.concat(chunks) : undefined,
+  });
+}
+
+async function writeResponse(
+  response: Response,
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
+  response.headers.forEach((value, name) => res.setHeader(name, value));
+  // A GET opens an event stream that stays open; pass it through as it comes.
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    res.writeHead(response.status).flushHeaders();
+    if (!response.body) {
+      res.end();
+      return;
+    }
+    await pipeline(Readable.fromWeb(response.body as WebReadableStream), res);
+    return;
+  }
+  let body = Buffer.from(await response.arrayBuffer());
+  if (
+    body.length > 1024 &&
+    /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')
+  ) {
+    body = gzipSync(body);
+    res.setHeader('Content-Encoding', 'gzip');
+  }
+  res.setHeader('Vary', 'Accept-Encoding');
+  res.setHeader('Content-Length', body.length);
+  res.writeHead(response.status).end(body);
 }
