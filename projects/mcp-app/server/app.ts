@@ -40,6 +40,13 @@ export const VIEW_CSP = {
 /** The origin ChatGPT derives the view's sandbox origin from. */
 export const VIEW_DOMAIN = 'https://ngx-json-render.vercel.app';
 
+/** The SDK's own reply to a method the transport does not serve. */
+const METHOD_NOT_ALLOWED = JSON.stringify({
+  jsonrpc: '2.0',
+  error: { code: -32000, message: 'Method not allowed.' },
+  id: null,
+});
+
 /** A server exposing the `render-ui` tool and its `ui://` view. */
 export function createServerInstance(
   html: string,
@@ -65,6 +72,11 @@ export function createServerInstance(
  * client accepts it: `resources/read` carries the whole view (about 1.6 MB of
  * JSON, some 360 kB gzipped), and nothing compresses an event stream on the
  * way out.
+ *
+ * A GET gets 405, which the spec allows: the server never sends a message of
+ * its own, and the event stream a GET would open only sits idle until the
+ * platform times the function out, after which clients open another one —
+ * a function kept busy for as long as a client stays connected.
  */
 export async function handleMcpRequest(
   html: string,
@@ -73,7 +85,7 @@ export async function handleMcpRequest(
 ) {
   // Browser-based clients (MCP Inspector) call the endpoint cross-origin.
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID',
@@ -81,6 +93,12 @@ export async function handleMcpRequest(
   res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
   if (req.method === 'OPTIONS') {
     res.writeHead(204).end();
+    return;
+  }
+  if (req.method === 'GET') {
+    res.setHeader('Allow', 'POST, DELETE, OPTIONS');
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(405).end(METHOD_NOT_ALLOWED);
     return;
   }
 
@@ -127,7 +145,8 @@ async function writeResponse(
   res: ServerResponse,
 ) {
   response.headers.forEach((value, name) => res.setHeader(name, value));
-  // A GET opens an event stream that stays open; pass it through as it comes.
+  // No JSON body (a 202 for a notification), or an event stream: pass it
+  // through as it comes.
   if (!response.headers.get('content-type')?.includes('application/json')) {
     res.writeHead(response.status).flushHeaders();
     if (!response.body) {
