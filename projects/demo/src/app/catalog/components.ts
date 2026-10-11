@@ -97,7 +97,7 @@ export class StackComponent {
     }
     .card-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
     .card-header p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
-    .card-body { padding: 16px; }
+    .card-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
   `,
 })
 export class CardComponent {
