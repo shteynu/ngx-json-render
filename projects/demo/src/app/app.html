@@ -83,18 +83,22 @@
   } @placeholder {
     <p class="tab-loading">Loading the renderer…</p>
   }
-} @else if (tab() === 'streaming') {
-  @defer (on immediate) {
-    <app-stream [autoplay]="autoplay()" (autoplayed)="autoplay.set(false)" />
-  } @placeholder {
-    <p class="tab-loading">Loading the stream…</p>
-  }
-} @else {
+} @else if (tab() === 'chat') {
   @defer (on immediate) {
     <app-chat />
   } @placeholder {
     <p class="tab-loading">Loading the chat…</p>
   }
+}
+
+@if (streamingOpened()) {
+  <div [hidden]="tab() !== 'streaming'">
+    @defer (on immediate) {
+      <app-stream [autoplay]="autoplay()" (autoplayed)="autoplay.set(false)" />
+    } @placeholder {
+      <p class="tab-loading">Loading the stream…</p>
+    }
+  </div>
 }
 
 @if (tab() === 'streaming' || tab() === 'chat') {

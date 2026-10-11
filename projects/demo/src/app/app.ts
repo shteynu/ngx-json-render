@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, linkedSignal, signal } from '@angular/core';
 import type {
   ActionHandler,
   JsonRenderStateService,
@@ -43,6 +43,17 @@ export class App {
    * coming back to the tab later shows whatever was left there.
    */
   readonly autoplay = signal(true);
+
+  /**
+   * Whether the streaming tab has been on screen yet. Once it has, it stays
+   * mounted and is only hidden: tearing it down would drop the generation
+   * along with the client, and a fresh one comes back empty.
+   */
+  readonly streamingOpened = linkedSignal<Tab, boolean>({
+    source: this.tab,
+    computation: (tab, previous) =>
+      (previous?.value ?? false) || tab === 'streaming',
+  });
 
   readonly tabs: readonly { id: Tab; label: string }[] = [
     { id: 'streaming', label: 'Streaming' },

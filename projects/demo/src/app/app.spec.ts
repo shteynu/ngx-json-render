@@ -58,6 +58,24 @@ describe('App', () => {
     expect(fixture.componentInstance.autoplay()).toBe(false);
   });
 
+  it('keeps the streaming tab, generation and all, across a trip to another tab', async () => {
+    const fixture = await render();
+    const host = fixture.nativeElement as HTMLElement;
+    const stream = host.querySelector('app-stream');
+
+    fixture.componentInstance.select('playground');
+    await settle(fixture);
+    expect(host.querySelector('app-playground')).toBeTruthy();
+    expect(stream?.parentElement?.hidden).toBe(true);
+
+    // The same element, not a fresh one: a new client would come back idle
+    // with its first prompt highlighted and nothing generated.
+    fixture.componentInstance.select('streaming');
+    await settle(fixture);
+    expect(host.querySelector('app-stream')).toBe(stream);
+    expect(stream?.parentElement?.hidden).toBe(false);
+  });
+
   it('opens the tab the URL hash names, and writes the hash on a switch', async () => {
     history.replaceState(null, '', '#playground');
     try {
