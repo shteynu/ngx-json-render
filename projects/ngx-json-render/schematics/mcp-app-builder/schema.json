@@ -24,6 +24,11 @@
       "type": "boolean",
       "default": false,
       "description": "Leave node_modules packages out of server.mjs, to be installed next to it. By default the server is one self-contained file."
+    },
+    "keepZodLocales": {
+      "type": "boolean",
+      "default": false,
+      "description": "Keep zod's translations (z.locales) in view.html. By default only English stays, which saves about 250 kB; set this if the view calls z.config with another locale."
     }
   },
   "required": ["buildTarget", "outputPath"],

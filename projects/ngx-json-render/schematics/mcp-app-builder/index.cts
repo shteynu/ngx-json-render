@@ -16,9 +16,23 @@ export interface McpAppBuilderOptions {
   server?: string;
   tsConfig?: string;
   externalPackages?: boolean;
+  keepZodLocales?: boolean;
 }
 
 type Esbuild = typeof import('esbuild');
+type EsbuildPlugin = import('esbuild').Plugin;
+/** `buildApplication` from `@angular/build`, as far as this builder uses it. */
+type BuildApplication = (
+  options: Record<string, unknown>,
+  context: BuilderContext,
+  extensions: { codePlugins: EsbuildPlugin[] },
+) => AsyncIterable<BuilderOutput>;
+
+/** The application builders whose build this one can run in-process. */
+const APPLICATION_BUILDERS = [
+  '@angular/build:application',
+  '@angular-devkit/build-angular:application',
+];
 
 /**
  * `ngx-json-render:mcp-app`: runs the view's application build, folds its
@@ -35,9 +49,7 @@ export async function buildMcpApp(
     options.buildTarget,
     context.target?.project,
   );
-  const run = await context.scheduleTarget(target);
-  const result = await run.result;
-  await run.stop();
+  const result = await buildView(options, context, target);
   if (!result.success) return result;
 
   const esbuild = loadEsbuild(root);
@@ -94,6 +106,69 @@ export async function buildMcpApp(
     context.logger.info(`Built ${relative(root, serverPath)}`);
   }
   return { success: true, outputPath: out };
+}
+
+/**
+ * Runs the view's application build. For an application target in this
+ * project it runs in-process, so it can leave zod's translations out (see
+ * `zodLocalesPlugin`); any other target is scheduled as it is.
+ */
+async function buildView(
+  options: McpAppBuilderOptions,
+  context: BuilderContext,
+  target: ReturnType<typeof targetFromTargetString>,
+): Promise<BuilderOutput> {
+  const builderName = await context.getBuilderNameForTarget(target);
+  if (
+    options.keepZodLocales ||
+    target.project !== context.target?.project ||
+    !APPLICATION_BUILDERS.includes(builderName)
+  ) {
+    const run = await context.scheduleTarget(target);
+    const result = await run.result;
+    await run.stop();
+    return result;
+  }
+  const { buildApplication } = createRequire(
+    join(context.workspaceRoot, 'package.json'),
+  )('@angular/build') as { buildApplication: BuildApplication };
+  const targetOptions = await context.validateOptions(
+    await context.getTargetOptions(target),
+    builderName,
+  );
+  for await (const output of buildApplication(
+    { ...targetOptions, watch: false },
+    context,
+    { codePlugins: [zodLocalesPlugin()] },
+  )) {
+    return output;
+  }
+  return { success: false, error: 'The application build produced no result.' };
+}
+
+/**
+ * zod 4 re-exports all of its translations as `z.locales`, and `import { z }`
+ * keeps every one of them in the bundle — about 250 kB of a view that only
+ * shows English errors. The English one, which zod loads on its own, stays
+ * reachable as `z.locales.en`.
+ */
+function zodLocalesPlugin(): EsbuildPlugin {
+  const namespace = 'ngx-json-render-zod-locales';
+  return {
+    name: namespace,
+    setup(build) {
+      build.onResolve({ filter: /^\.\.\/locales\/index\.js$/ }, (args) =>
+        /[\\/]zod[\\/]v4[\\/](classic|mini|core)$/.test(args.resolveDir)
+          ? { path: join(args.resolveDir, '..', 'locales'), namespace }
+          : undefined,
+      );
+      build.onLoad({ filter: /.*/, namespace }, (args) => ({
+        contents: "export { default as en } from './en.js';",
+        resolveDir: args.path,
+        loader: 'js',
+      }));
+    },
+  };
 }
 
 /** Where the application build wrote its browser files. */
