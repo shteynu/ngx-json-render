@@ -117,11 +117,32 @@
         App, with the URL and No Auth. Pick it with <code>@</code> in the
         message box: without it ChatGPT tends to answer with its own charts.
       </li>
-      <li>
-        <strong>VS Code, Cursor</strong>: add it to your MCP configuration:
+      <li id="vscode">
+        <strong>VS Code</strong>:
+        <a
+          href="https://insiders.vscode.dev/redirect/mcp/install?name=ngx-json-render-ui&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fngx-json-render.vercel.app%2Fmcp%22%7D"
+          >install in one click</a
+        >, or add it to <code>.vscode/mcp.json</code> (the key is
+        <code>servers</code>, not <code>mcpServers</code>):
+        <pre><code>&#123;
+  "servers": &#123;
+    "ngx-json-render-ui": &#123;
+      "type": "http",
+      "url": "https://ngx-json-render.vercel.app/mcp"
+    &#125;
+  &#125;
+&#125;</code></pre>
+        Use it from Copilot Chat in Agent mode.
+      </li>
+      <li id="cursor">
+        <strong>Cursor</strong> 2.6 or later:
+        <a
+          href="https://cursor.com/install-mcp?name=ngx-json-render-ui&amp;config=eyJ1cmwiOiJodHRwczovL25neC1qc29uLXJlbmRlci52ZXJjZWwuYXBwL21jcCJ9"
+          >install in one click</a
+        >, or add it to <code>.cursor/mcp.json</code>:
         <pre><code>&#123;
   "mcpServers": &#123;
-    "ngx-json-render": &#123; "url": "https://ngx-json-render.vercel.app/mcp" &#125;
+    "ngx-json-render-ui": &#123; "url": "https://ngx-json-render.vercel.app/mcp" &#125;
   &#125;
 &#125;</code></pre>
       </li>

@@ -3,6 +3,7 @@
 > Generative UI for Angular: a renderer for json-render (vercel-labs/json-render). A model emits a JSON spec constrained to a catalog of your components, and `<json-render>` renders it as real standalone Angular components, with signals, OnPush and no Zone.js, never through innerHTML or eval. Specs can stream in as RFC 6902 JSONL patches and render while they arrive.
 
 - Install: `npm install ngx-json-render @json-render/core zod`, or `ng add ngx-json-render` in an Angular CLI workspace.
+- Coding-agent skills: `npx skills add shteynu/ngx-json-render` (Claude Code, Cursor, Codex and other agents), or as a Claude Code plugin: `claude plugin marketplace add shteynu/ngx-json-render`, then `claude plugin install ngx-json-render@ngx-json-render`.
 - Peer dependencies: Angular 19 or later (the Material catalog needs 20 or later), `@json-render/core` 0.20 or 0.21, `zod` ^4.
 - It is an adapter over `@json-render/core`, with the same spec grammar, expressions, state store, actions and SpecStream patches as the React, Vue, Svelte and Solid renderers, so catalogs and specs are portable between them.
 - Catalog components are standalone components with no inputs: they read props with `injectRenderContext().props()` and render children with `<jr-children />`.
@@ -24,6 +25,7 @@
 - [AI SDK chat example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/examples/ai-sdk-chat/README.md): `Chat` from `@ai-sdk/angular` with answers that carry Material UI
 - [CopilotKit example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/examples/copilotkit-angular/README.md): a CopilotKit Angular chat whose agent streams json-render specs as AG-UI activities, drawn by `jsonRenderActivityRenderer()`
 - [MCP App example](https://raw.githubusercontent.com/shteynu/ngx-json-render/main/projects/mcp-app/README.md): the Material catalog rendered inline in Claude, ChatGPT, VS Code or Cursor through `ngx-json-render/mcp` (the view) and `ngx-json-render/mcp/server` (the `render-ui` tool)
+- [Hosted MCP App](https://shteynu.github.io/ngx-json-render/mcp/): the same server at `https://ngx-json-render.vercel.app/mcp` (Streamable HTTP, no auth), with setup for Claude, ChatGPT, VS Code and Cursor
 - [Open in StackBlitz](https://stackblitz.com/github/shteynu/ngx-json-render): the whole workspace, running the demo
 
 ## Optional

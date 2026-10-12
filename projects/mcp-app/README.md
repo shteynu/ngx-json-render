@@ -62,7 +62,11 @@ dashboard of my last three releases".
 
 To try it without building, point the host at the hosted endpoint instead,
 for example in VS Code
-`{ "servers": { "ngx-json-render-ui": { "type": "http", "url": "https://ngx-json-render.vercel.app/mcp" } } }`.
+`{ "servers": { "ngx-json-render-ui": { "type": "http", "url": "https://ngx-json-render.vercel.app/mcp" } } }`,
+or install it in one click:
+[VS Code](https://insiders.vscode.dev/redirect/mcp/install?name=ngx-json-render-ui&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fngx-json-render.vercel.app%2Fmcp%22%7D),
+[Cursor](https://cursor.com/install-mcp?name=ngx-json-render-ui&config=eyJ1cmwiOiJodHRwczovL25neC1qc29uLXJlbmRlci52ZXJjZWwuYXBwL21jcCJ9)
+(2.6 or later renders the view).
 Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
 `render-ui` call renders inline in the chat.
 
