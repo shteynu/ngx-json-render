@@ -432,6 +432,59 @@ describe('material form validation', () => {
     expect(host.querySelector('.mat-form-field-invalid')).toBeNull();
   });
 
+  it('shows every failing check, even when two share a message', async () => {
+    // Two checks with the same text used to share a track key, which Angular
+    // reports as NG0955 (duplicated keys) in dev mode. Messages are tracked by
+    // position, so both are rendered and nothing is logged.
+    const consoleError = vi.spyOn(console, 'error');
+    const consoleWarn = vi.spyOn(console, 'warn');
+    const fixture = await render({
+      root: 'code',
+      state: { code: 'ab' },
+      elements: {
+        code: {
+          type: 'Input',
+          props: {
+            label: 'Code',
+            value: { $bindState: '/code' },
+            validation: {
+              checks: [
+                {
+                  type: 'minLength',
+                  args: { min: 6 },
+                  message: 'Enter a valid code',
+                },
+                {
+                  type: 'pattern',
+                  args: { pattern: '^[A-Z]+$' },
+                  message: 'Enter a valid code',
+                },
+              ],
+            },
+          },
+          children: [],
+        },
+      },
+    } as unknown as Spec);
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      'input',
+    ) as HTMLInputElement;
+    input.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+
+    expect(errorTexts(fixture)).toEqual([
+      'Enter a valid code',
+      'Enter a valid code',
+    ]);
+    const logged = [...consoleError.mock.calls, ...consoleWarn.mock.calls]
+      .flat()
+      .map(String);
+    expect(logged.filter((line) => line.includes('NG0955'))).toEqual([]);
+    consoleError.mockRestore();
+    consoleWarn.mockRestore();
+  });
+
   it('validateForm collects every bound field and writes the result to state', async () => {
     const fixture = await render({
       root: 'form',
