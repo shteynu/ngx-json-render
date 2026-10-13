@@ -140,7 +140,7 @@ export class JrmIconButton {
       @if (props().hint) {
         <mat-hint>{{ props().hint }}</mat-hint>
       }
-      @for (error of field.errors(); track error) {
+      @for (error of field.errors(); track $index) {
         <mat-error>{{ error }}</mat-error>
       }
     </mat-form-field>
@@ -193,7 +193,7 @@ export class JrmInput {
         (input)="onInput($event)"
         (blur)="field.blur()"
       ></textarea>
-      @for (error of field.errors(); track error) {
+      @for (error of field.errors(); track $index) {
         <mat-error>{{ error }}</mat-error>
       }
     </mat-form-field>
@@ -266,7 +266,7 @@ export class JrmTextarea {
           }
         </mat-select>
       }
-      @for (error of field.errors(); track error) {
+      @for (error of field.errors(); track $index) {
         <mat-error>{{ error }}</mat-error>
       }
     </mat-form-field>
@@ -393,7 +393,7 @@ function toIsoDate<D>(adapter: DateAdapter<D>, date: D): string {
       @if (props().hint) {
         <mat-hint>{{ props().hint }}</mat-hint>
       }
-      @for (error of field.errors(); track error) {
+      @for (error of field.errors(); track $index) {
         <mat-error>{{ error }}</mat-error>
       }
     </mat-form-field>
@@ -439,7 +439,7 @@ export class JrmDatePicker {
     >
       {{ props().label }}
     </mat-checkbox>
-    @for (error of field.errors(); track error) {
+    @for (error of field.errors(); track $index) {
       <div class="jrm-error">{{ error }}</div>
     }
   `,
@@ -479,7 +479,7 @@ export class JrmCheckbox {
         <mat-radio-button [value]="option.value">{{ option.label }}</mat-radio-button>
       }
     </mat-radio-group>
-    @for (error of field.errors(); track error) {
+    @for (error of field.errors(); track $index) {
       <div class="jrm-error">{{ error }}</div>
     }
   `,
@@ -534,7 +534,7 @@ export class JrmRadioGroup {
         </mat-button-toggle>
       }
     </mat-button-toggle-group>
-    @for (error of field.errors(); track error) {
+    @for (error of field.errors(); track $index) {
       <div class="jrm-error">{{ error }}</div>
     }
   `,
