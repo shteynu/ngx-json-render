@@ -112,8 +112,45 @@ export async function handleMcpRequest(
     void server.close();
   });
   await server.connect(transport);
-  const response = await transport.handleRequest(await toWebRequest(req));
+  const request = await toWebRequest(req);
+  await logRequest(request.clone(), req);
+  const response = await transport.handleRequest(request);
   await writeResponse(response, req, res);
+}
+
+/**
+ * One log line per request: which JSON-RPC methods came in, the tool or
+ * resource they name, the client's self-reported name on `initialize`, and
+ * the User-Agent. Never the arguments, which carry the caller's data.
+ */
+async function logRequest(request: Request, req: IncomingMessage) {
+  let messages: unknown;
+  try {
+    messages = await request.json();
+  } catch {
+    return;
+  }
+  const calls = (Array.isArray(messages) ? messages : [messages]).map(
+    (message) => {
+      const { method, params } = (message ?? {}) as {
+        method?: string;
+        params?: {
+          name?: string;
+          uri?: string;
+          clientInfo?: { name?: string; version?: string };
+        };
+      };
+      const detail =
+        params?.name ??
+        params?.uri ??
+        (params?.clientInfo &&
+          `${params.clientInfo.name}/${params.clientInfo.version}`);
+      return detail ? `${method} ${detail}` : String(method);
+    },
+  );
+  console.log(
+    JSON.stringify({ mcp: calls, ua: req.headers['user-agent'] ?? null }),
+  );
 }
 
 async function toWebRequest(req: IncomingMessage): Promise<Request> {
