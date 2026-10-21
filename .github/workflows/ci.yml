@@ -119,8 +119,11 @@ jobs:
       - name: Retarget workspace to Angular ${{ matrix.angular }}
         run: node scripts/angular-compat.mjs ${{ matrix.angular }}
 
+      # npm 11, not the npm 10 that ships with Node 22: resolving the Angular 22
+      # tree crashes npm 10's arborist in #loadPeerSet ("Cannot read properties
+      # of null (reading 'edgesOut')"), and npm 11 resolves it cleanly.
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npx -y npm@11 install --no-audit --no-fund
 
       - name: Build library
         run: npx ng build ngx-json-render
