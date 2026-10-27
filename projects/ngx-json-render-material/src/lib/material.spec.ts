@@ -477,6 +477,13 @@ describe('material form validation', () => {
       'Enter a valid code',
       'Enter a valid code',
     ]);
+    // The subscript grows to fit both lines instead of overlapping what
+    // follows the field.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.mat-mdc-form-field-subscript-dynamic-size',
+      ),
+    ).toBeTruthy();
     const logged = [...consoleError.mock.calls, ...consoleWarn.mock.calls]
       .flat()
       .map(String);

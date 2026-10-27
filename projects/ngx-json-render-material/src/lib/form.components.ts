@@ -116,13 +116,23 @@ export class JrmIconButton {
   }
 }
 
-/** Material text field; two-way bindable via `$bindState`, emits `submit`. */
+/**
+ * Material text field; two-way bindable via `$bindState`, emits `submit`.
+ *
+ * Every form field here uses a dynamic subscript: each failing check gets its
+ * own line, and the default one-line subscript would let a second message (or
+ * one that wraps on a phone) run over the next field.
+ */
 @Component({
   selector: 'jrm-input',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatFormFieldModule, MatInputModule],
   template: `
-    <mat-form-field appearance="outline" class="jrm-field">
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      class="jrm-field"
+    >
       @if (props().label) {
         <mat-label>{{ props().label }}</mat-label>
       }
@@ -179,7 +189,11 @@ export class JrmInput {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatFormFieldModule, MatInputModule],
   template: `
-    <mat-form-field appearance="outline" class="jrm-field">
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      class="jrm-field"
+    >
       @if (props().label) {
         <mat-label>{{ props().label }}</mat-label>
       }
@@ -236,7 +250,11 @@ export class JrmTextarea {
   // streamed spec can add the prop in a later patch, so each mode gets its
   // own mat-select and a change swaps one for the other.
   template: `
-    <mat-form-field appearance="outline" class="jrm-field">
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      class="jrm-field"
+    >
       @if (props().label) {
         <mat-label>{{ props().label }}</mat-label>
       }
@@ -373,7 +391,11 @@ function toIsoDate<D>(adapter: DateAdapter<D>, date: D): string {
     },
   ],
   template: `
-    <mat-form-field appearance="outline" class="jrm-field">
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      class="jrm-field"
+    >
       @if (props().label) {
         <mat-label>{{ props().label }}</mat-label>
       }
