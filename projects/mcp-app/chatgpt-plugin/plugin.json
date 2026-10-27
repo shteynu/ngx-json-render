@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ngx-json-render-ui",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Renders interactive dashboards, forms, tables and status pages inline in the chat as Angular Material components.",
   "author": {
     "name": "ngx-json-render",
@@ -42,34 +42,34 @@
         "test_cases": {
           "positive": [
             {
-              "description": "Dashboard from conversation data. Select ngx-json-render UI with @ in the message box first; without it ChatGPT answers with its own charts.",
-              "prompt": "Show me a dashboard of our Q3 sales by region",
+              "description": "Dashboard from figures given in the prompt. Select ngx-json-render UI with @ in the message box first (type @ngx and press Return); without it ChatGPT answers with its own charts.",
+              "prompt": "Show a dashboard of our Q3 sales by region: North America $2.1M, Europe $1.3M, Asia-Pacific $0.9M, Latin America $0.5M",
               "tools_triggered": "render-ui",
-              "expected_behavior": "An inline view with metric tiles (such as total revenue and growth) and a table with one row per region. The model fills in realistic sample figures."
+              "expected_behavior": "An inline view with at least one metric tile (such as total sales of $4.8M) and a table or list with the four regions and the figures given. ChatGPT may also mention the figures in its text reply."
             },
             {
-              "description": "Form with validation. Select ngx-json-render UI with @ first.",
-              "prompt": "Create a sign-up form for our beta with validation",
+              "description": "Form with validation. Select ngx-json-render UI with @ first (type @ngx and press Return).",
+              "prompt": "Create a beta sign-up form with a required name field and a required email field, with validation",
               "tools_triggered": "render-ui",
-              "expected_behavior": "An inline form with name, email and further fields. Typing an invalid email and leaving the field shows a validation message under it, without another model turn."
+              "expected_behavior": "An inline form with a Name field and an Email field, possibly with further fields. Click into the Email field, type not-an-email and click outside it: a validation message appears under the field, without another model turn."
             },
             {
-              "description": "Status page. Select ngx-json-render UI with @ first.",
-              "prompt": "Summarize the status of the mobile app release",
+              "description": "Status page from facts given in the prompt. Select ngx-json-render UI with @ first (type @ngx and press Return).",
+              "prompt": "Show the status of the mobile app release: 70% complete, iOS build passed, Android QA in progress, main risk is a crash on Android sign-in",
               "tools_triggered": "render-ui",
-              "expected_behavior": "An inline status page with a status badge, a progress bar, a callout for the main risk and a checklist of workstreams."
+              "expected_behavior": "An inline status view that shows the 70% completion (as a progress bar or a figure), the iOS build and Android QA states, and the Android sign-in crash as the main risk."
             },
             {
-              "description": "Side-by-side comparison. Select ngx-json-render UI with @ first.",
-              "prompt": "Compare the three hosting plans side by side",
+              "description": "Side-by-side comparison of plans given in the prompt. Select ngx-json-render UI with @ first (type @ngx and press Return).",
+              "prompt": "Compare these hosting plans side by side: Starter $5/mo with 1 site, Pro $20/mo with 10 sites, Business $80/mo with unlimited sites",
               "tools_triggered": "render-ui",
-              "expected_behavior": "Three cards in a row, one per plan, each with its price and features; one plan may carry a badge such as Most popular."
+              "expected_behavior": "An inline view that shows the three plans side by side (as cards or table columns), each with the price and site count given."
             },
             {
-              "description": "Table from data in the prompt. Select ngx-json-render UI with @ first.",
+              "description": "Table from data in the prompt. Select ngx-json-render UI with @ first (type @ngx and press Return).",
               "prompt": "Show these as a table: Alice 34 Berlin, Bob 29 Lisbon, Chen 41 Taipei",
               "tools_triggered": "render-ui",
-              "expected_behavior": "An inline table with Name, Age and City columns and exactly the three rows given, with no invented rows."
+              "expected_behavior": "An inline table with Name, Age and City columns and exactly the three rows given, with no invented rows. ChatGPT may repeat the same rows in its text reply."
             }
           ],
           "negative": [
