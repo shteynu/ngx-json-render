@@ -3,9 +3,9 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token), `29f3323` (review video)
-- Status: **submitted 2026-10-10, version 1.0.0 in review**
-- Last updated: 2026-10-10
+- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token), `29f3323` (review video), `091e3b0` + `8a643f3` (1.0.1 fix and test cases, deployed), `693afc2` (`ngx-json-render-material` 0.3.17)
+- Status: **1.0.0 rejected 2026-10-27; 1.0.1 resubmitted 2026-10-27, in review**
+- Last updated: 2026-10-27
 - Last agent/tool: Claude Code (Opus 5.5)
 
 ## Objective
@@ -102,31 +102,12 @@ Checks run: `npx ng test mcp-app` 31/31; `npm run build:mcp-app -- --vercel`;
 stdio `resources/read` shows `openai/widgetDomain`; `npx ng build demo`;
 `npm run pack:chatgpt-plugin`; prettier on changed files.
 
-## Blocker
+## Former blocker (resolved 2026-10-10)
 
-OpenAI's organization verification (Settings → Organization → General →
-Verifications) shows "Payment method required": a valid default payment
-method must be on file in Billing before Individual or Business verification
-can start. Without verification the plugin cannot be submitted; an upload of
-`dist/chatgpt-plugin.zip` on platform.openai.com/plugins did not appear in the
-plugin list. The user does not want to add a payment method (2026-10-07), so
-the submission is parked. The plugin keeps working in the user's ChatGPT in
-developer mode.
-
-## Remaining (when unparked)
-
-1. User: a default payment method in Billing (no credits needed for
-   verification as far as known; keep auto-recharge off), then Individual
-   verification.
-2. Upload `dist/chatgpt-plugin.zip` (`npm run pack:chatgpt-plugin`), commit the
-   challenge token as `projects/mcp-app/server/openai-apps-challenge.txt`,
-   deploy, Verify Domain.
-3. User: demo video URL; Submit, then Publish after approval.
-4. Optional: MCP Inspector run. (The Text line breaks and the empty Card
-   actions row found in testing shipped in `ngx-json-render-material` 0.3.8,
-   `fccbcca`.)
-5. Once deployed, refresh the plugin in ChatGPT and check the "Output schema
-   recommended" note is gone.
+Organization verification needed a default payment method, which parked the
+submission from 2026-10-07 until the user added a card and passed Individual
+verification on 2026-10-10. Still open from that list, optional: an MCP
+Inspector run.
 
 ## Done 2026-10-10 (while parked)
 
@@ -186,13 +167,43 @@ developer mode.
   money transfers, rights to content, suitable under 18, not aimed at under
   13). The user ticked them and pressed Submit. Status: Review "In review",
   Publication "Not published", version "1.0.0 · In review".
-- Positive case 3 (release status) rendered an "unknown status" page with
-  checkpoints and callouts but no progress bar, because the prompt carries no
-  data. The expected-behaviour text promises a progress bar; adjust it in the
-  next version if the reviewers mind.
+
+## Rejected, fixed and resubmitted 2026-10-27
+
+- Email: "one or more of your test cases gave an incorrect result"; rerun them
+  and match the documented expectations, consistently on web and mobile. The
+  only reviewer trace is in the Vercel logs: `openai-mcp (Codex)/1.0.0` made
+  five `tools/call render-ui` on 2026-10-22 17:35–17:40 UTC, one per positive
+  case. Arguments are not logged.
+- Found while rerunning: a form field with two failing checks (required and
+  minLength) stacked both messages in Material's one-line subscript, so the
+  second ran over the next field. Fixed in `091e3b0`: every catalog
+  `mat-form-field` uses `subscriptSizing="dynamic"`, and all failing checks
+  are still shown. Live on `/mcp` (Vercel builds the view from source) and on
+  npm as `ngx-json-render-material` 0.3.17.
+- `8a643f3`: plugin 1.0.1 puts the data in the dashboard, status and
+  comparison prompts, and the expectations name only what that data must
+  produce. Before, a progress bar or a badge came and went between runs.
+- Rerun on ChatGPT web after the deploy and a "Refresh tools" on the plugin:
+  cases 1, 3, 4 and 5 passed. Case 2 was checked by the user's own clicks:
+  the messages sit under each field, nothing overlaps. Agent clicks do not
+  focus fields inside the view, and its typing lands in the ChatGPT composer.
+  Not checked: the ChatGPT mobile app.
+- Portal: "Create draft from ZIP" made a 1.0.1 draft (metadata: no findings).
+  After the rejection the MCP tab had dropped to "Endpoint unavailable /
+  Configuration incomplete". MCPs → Reconnect → Connect → Continue (URL, No
+  Auth and the domain verification were all kept) brought it back to
+  "Configured", with `render-ui` found and a clean scan. Submit for review now
+  goes straight to the six attestations, plus an optional "Additional
+  Submission Context" box. The user ticked the attestations and submitted.
+  The portal shows "Version 1.0.1 · In review".
+- The review video still shows the 1.0.0 prompts.
 
 ## Next concrete step
 
-Wait for the review result (email to the account owner). After approval, the
-user presses Publish; check then how the developer name shows (the verified
-identity's name is in Hebrew script) and update `docs/mcp-app-directory-listing.md`.
+Wait for the review result (email to the account owner). If it is a
+rejection again, open the MCPs tab first and reconnect if it shows
+"Endpoint unavailable", then rerun the cases it names (mobile too). After
+approval, the user presses Publish. Then check how the developer name shows
+(the verified identity's name is in Hebrew script) and update
+`docs/mcp-app-directory-listing.md`.
