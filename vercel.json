@@ -1,6 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci",
-  "buildCommand": "npm run build:lib && npm run build:material && npm run build:mcp-app -- --vercel"
+  "installCommand": "true",
+  "buildCommand": "mkdir -p .vercel-static && touch .vercel-static/.keep",
+  "outputDirectory": ".vercel-static",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/:path*",
+      "statusCode": 308
+    }
+  ]
 }
