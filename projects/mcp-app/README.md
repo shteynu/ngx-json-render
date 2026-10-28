@@ -104,8 +104,8 @@ Checked in VS Code 1.141 with GitHub Copilot Chat in Agent mode: the
   hosted endpoint, a Cloudflare Worker. `npm run build:mcp-app -- --cloudflare`
   bundles it, with every dependency and the view inlined, into
   `.cloudflare/worker.mjs`, and `npx wrangler deploy` publishes it with the
-  settings in `wrangler.jsonc`. `server/vercel.ts` is the same endpoint as a
-  Vercel function (`--vercel`), where it was hosted until 2026-10-28.
+  settings in `wrangler.jsonc`. Until 2026-10-28 it was hosted on Vercel; `vercel.json` now
+  only redirects the old URL here.
 
 The server imports the Material catalog from
 `ngx-json-render-material/catalog`, which holds the catalog without the

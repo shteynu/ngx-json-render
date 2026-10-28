@@ -4,8 +4,8 @@
 // What is specific to this deployment is here: the catalog, a CSP for the
 // Material fonts, and the ChatGPT widget domain.
 //
-// Entry points: `server.ts` (stdio and a local HTTP server), `vercel.ts`
-// (the hosted endpoint) and `worker.ts` (the same endpoint on Cloudflare).
+// Entry points: `server.ts` (stdio and a local HTTP server) and `worker.ts`
+// (the hosted endpoint, on Cloudflare).
 // This file stays free of Node APIs so the Worker can bundle it.
 import type { Catalog } from '@json-render/core';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';

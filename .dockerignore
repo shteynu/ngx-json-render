@@ -1,6 +1,5 @@
 .git
 .angular
-.vercel
 .cloudflare
 .wrangler
 node_modules

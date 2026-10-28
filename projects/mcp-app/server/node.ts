@@ -1,5 +1,5 @@
 // `handleMcpFetch` on Node's `http` API, for the local HTTP server in
-// `server.ts` and the Vercel function in `vercel.ts`.
+// `server.ts`.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
