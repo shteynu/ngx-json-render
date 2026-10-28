@@ -16,19 +16,25 @@ in `projects/mcp-app/chatgpt-plugin/plugin.json`, packed by
 platform.openai.com/plugins. Review information is read from the ZIP and is
 read-only in the portal, so any change means a new upload.
 
+**Moved 2026-10-28**: the server left Vercel (Hobby limits, `402
+DEPLOYMENT_DISABLED`) for a Cloudflare Worker at
+`https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp`. Both
+listings still carry the Vercel URL until they are edited; the old URL
+redirects there once Vercel serves again.
+
 ## Links
 
-| Field           | Value                                                             |
-| --------------- | ----------------------------------------------------------------- |
-| Server URL      | `https://ngx-json-render.vercel.app/mcp`                          |
-| Documentation   | https://shteynu.github.io/ngx-json-render/mcp/                    |
-| Privacy policy  | https://shteynu.github.io/ngx-json-render/mcp/privacy.html        |
-| Support         | https://github.com/shteynu/ngx-json-render/issues                 |
-| Icon (512 px)   | https://shteynu.github.io/ngx-json-render/mcp/icon-512.png        |
-| Icon (64 px)    | https://shteynu.github.io/ngx-json-render/mcp/icon-64.png         |
-| Screenshots     | `https://shteynu.github.io/ngx-json-render/mcp/screenshots/*.png` |
-| Authentication  | None (public, stateless)                                          |
-| Reads or writes | Neither: the one tool is read-only and touches no external system |
+| Field           | Value                                                                |
+| --------------- | -------------------------------------------------------------------- |
+| Server URL      | `https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp` |
+| Documentation   | https://shteynu.github.io/ngx-json-render/mcp/                       |
+| Privacy policy  | https://shteynu.github.io/ngx-json-render/mcp/privacy.html           |
+| Support         | https://github.com/shteynu/ngx-json-render/issues                    |
+| Icon (512 px)   | https://shteynu.github.io/ngx-json-render/mcp/icon-512.png           |
+| Icon (64 px)    | https://shteynu.github.io/ngx-json-render/mcp/icon-64.png            |
+| Screenshots     | `https://shteynu.github.io/ngx-json-render/mcp/screenshots/*.png`    |
+| Authentication  | None (public, stateless)                                             |
+| Reads or writes | Neither: the one tool is read-only and touches no external system    |
 
 ## Listing
 
@@ -144,7 +150,7 @@ Claude Code in Works with: a desktop Code-tab session that called
 Header: anthropic-beta: mcp-client-2025-11-20
 
 "mcp_servers": [
-  { "type": "url", "url": "https://ngx-json-render.vercel.app/mcp", "name": "ngx-json-render-ui" }
+  { "type": "url", "url": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp", "name": "ngx-json-render-ui" }
 ],
 "tools": [
   { "type": "mcp_toolset", "mcp_server_name": "ngx-json-render-ui" }

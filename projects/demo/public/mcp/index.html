@@ -96,7 +96,7 @@
 
     <h2>Connect</h2>
     <p>Server URL (Streamable HTTP, no authentication):</p>
-    <pre><code>https://ngx-json-render.vercel.app/mcp</code></pre>
+    <pre><code>https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp</code></pre>
     <ul>
       <li>
         <strong>Claude</strong>: Settings → Connectors → Add custom connector,
@@ -105,7 +105,7 @@
       <li id="claude-code">
         <strong>Claude Code</strong>: add the server from a terminal. Without
         <code>-s user</code> it is added to the current project only.
-        <pre><code>claude mcp add -s user --transport http ngx-json-render-ui https://ngx-json-render.vercel.app/mcp</code></pre>
+        <pre><code>claude mcp add -s user --transport http ngx-json-render-ui https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp</code></pre>
         <code>claude mcp get ngx-json-render-ui</code> should report
         <em>Connected</em>; the <code>render-ui</code> tool is available in
         sessions started after that. Claude Code shows the spec as JSON text;
@@ -120,7 +120,7 @@
       <li id="vscode">
         <strong>VS Code</strong>:
         <a
-          href="https://insiders.vscode.dev/redirect/mcp/install?name=ngx-json-render-ui&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fngx-json-render.vercel.app%2Fmcp%22%7D"
+          href="https://insiders.vscode.dev/redirect/mcp/install?name=ngx-json-render-ui&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fngx-json-render.angular-generative-ui-chat.workers.dev%2Fmcp%22%7D"
           >install in one click</a
         >, or add it to <code>.vscode/mcp.json</code> (the key is
         <code>servers</code>, not <code>mcpServers</code>):
@@ -128,7 +128,7 @@
   "servers": &#123;
     "ngx-json-render-ui": &#123;
       "type": "http",
-      "url": "https://ngx-json-render.vercel.app/mcp"
+      "url": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp"
     &#125;
   &#125;
 &#125;</code></pre>
@@ -137,12 +137,12 @@
       <li id="cursor">
         <strong>Cursor</strong> 2.6 or later:
         <a
-          href="https://cursor.com/install-mcp?name=ngx-json-render-ui&amp;config=eyJ1cmwiOiJodHRwczovL25neC1qc29uLXJlbmRlci52ZXJjZWwuYXBwL21jcCJ9"
+          href="https://cursor.com/install-mcp?name=ngx-json-render-ui&amp;config=eyJ1cmwiOiJodHRwczovL25neC1qc29uLXJlbmRlci5hbmd1bGFyLWdlbmVyYXRpdmUtdWktY2hhdC53b3JrZXJzLmRldi9tY3AifQ=="
           >install in one click</a
         >, or add it to <code>.cursor/mcp.json</code>:
         <pre><code>&#123;
   "mcpServers": &#123;
-    "ngx-json-render-ui": &#123; "url": "https://ngx-json-render.vercel.app/mcp" &#125;
+    "ngx-json-render-ui": &#123; "url": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp" &#125;
   &#125;
 &#125;</code></pre>
       </li>

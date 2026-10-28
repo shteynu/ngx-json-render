@@ -3,7 +3,7 @@
   "mcpServers": {
     "ngx-json-render-ui": {
       "type": "streamable-http",
-      "url": "https://ngx-json-render.vercel.app/mcp"
+      "url": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp"
     }
   }
 }

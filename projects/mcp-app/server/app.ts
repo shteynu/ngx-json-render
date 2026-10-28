@@ -34,7 +34,8 @@ export const VIEW_CSP = {
 };
 
 /** The origin ChatGPT derives the view's sandbox origin from. */
-export const VIEW_DOMAIN = 'https://ngx-json-render.vercel.app';
+export const VIEW_DOMAIN =
+  'https://ngx-json-render.angular-generative-ui-chat.workers.dev';
 
 /** The SDK's own reply to a method the transport does not serve. */
 const METHOD_NOT_ALLOWED = JSON.stringify({
@@ -52,7 +53,7 @@ export function createServerInstance(
     catalog,
     html,
     name: 'ngx-json-render Material',
-    version: '0.1.0',
+    version: '0.1.1',
     toolName: TOOL_NAME,
     description: renderUiDescription(catalog, { ui: 'Angular Material UI' }),
     csp: VIEW_CSP,

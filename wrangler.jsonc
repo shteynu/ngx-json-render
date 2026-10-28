@@ -1,5 +1,7 @@
-// The hosted MCP endpoint on Cloudflare Workers, alongside the Vercel one in
-// `vercel.json`. Build first, then deploy what the build wrote:
+// The hosted MCP endpoint on Cloudflare Workers, at
+// https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp (Vercel,
+// its host until 2026-10-28, now only redirects here: `vercel.json`). Build
+// first, then deploy what the build wrote:
 //
 //   npm run build:lib && npm run build:material && npm run build:mcp-app -- --cloudflare
 //   npx wrangler deploy

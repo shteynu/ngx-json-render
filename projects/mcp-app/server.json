@@ -3,7 +3,7 @@
   "name": "io.github.shteynu/ngx-json-render-ui",
   "title": "ngx-json-render UI",
   "description": "Renders dashboards, forms and tables inline in the chat as Angular Material components (MCP App).",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "websiteUrl": "https://shteynu.github.io/ngx-json-render/mcp/",
   "repository": {
     "url": "https://github.com/shteynu/ngx-json-render",
@@ -13,7 +13,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://ngx-json-render.vercel.app/mcp"
+      "url": "https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp"
     }
   ]
 }
