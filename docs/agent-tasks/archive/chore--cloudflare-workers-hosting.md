@@ -6,7 +6,7 @@
 - Base branch: main
 - Base commit: 1d655d4
 - Current HEAD: see the branch; stage 1–2 committed there, main untouched
-- Status: resumed and deployed 2026-10-28 (Vercel Hobby went
+- Status: done and archived 2026-10-28; resumed and deployed 2026-10-28 (Vercel Hobby went
   `402 DEPLOYMENT_DISABLED` again); the Worker serves the endpoint at
   `https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp`
 - Last updated: 2026-10-28
@@ -234,5 +234,9 @@ push of these commits: owner.
 
 ## Next concrete step
 
-Owner: push the branch, merge it to main (Pages publishes the new URL on the
-`/mcp` pages), then edit the outside listings from stage 4.
+None; done 2026-10-28 and archived. The ChatGPT app was recreated on the new
+URL (see `feat--chatgpt-app-submission.md`), the Claude listing, the official
+MCP Registry (0.1.1) and awesome-remote-mcp-servers (#3200) were updated;
+Smithery shuts its proxy on 2026-10-31. `server/vercel.ts` and the
+`--vercel` build were removed; `vercel.json` only redirects. CI deploys the
+Worker once the repository has a `CLOUDFLARE_API_TOKEN` secret.

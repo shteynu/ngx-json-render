@@ -3,14 +3,16 @@
 ## Metadata
 
 - Branch: `main` (this repo commits straight to main)
-- Committed and pushed: `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token), `29f3323` (review video), `091e3b0` + `8a643f3` (1.0.1 fix and test cases, deployed), `693afc2` (`ngx-json-render-material` 0.3.17)
-- Status: **1.0.0 rejected 2026-10-27; 1.0.1 resubmitted 2026-10-27, in review**
-- Last updated: 2026-10-27
+- Committed and pushed: `c5e0e9d` (token for the Worker origin), `256bca6`, `a9afc1f`, `b9c4557` (CI green, deployed), `8653590` (challenge token), `29f3323` (review video), `091e3b0` + `8a643f3` (1.0.1 fix and test cases, deployed), `693afc2` (`ngx-json-render-material` 0.3.17)
+- Status: **new app on the Cloudflare URL, 1.0.2 submitted 2026-10-28, in review** (the Vercel-bound app was deleted)
+- Last updated: 2026-10-28
 - Last agent/tool: Claude Code (Opus 5.5)
 
 ## Objective
 
-Publish `https://ngx-json-render.vercel.app/mcp` (tool `render-ui`) in the
+Publish `https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp`
+(tool `render-ui`; on `https://ngx-json-render.vercel.app/mcp` until
+2026-10-28) in the
 ChatGPT plugin directory, the same server already in review in the Claude
 Connectors Directory (slug `ngx-json-render-ui`, submitted 2026-10-06).
 
@@ -198,6 +200,20 @@ Inspector run.
   Submission Context" box. The user ticked the attestations and submitted.
   The portal shows "Version 1.0.1 · In review".
 - The review video still shows the 1.0.0 prompts.
+
+- 2026-10-28, the move to Cloudflare: Vercel Hobby disabled the deployment
+  (`402 DEPLOYMENT_DISABLED`), so the server moved to a Cloudflare Worker.
+  On the user's word the 1.0.1 review was cancelled, but the 1.0.2 ZIP with
+  the new URL was refused: "MCP URL must match the existing app. Changing
+  the MCP URL of an existing app is not supported", and the URL field under
+  MCPs → Reconnect is read-only. The portal matches a ZIP to an app by
+  `plugin.json` `name`, so the user deleted the old app
+  (`plugin_asdk_app_6aca519d…`; deleting is permanent and was their click)
+  and the same ZIP made a new one, `plugin_asdk_app_6ae1f8904c848191a46984a0470a66c2`.
+  The new origin got a new challenge token (`c5e0e9d`, Worker redeployed),
+  Verify Domain passed, Connect found `render-ui`, the MCP scan and the
+  metadata both came back clean, and the user ticked the attestations and
+  submitted: "1.0.2 · In review".
 
 ## Next concrete step
 
