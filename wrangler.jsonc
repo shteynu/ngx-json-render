@@ -1,0 +1,22 @@
+// The hosted MCP endpoint on Cloudflare Workers, alongside the Vercel one in
+// `vercel.json`. Build first, then deploy what the build wrote:
+//
+//   npm run build:lib && npm run build:material && npm run build:mcp-app -- --cloudflare
+//   npx wrangler deploy
+//
+// Static assets (the landing page, OpenAI's domain token) are served before
+// the Worker runs; every other path goes to the Worker, which answers /mcp.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ngx-json-render",
+  "main": ".cloudflare/worker.mjs",
+  "compatibility_date": "2026-09-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
+  "assets": {
+    "directory": ".cloudflare/static",
+  },
+  "observability": {
+    "enabled": true,
+  },
+}

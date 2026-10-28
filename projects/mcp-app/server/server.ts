@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createServerInstance, handleMcpRequest } from './app';
+import { createServerInstance } from './app';
+import { handleMcpRequest } from './node';
 
 const html = readFileSync(new URL('./view.html', import.meta.url), 'utf8');
 
