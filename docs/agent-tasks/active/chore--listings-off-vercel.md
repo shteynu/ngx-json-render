@@ -44,10 +44,12 @@ Checked 2026-10-28. Recheck each one:
 
 | Where | State on 2026-10-28 | What to do |
 | --- | --- | --- |
-| mcpservers.org `servers/shteynu/ngx-json-render` | Still the Vercel URL in Chrome on the evening of 2026-10-28 (the hosted-server line and the README copy, which is the pre-move README); "Request update" clicked a second time, no visible confirmation | Recheck in a browser. If it still shows Vercel, look for an edit or resubmit path on mcpservers.org. |
+| mcpservers.org `servers/shteynu/ngx-json-render` | Still the Vercel URL on the evening of 2026-10-28 (hosted-server line and the pre-move README copy). "Request update" now reads "Requested"; it sits on the Documentation block. No edit or claim page, `/submit` is for new servers only, wong2/awesome-mcp-servers has issues off and no entry for us. The one contact is `contact@mcpservers.org` (sender of the 2026-10-10 approval mail) | Gmail draft to `contact@mcpservers.org` created 2026-10-28 as a reply to the approval mail (old → new URL); the user sends it. Recheck the page about a week after. |
 | punkpeye/awesome-remote-mcp-servers PR #3200 | open; labels `endpoint-ok`, `missing-connector`, `invalid-format` (the check reads only added lines, explained in a comment); README on main still has the Vercel URL | Wait for the merge. `missing-connector` may clear once Glama's connector shows the Worker URL. |
 | mcprush.com `shteynu/ngx-json-render-ui-mcp` | Vercel URL, unclaimed; the page answers 404 since the evening of 2026-10-28 | Claiming costs $4.99 and the user declined it. If it reappears, see whether it took the registry's Worker URL; otherwise leave it. |
 | Smithery `smithery.ai/servers/shteynum/ngx-json-render-ui` | page still names Vercel; gateway `ngx-json-render-ui--shteynum.run.tools/mcp` answers 404 | Smithery shuts its proxy and accounts on 2026-10-31. After that, see whether a registry entry survives; no action before. |
+| npm `ngx-json-render@0.9.12` README | still the Vercel URL (published before the move; `ngx-json-render-material@0.3.17` is clean) | Goes away with the next renderer release; nothing to do before. |
+| Glama server page `glama.ai/mcp/servers/shteynu/ngx-json-render` | README snapshot from 2026-10-07 still names the Vercel URL (the connector page is already on the Worker) | Glama re-reads the README on its own schedule; if it is still old on the next recheck, look for a sync button there (the user's login). |
 | Vercel project | 402; `vercel.json` is a 308 redirect to the Worker, unverified | If Vercel serves again, check the redirect. Deleting the project is the user's click. |
 
 ## Approval gates
