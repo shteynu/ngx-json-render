@@ -2,11 +2,12 @@
 
 ## Metadata
 
-- Branch: chore/cloudflare-workers-hosting (local)
+- Branch: chore/cloudflare-workers-hosting (pushed to origin, no PR)
 - Base branch: main
 - Base commit: 1d655d4
 - Current HEAD: see the branch; stage 1–2 committed there, main untouched
-- Status: stage 1–2 done locally; waiting on the owner's decisions and a Cloudflare account
+- Status: deferred (owner, 2026-10-11): Vercel stays, on Hobby if the usage
+  check of 2026-10-12 allows; stage 1–2 kept here for when it is needed
 - Last updated: 2026-10-11
 - Last agent/tool: Claude Code
 
@@ -68,6 +69,45 @@ over commits.
 
 - 2026-10-11: build stage 1–2 alongside Vercel, change nothing live (owner).
 - The Node path keeps its own gzip; the Worker relies on Cloudflare's.
+- 2026-10-11, later: deferred (owner). The 402 came from idle `GET /mcp`
+  streams, not from real traffic (see "Findings after stage 2"), and d0144e6
+  on main fixed that; Vercel Hobby should now cover the endpoint. Resume on
+  one of the triggers under "When to resume".
+
+## Findings after stage 2 (2026-10-11)
+
+- What burned Vercel Hobby: every Claude Code session with the user-scope
+  `ngx-json-render-ui` connector held a `GET /mcp` event stream open; Vercel
+  cut it at 30 s and the client reopened it every ~31 s. 4.9K invocations in
+  12 h, 36% of them timeouts, 57.65 GB-hrs of Fluid Provisioned Memory in a
+  few hours (Hobby includes 360 GB-hrs a month).
+- Fix on main, d0144e6: `handleMcpRequest` answers GET with 405, with an
+  `Allow` header and the SDK's JSON-RPC error body. Allowed by the spec; SDK
+  clients skip the stream. The hour after: 64 invocations, 0% timeouts,
+  P75 20 ms.
+- On a Worker the idle stream would have cost little (wall-clock time is
+  free, CPU time is not), but it still holds a request open; carry the 405
+  over anyway.
+- Other callers seen in the logs: mcp.market uptime checks, leashkit and
+  Golemreach indexers, a `Python aiohttp` script that gets 406 (no `Accept`).
+
+## When to resume
+
+- Vercel Hobby returns `402 DEPLOYMENT_DISABLED` again, or Usage heads past
+  half of a Hobby limit.
+- The ChatGPT plugin and Anthropic directory reviews are done and the owner
+  wants an own domain (the URL change is cheapest then).
+- Vercel changes Hobby terms in a way that rules the project out.
+
+## Before resuming
+
+1. Rebase onto main. Expect a conflict in `server/app.ts`: main's d0144e6
+   added the GET 405 to `handleMcpRequest`, which this branch moved to
+   `server/node.ts` on top of `handleMcpFetch`.
+2. Put the 405 in `handleMcpFetch` (so both the Worker and Node get it), drop
+   `GET` from `Access-Control-Allow-Methods`, and recheck: GET 405 with
+   `Allow`, POST flows unchanged, `resources/read` 337 004 bytes gzipped.
+3. Re-run the stage 2 checks; wrangler may have moved on from 4.141.0.
 
 ## Assumptions
 
@@ -83,7 +123,7 @@ over commits.
 
 ## In progress
 
-Nothing; waiting on the owner.
+Nothing; deferred.
 
 ## Remaining
 
@@ -175,5 +215,6 @@ push of these commits: owner.
 
 ## Next concrete step
 
-Owner answers the three questions and creates the Cloudflare account; then
-deploy and run the stage 3 checks.
+None while deferred. On resume: "Before resuming", then the owner answers the
+three questions and creates the Cloudflare account; then deploy and run the
+stage 3 checks.
