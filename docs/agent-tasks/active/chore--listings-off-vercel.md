@@ -33,6 +33,10 @@ and archived in
 - Glama connector `glama.ai/mcp/connectors/io.github.shteynu/ngx-json-render-ui`
   synced from the registry: Worker URL, no Vercel URL (curl, evening of
   2026-10-28).
+- `docs/devto-article-8.local.md` (unpublished draft): config snippet
+  switched to the Worker URL, 2026-10-28.
+- PulseMCP: no listing for ngx-json-render (search, 2026-10-28); new
+  submissions there are paused, so nothing points at Vercel.
 
 ## Remaining
 
@@ -40,12 +44,10 @@ Checked 2026-10-28. Recheck each one:
 
 | Where | State on 2026-10-28 | What to do |
 | --- | --- | --- |
-| mcpservers.org `servers/shteynu/ngx-json-render` | "Request update" clicked; the URL is not in the static HTML | Open it in a browser and confirm the Worker URL. |
+| mcpservers.org `servers/shteynu/ngx-json-render` | Still the Vercel URL in Chrome on the evening of 2026-10-28 (the hosted-server line and the README copy, which is the pre-move README); "Request update" clicked a second time, no visible confirmation | Recheck in a browser. If it still shows Vercel, look for an edit or resubmit path on mcpservers.org. |
 | punkpeye/awesome-remote-mcp-servers PR #3200 | open; labels `endpoint-ok`, `missing-connector`, `invalid-format` (the check reads only added lines, explained in a comment); README on main still has the Vercel URL | Wait for the merge. `missing-connector` may clear once Glama's connector shows the Worker URL. |
 | mcprush.com `shteynu/ngx-json-render-ui-mcp` | Vercel URL, unclaimed; the page answers 404 since the evening of 2026-10-28 | Claiming costs $4.99 and the user declined it. If it reappears, see whether it took the registry's Worker URL; otherwise leave it. |
 | Smithery `smithery.ai/servers/shteynum/ngx-json-render-ui` | page still names Vercel; gateway `ngx-json-render-ui--shteynum.run.tools/mcp` answers 404 | Smithery shuts its proxy and accounts on 2026-10-31. After that, see whether a registry entry survives; no action before. |
-| PulseMCP | not found on a site search | It pulls from the official registry; look up `io.github.shteynu/ngx-json-render-ui` there. |
-| `docs/devto-article-8.local.md` (unpublished draft) | Vercel URL in the config snippet, line 27 | Switch the URL before publishing. |
 | Vercel project | 402; `vercel.json` is a 308 redirect to the Worker, unverified | If Vercel serves again, check the redirect. Deleting the project is the user's click. |
 
 ## Approval gates
