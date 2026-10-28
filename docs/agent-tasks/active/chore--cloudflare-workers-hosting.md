@@ -6,9 +6,10 @@
 - Base branch: main
 - Base commit: 1d655d4
 - Current HEAD: see the branch; stage 1–2 committed there, main untouched
-- Status: deferred (owner, 2026-10-11): Vercel stays, on Hobby if the usage
-  check of 2026-10-12 allows; stage 1–2 kept here for when it is needed
-- Last updated: 2026-10-11
+- Status: resumed and deployed 2026-10-28 (Vercel Hobby went
+  `402 DEPLOYMENT_DISABLED` again); the Worker serves the endpoint at
+  `https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp`
+- Last updated: 2026-10-28
 - Last agent/tool: Claude Code
 
 ## Objective
@@ -123,7 +124,25 @@ over commits.
 
 ## In progress
 
-Nothing; deferred.
+2026-10-28, resumed on Vercel's second 402:
+
+- Owner answers: everything free, so no own domain and no Paid plan; the URL
+  is the account's workers.dev one (its subdomain is named after the
+  angular-generative-ui-chat template, and renaming it would move that demo).
+- Rebased onto main c4ac9e8; the GET 405 and the request log line moved into
+  `handleMcpFetch`, so the Worker and Node share them; CORS no longer lists
+  GET.
+- Deployed with `npx wrangler@4.154.0 deploy` from the owner's wrangler login.
+  Live: `/` and the challenge token, OPTIONS 204, GET 405, `tools/list`,
+  `resources/read` gzipped by the edge (335 kB), `tools/call`, version 0.1.1
+  and `openai/widgetDomain` on the new origin.
+- CPU per request from `wrangler tail`: 3–29 ms (`tools/list` 20–29,
+  `resources/read` 16, `tools/call` 11), every outcome `ok` on Free. If
+  error 1102 shows up: cache the `tools/list` reply per isolate.
+- URL switched in the repo (stage 4 list); ChatGPT plugin 1.0.2, server.json
+  0.1.1. `vercel.json` now only 308-redirects every path to the Worker; not
+  verifiable until Vercel serves again.
+- No CI deploy yet: server changes need a manual `wrangler deploy`.
 
 ## Remaining
 
@@ -215,6 +234,5 @@ push of these commits: owner.
 
 ## Next concrete step
 
-None while deferred. On resume: "Before resuming", then the owner answers the
-three questions and creates the Cloudflare account; then deploy and run the
-stage 3 checks.
+Owner: push the branch, merge it to main (Pages publishes the new URL on the
+`/mcp` pages), then edit the outside listings from stage 4.
