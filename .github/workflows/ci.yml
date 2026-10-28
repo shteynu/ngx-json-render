@@ -277,3 +277,49 @@ jobs:
 
       - uses: actions/deploy-pages@v5
         id: deployment
+
+  # The hosted MCP endpoint (projects/mcp-app) on Cloudflare Workers, see
+  # wrangler.jsonc. Skipped until the repository has a CLOUDFLARE_API_TOKEN
+  # secret (a token with the "Edit Cloudflare Workers" template); deploy by
+  # hand with `npx wrangler deploy` until then.
+  deploy-worker:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: 751fd3195348173336403ed5b05122f0
+    steps:
+      - name: Check for the Cloudflare token
+        id: token
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No CLOUDFLARE_API_TOKEN secret; the Worker was not deployed."
+          fi
+
+      - if: steps.token.outputs.present == 'true'
+        uses: actions/checkout@v7
+
+      - if: steps.token.outputs.present == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.token.outputs.present == 'true'
+        run: npm ci
+
+      - name: Build library and Material catalog
+        if: steps.token.outputs.present == 'true'
+        run: npm run build:lib && npm run build:material
+
+      - name: Build the Worker
+        if: steps.token.outputs.present == 'true'
+        run: npm run build:mcp-app -- --cloudflare
+
+      - name: Deploy the Worker
+        if: steps.token.outputs.present == 'true'
+        run: npx --yes wrangler@4.154.0 deploy
