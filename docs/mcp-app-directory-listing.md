@@ -19,8 +19,11 @@ read-only in the portal, so any change means a new upload.
 **Moved 2026-10-28**: the server left Vercel (Hobby limits, `402
 DEPLOYMENT_DISABLED`) for a Cloudflare Worker at
 `https://ngx-json-render.angular-generative-ui-chat.workers.dev/mcp`. Both
-listings still carry the Vercel URL until they are edited; the old URL
-redirects there once Vercel serves again.
+Claude listing was switched the same day (Server URL and the Claude API
+snippet, saved during review). ChatGPT cannot change an existing app's MCP
+URL, so the old app was deleted and a new one created from the 1.0.2 ZIP
+(new domain token, verified); submitted for review on 2026-10-28. The old URL
+redirects to the Worker once Vercel serves again.
 
 ## Links
 
