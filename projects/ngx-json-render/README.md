@@ -38,7 +38,7 @@ and 22, built with strict templates and driven in Chrome. On Angular 19 the
 [`ngx-json-render-material`](../ngx-json-render-material/README.md), needs
 Angular ≥ 20.
 The same goes for `@json-render/core`: 0.20 and 0.21 are both admitted
-(`>=0.20.0 <0.22.0`), the workspace pins the newest and CI tests the floor.
+(`>=0.20.0 <0.23.0`), the workspace pins the newest and CI tests the floor.
 
 **Zoneless, and checked as such.** Zone.js appears in no manifest here, `NgZone`
 in no source file, and neither in the published bundles; every suite runs under
