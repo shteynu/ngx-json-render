@@ -1,0 +1,166 @@
+<main>
+  <header>
+    <h1>A model in your browser draws Angular UI</h1>
+    <p class="lede">
+      A small open model runs on your GPU through
+      <a href="https://github.com/mlc-ai/web-llm">WebLLM</a>. It answers in
+      JSON, and
+      <a href="https://github.com/shteynu/ngx-json-render">ngx-json-render</a>
+      turns that JSON into Angular Material components while it streams. No
+      server and no API key: after the one-time download, nothing leaves this
+      page.
+    </p>
+  </header>
+
+  <section class="model" aria-label="Model">
+    @switch (gpu()?.ok) {
+      @case (undefined) {
+        <p class="muted">Checking for WebGPU…</p>
+      }
+      @case (false) {
+        <p class="notice">
+          <mat-icon>info</mat-icon>
+          <span>
+            This browser has no WebGPU, so the model cannot run here. The
+            suggestions below replay answers the model wrote, through the same
+            renderer. Desktop Chrome or Edge can run it live.
+          </span>
+        </p>
+      }
+      @default {
+        @switch (model.state().kind) {
+          @case ('ready') {
+            <p class="status">
+              <mat-icon>memory</mat-icon>
+              <span>
+                <strong>{{ model.loaded()?.label }}</strong> is running on your
+                GPU. Ask for any UI.
+              </span>
+            </p>
+          }
+          @case ('loading') {
+            @if (model.state(); as state) {
+              @if (state.kind === 'loading') {
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="state.progress * 100"
+                />
+                <p class="muted small">{{ state.text }}</p>
+              }
+            }
+          }
+          @default {
+            <div class="load">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Model</mat-label>
+                <mat-select
+                  [value]="choice()"
+                  (valueChange)="choice.set($event)"
+                >
+                  @for (option of models; track option.id) {
+                    <mat-option [value]="option">
+                      {{ option.label }} · {{ option.download }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button mat-flat-button type="button" (click)="load()">
+                <mat-icon>download</mat-icon>
+                Load the model
+              </button>
+            </div>
+            <p class="muted small">
+              The weights download once from Hugging Face and stay in your
+              browser's cache. Until then, the suggestions replay recorded
+              answers.
+            </p>
+            @if (model.state(); as state) {
+              @if (state.kind === 'error') {
+                <p class="error" role="alert">{{ state.message }}</p>
+              }
+            }
+          }
+        }
+      }
+    }
+  </section>
+
+  <div class="suggestions">
+    @for (suggestion of suggestions; track suggestion) {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="busy()"
+        (click)="send(suggestion)"
+      >
+        {{ suggestion }}
+      </button>
+    }
+  </div>
+
+  @for (turn of turns(); track turn.id) {
+    <article class="turn">
+      <p class="prompt">{{ turn.prompt }}</p>
+      @if (turn.say) {
+        <p class="say">{{ turn.say }}</p>
+      }
+      @if (turn.spec) {
+        <json-render
+          [spec]="turn.spec"
+          [registry]="registry"
+          [loading]="turn.streaming"
+        />
+      } @else if (turn.streaming) {
+        <mat-progress-bar mode="indeterminate" />
+      }
+      @if (turn.error) {
+        <p class="error" role="alert">{{ turn.error }}</p>
+      }
+      <details>
+        <summary>
+          {{ turn.note ?? (turn.streaming ? 'Streaming…' : '') }} · the JSON
+        </summary>
+        <pre>{{ turn.raw }}</pre>
+      </details>
+    </article>
+  }
+
+  <form (ngSubmit)="send()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{
+        ready() ? 'Ask for some UI' : 'Load the model to ask your own'
+      }}</mat-label>
+      <input
+        matInput
+        name="draft"
+        autocomplete="off"
+        [disabled]="!ready()"
+        [(ngModel)]="draft"
+      />
+    </mat-form-field>
+    @if (busy() && ready()) {
+      <button mat-icon-button type="button" aria-label="Stop" (click)="stop()">
+        <mat-icon>stop</mat-icon>
+      </button>
+    } @else {
+      <button
+        mat-icon-button
+        type="submit"
+        aria-label="Send"
+        [disabled]="!ready() || busy()"
+      >
+        <mat-icon>send</mat-icon>
+      </button>
+    }
+  </form>
+
+  <footer class="muted small">
+    <code>npm i ngx-json-render ngx-json-render-material</code> ·
+    <a
+      href="https://github.com/shteynu/ngx-json-render/tree/main/examples/local-model"
+      >source of this page</a
+    >
+    ·
+    <a href="https://shteynu.github.io/ngx-json-render/">docs and playground</a>
+  </footer>
+</main>

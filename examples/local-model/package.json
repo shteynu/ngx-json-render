@@ -1,0 +1,36 @@
+{
+  "name": "ngx-json-render-example-local-model",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "tsx --test src/app/*.test.ts",
+    "space": "ng build && node scripts/prepare-space.mjs"
+  },
+  "dependencies": {
+    "@angular/cdk": "^22.2.0",
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/material": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "@json-render/core": "^0.23.0",
+    "@mlc-ai/web-llm": "0.2.87",
+    "ngx-json-render": "^0.9.14",
+    "ngx-json-render-material": "^0.3.19",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.2",
+    "@angular/cli": "^22.2.2",
+    "@angular/compiler-cli": "^22.2.0",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "~6.0.2"
+  }
+}
